@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,8 +14,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Upload, Image } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 
 interface RightSidebarProps {
   selectedElement: any;
@@ -25,12 +25,26 @@ interface RightSidebarProps {
 
 const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) => {
   const [customAttributes, setCustomAttributes] = useState<{ key: string; value: string }[]>([]);
-  
+  const [dimension, setDimension] = useState<string>("m");
+  const [imageUrl, setImageUrl] = useState<string>("");
+
   useEffect(() => {
     if (selectedElement?.custom_attributes) {
       setCustomAttributes(selectedElement.custom_attributes);
     } else {
       setCustomAttributes([]);
+    }
+    
+    if (selectedElement?.imageUrl) {
+      setImageUrl(selectedElement.imageUrl);
+    } else {
+      setImageUrl("");
+    }
+    
+    if (selectedElement?.dimension) {
+      setDimension(selectedElement.dimension);
+    } else {
+      setDimension("m");
     }
   }, [selectedElement]);
   
@@ -68,7 +82,6 @@ const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) =
     newAttributes[index][field] = value;
     setCustomAttributes(newAttributes);
     
-    // Update the selectedElement with new attributes
     handleInputChange('custom_attributes', newAttributes);
   };
 
@@ -87,6 +100,58 @@ const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) =
     const tags = [...(selectedElement.tags || [])];
     tags[index] = value;
     handleInputChange('tags', tags);
+  };
+  
+  const handleImageUpload = () => {
+    const placeholderImages = [
+      "https://images.unsplash.com/photo-1649972904349-6e44c42644a7",
+      "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b",
+      "https://images.unsplash.com/photo-1518770660439-4636190af475",
+      "https://images.unsplash.com/photo-1461749280684-dccba630e2f6",
+      "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d"
+    ];
+    
+    const randomImage = placeholderImages[Math.floor(Math.random() * placeholderImages.length)];
+    setImageUrl(randomImage);
+    handleInputChange('imageUrl', randomImage);
+    toast.success("Image uploaded successfully!");
+  };
+  
+  const handleDimensionUnitChange = (unit: string) => {
+    setDimension(unit);
+    handleInputChange('dimension', unit);
+    
+    let scaleFactor = 1;
+    
+    switch (unit) {
+      case "cm":
+        scaleFactor = 100;
+        break;
+      case "ft":
+        scaleFactor = 3.28084;
+        break;
+      case "yd":
+        scaleFactor = 1.09361;
+        break;
+      case "km":
+        scaleFactor = 0.001;
+        break;
+      default:
+        scaleFactor = 1;
+    }
+    
+    if (selectedElement.width && selectedElement.height) {
+      const originalWidth = selectedElement.baseWidth || selectedElement.width;
+      const originalHeight = selectedElement.baseHeight || selectedElement.height;
+      
+      if (!selectedElement.baseWidth) {
+        handleInputChange('baseWidth', originalWidth);
+        handleInputChange('baseHeight', originalHeight);
+      }
+      
+      handleInputChange('width', originalWidth * scaleFactor);
+      handleInputChange('height', originalHeight * scaleFactor);
+    }
   };
   
   const renderBasicProperties = () => (
@@ -164,12 +229,29 @@ const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) =
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-2">
           <Label htmlFor="element-width">Width</Label>
-          <Input 
-            id="element-width" 
-            type="number"
-            value={selectedElement.width || ''} 
-            onChange={(e) => handleInputChange('width', Number(e.target.value))} 
-          />
+          <div className="flex items-center space-x-2">
+            <Input 
+              id="element-width" 
+              type="number"
+              value={selectedElement.width || ''} 
+              onChange={(e) => handleInputChange('width', Number(e.target.value))} 
+            />
+            <Select 
+              value={dimension} 
+              onValueChange={handleDimensionUnitChange}
+            >
+              <SelectTrigger className="w-20">
+                <SelectValue placeholder="Unit" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="m">m</SelectItem>
+                <SelectItem value="cm">cm</SelectItem>
+                <SelectItem value="ft">ft</SelectItem>
+                <SelectItem value="yd">yd</SelectItem>
+                <SelectItem value="km">km</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         <div className="space-y-2">
@@ -181,6 +263,84 @@ const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) =
             onChange={(e) => handleInputChange('height', Number(e.target.value))} 
           />
         </div>
+      </div>
+      
+      <div className="space-y-2 border-t pt-4 mt-4">
+        <Label>Geolocation</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-2">
+            <Label htmlFor="latitude">Latitude</Label>
+            <Input 
+              id="latitude" 
+              value={selectedElement.latitude || ''} 
+              onChange={(e) => handleInputChange('latitude', e.target.value)} 
+              placeholder="e.g., 37.7749"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="longitude">Longitude</Label>
+            <Input 
+              id="longitude" 
+              value={selectedElement.longitude || ''} 
+              onChange={(e) => handleInputChange('longitude', e.target.value)} 
+              placeholder="e.g., -122.4194"
+            />
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-2 mt-2">
+          <Label htmlFor="coordinate-position" className="flex-shrink-0">Position:</Label>
+          <Select 
+            value={selectedElement.coordinatePosition || 'center'} 
+            onValueChange={(value) => handleInputChange('coordinatePosition', value)}
+          >
+            <SelectTrigger id="coordinate-position">
+              <SelectValue placeholder="Position" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="center">Center</SelectItem>
+              <SelectItem value="top-left">Top Left</SelectItem>
+              <SelectItem value="top-right">Top Right</SelectItem>
+              <SelectItem value="bottom-left">Bottom Left</SelectItem>
+              <SelectItem value="bottom-right">Bottom Right</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="space-y-2 border-t pt-4">
+        <div className="flex justify-between items-center">
+          <Label>Element Image</Label>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleImageUpload}
+          >
+            <Image className="h-4 w-4 mr-1" />
+            Upload Image
+          </Button>
+        </div>
+        
+        {imageUrl && (
+          <div className="mt-2 relative">
+            <img 
+              src={imageUrl} 
+              alt="Element" 
+              className="w-full h-32 object-cover rounded-md" 
+            />
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="absolute top-1 right-1" 
+              onClick={() => {
+                setImageUrl("");
+                handleInputChange('imageUrl', "");
+              }}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -217,12 +377,29 @@ const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) =
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-2">
           <Label htmlFor="connection-distance">Distance (m)</Label>
-          <Input 
-            id="connection-distance" 
-            type="number"
-            value={selectedElement.distance || 0} 
-            onChange={(e) => handleInputChange('distance', Number(e.target.value))} 
-          />
+          <div className="flex items-center space-x-2">
+            <Input 
+              id="connection-distance" 
+              type="number"
+              value={selectedElement.distance || 0} 
+              onChange={(e) => handleInputChange('distance', Number(e.target.value))} 
+            />
+            <Select 
+              value={dimension} 
+              onValueChange={handleDimensionUnitChange}
+            >
+              <SelectTrigger className="w-20">
+                <SelectValue placeholder="Unit" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="m">m</SelectItem>
+                <SelectItem value="cm">cm</SelectItem>
+                <SelectItem value="ft">ft</SelectItem>
+                <SelectItem value="yd">yd</SelectItem>
+                <SelectItem value="km">km</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         <div className="space-y-2">

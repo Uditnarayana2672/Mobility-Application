@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -117,6 +118,9 @@ const BlueprintCanvas = ({
     if (!showEdges) return null;
     
     return connections.map((connection) => {
+      // Only show connections for current floor
+      if (connection.floor !== currentFloor) return null;
+      
       // Find source and target elements
       const source = elements.find(e => e.id === connection.source);
       const target = elements.find(e => e.id === connection.target);
@@ -338,6 +342,57 @@ const BlueprintCanvas = ({
       );
     }
   };
+  
+  // Render coordinates marker when available
+  const renderCoordinatesMarker = (element: any) => {
+    if (!element.latitude || !element.longitude) return null;
+    
+    let markerX = element.x + element.width / 2;
+    let markerY = element.y + element.height / 2;
+    
+    // Adjust based on coordinate position if specified
+    switch (element.coordinatePosition) {
+      case 'top-left':
+        markerX = element.x;
+        markerY = element.y;
+        break;
+      case 'top-right':
+        markerX = element.x + element.width;
+        markerY = element.y;
+        break;
+      case 'bottom-left':
+        markerX = element.x;
+        markerY = element.y + element.height;
+        break;
+      case 'bottom-right':
+        markerX = element.x + element.width;
+        markerY = element.y + element.height;
+        break;
+    }
+    
+    return (
+      <g>
+        <circle
+          cx={markerX}
+          cy={markerY}
+          r={3}
+          fill="red"
+          stroke="white"
+          strokeWidth={1}
+        />
+        {showLabels && (
+          <text
+            x={markerX + 5}
+            y={markerY - 5}
+            textAnchor="start"
+            className="fill-black text-[10px] bg-white/80 px-1 py-0.5 rounded"
+          >
+            {element.latitude}, {element.longitude}
+          </text>
+        )}
+      </g>
+    );
+  };
 
   return (
     <div 
@@ -352,6 +407,15 @@ const BlueprintCanvas = ({
         {renderGrid()}
         {renderConnections()}
         {renderDrawingPreview()}
+        {/* Render coordinate markers */}
+        {showLabels && elements
+          .filter(element => element.floor === currentFloor && element.latitude && element.longitude)
+          .map(element => (
+            <g key={`coords-${element.id}`}>
+              {renderCoordinatesMarker(element)}
+            </g>
+          ))
+        }
       </svg>
 
       {elements
@@ -385,15 +449,20 @@ const BlueprintCanvas = ({
             return (
               <div
                 key={element.id}
-                className={`absolute border ${classes}`}
+                className={`absolute border ${classes} overflow-hidden`}
                 style={{
                   left: element.x,
                   top: element.y,
                   width: element.width,
-                  height: element.height
+                  height: element.height,
+                  backgroundImage: element.imageUrl ? `url(${element.imageUrl})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
                 }}
               >
-                <DoorClosed className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blueprint-element-entry" />
+                {!element.imageUrl && (
+                  <DoorClosed className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blueprint-element-entry" />
+                )}
                 {showLabels && (
                   <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full mt-1 text-xs bg-white px-1 rounded whitespace-nowrap">
                     {element.name}
@@ -407,15 +476,20 @@ const BlueprintCanvas = ({
             return (
               <div
                 key={element.id}
-                className={`absolute border ${classes}`}
+                className={`absolute border ${classes} overflow-hidden`}
                 style={{
                   left: element.x,
                   top: element.y,
                   width: element.width,
-                  height: element.height
+                  height: element.height,
+                  backgroundImage: element.imageUrl ? `url(${element.imageUrl})` : 'none',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
                 }}
               >
-                <Stars className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blueprint-element-stairs" />
+                {!element.imageUrl && (
+                  <Stars className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blueprint-element-stairs" />
+                )}
                 {showLabels && (
                   <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full mt-1 text-xs bg-white px-1 rounded whitespace-nowrap">
                     {element.name}
@@ -428,23 +502,31 @@ const BlueprintCanvas = ({
           return (
             <div
               key={element.id}
-              className={`absolute border ${classes}`}
+              className={`absolute border ${classes} overflow-hidden`}
               style={{
                 left: element.x,
                 top: element.y,
                 width: element.width,
-                height: element.height
+                height: element.height,
+                backgroundImage: element.imageUrl ? `url(${element.imageUrl})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
               }}
             >
               {showLabels && (
-                <span className="absolute top-2 left-2 text-xs bg-white/70 px-1 rounded">
+                <div className="absolute top-2 left-2 text-xs bg-white/70 px-1 rounded">
                   {element.name}
-                </span>
+                </div>
               )}
               {element.capacity > 0 && showLabels && (
-                <span className="absolute bottom-2 right-2 text-xs bg-white/70 px-1 rounded">
+                <div className="absolute bottom-2 right-2 text-xs bg-white/70 px-1 rounded">
                   Cap: {element.capacity}
-                </span>
+                </div>
+              )}
+              {element.dimension && element.width > 0 && showLabels && (
+                <div className="absolute bottom-2 left-2 text-xs bg-white/70 px-1 rounded">
+                  {element.width}x{element.height} {element.dimension}
+                </div>
               )}
             </div>
           );

@@ -1,10 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Blueprint from '@/components/Blueprint/Blueprint';
 import TopNavBar from '@/components/Navigation/TopNavBar';
 import LeftSidebar from '@/components/Sidebar/LeftSidebar';
 import RightSidebar from '@/components/Sidebar/RightSidebar';
 import { toast } from 'sonner';
+import { generateUniqueId } from '@/lib/utils';
 
 const Index = () => {
   const [selectedTool, setSelectedTool] = useState('select');
@@ -71,6 +72,15 @@ const Index = () => {
       currentFloor: floor
     });
   };
+  
+  const handleAddFloor = (floorName: string) => {
+    if (!blueprintData.floors.includes(floorName)) {
+      setBlueprintData({
+        ...blueprintData,
+        floors: [...blueprintData.floors, floorName]
+      });
+    }
+  };
 
   const handleAddCustomPoi = (poiName: string) => {
     const poiId = poiName.toLowerCase().replace(/\s+/g, '-');
@@ -104,6 +114,78 @@ const Index = () => {
     link.click();
     document.body.removeChild(link);
   };
+  
+  const handleSave = () => {
+    const savedData = {
+      floors: blueprintData.floors,
+      elements: blueprintData.elements,
+      connections: blueprintData.connections,
+      currentFloor: blueprintData.currentFloor,
+      metadata: {
+        lastSaved: new Date().toISOString(),
+        customPois: customPois
+      }
+    };
+    
+    // Save to localStorage
+    localStorage.setItem('blueprintData', JSON.stringify(savedData));
+    toast.success('Blueprint saved successfully!');
+  };
+  
+  const handleImportJson = (jsonData: any) => {
+    try {
+      // Validate required structure
+      if (!jsonData.floors || !Array.isArray(jsonData.floors)) {
+        throw new Error('Invalid JSON: missing floors array');
+      }
+      
+      if (!jsonData.elements || !Array.isArray(jsonData.elements)) {
+        throw new Error('Invalid JSON: missing elements array');
+      }
+      
+      // Set the imported data
+      setBlueprintData({
+        elements: jsonData.elements || [],
+        connections: jsonData.connections || [],
+        floors: jsonData.floors,
+        currentFloor: jsonData.currentFloor || jsonData.floors[0]
+      });
+      
+      // Set custom POIs if available
+      if (jsonData.metadata?.customPois) {
+        setCustomPois(jsonData.metadata.customPois);
+      }
+      
+      toast.success('Blueprint loaded successfully!');
+    } catch (error) {
+      toast.error('Failed to import blueprint data');
+      console.error('Import error:', error);
+    }
+  };
+  
+  // Load saved data on initial render
+  useEffect(() => {
+    const savedData = localStorage.getItem('blueprintData');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        setBlueprintData({
+          elements: parsedData.elements || [],
+          connections: parsedData.connections || [],
+          floors: parsedData.floors || ['Floor 1'],
+          currentFloor: parsedData.currentFloor || 'Floor 1'
+        });
+        
+        if (parsedData.metadata?.customPois) {
+          setCustomPois(parsedData.metadata.customPois);
+        }
+        
+        toast.success('Loaded saved blueprint');
+      } catch (e) {
+        toast.error('Failed to load saved blueprint');
+      }
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -118,6 +200,9 @@ const Index = () => {
         floors={blueprintData.floors}
         currentFloor={blueprintData.currentFloor}
         onFloorChange={handleFloorChange}
+        onAddFloor={handleAddFloor}
+        onImportJson={handleImportJson}
+        onSave={handleSave}
       />
       <div className="flex flex-1 overflow-hidden">
         <LeftSidebar 

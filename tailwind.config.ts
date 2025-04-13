@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,20 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				blueprint: {
+					primary: '#3498DB',
+					secondary: '#2C3E50',
+					accent: '#E74C3C',
+					grid: '#D1D5DB',
+					element: {
+						room: '#3498DB',
+						hallway: '#95A5A6',
+						poi: '#E74C3C',
+						entry: '#27AE60',
+						stairs: '#8E44AD',
+						custom: '#F39C12'
+					}
 				}
 			},
 			borderRadius: {

@@ -1,0 +1,231 @@
+
+import { useRef, useState, useEffect } from 'react';
+import BlueprintCanvas from './BlueprintCanvas';
+import BlueprintControls from './BlueprintControls';
+import { generateUniqueId } from '@/lib/utils';
+import { toast } from 'sonner';
+
+interface BlueprintProps {
+  selectedTool: string;
+  showGrid: boolean;
+  showLabels: boolean;
+  showEdges: boolean;
+  elements: any[];
+  connections: any[];
+  currentFloor: string;
+  onElementSelect: (element: any) => void;
+  onAddElement: (element: any) => void;
+  onAddConnection: (connection: any) => void;
+}
+
+const Blueprint = ({
+  selectedTool,
+  showGrid,
+  showLabels,
+  showEdges,
+  elements,
+  connections,
+  currentFloor,
+  onElementSelect,
+  onAddElement,
+  onAddConnection
+}: BlueprintProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [drawing, setDrawing] = useState(false);
+  const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
+  const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  const handleZoom = (delta: number) => {
+    const newScale = Math.max(0.1, Math.min(5, scale + delta * 0.1));
+    setScale(newScale);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left - position.x) / scale;
+    const y = (e.clientY - rect.top - position.y) / scale;
+
+    if (selectedTool === 'pan') {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    // Handle element selection
+    if (selectedTool === 'select') {
+      const clickedElement = elements.find(element => {
+        // Simple rectangular hit testing
+        return (
+          x >= element.x &&
+          x <= element.x + element.width &&
+          y >= element.y &&
+          y <= element.y + element.height
+        );
+      });
+
+      if (clickedElement) {
+        onElementSelect(clickedElement);
+        return;
+      }
+    }
+
+    // Start drawing
+    if (['room', 'hallway', 'custom'].includes(selectedTool)) {
+      setDrawing(true);
+      setStartPoint({ x, y });
+      setCurrentPoint({ x, y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left - position.x) / scale;
+    const y = (e.clientY - rect.top - position.y) / scale;
+
+    // Handle panning
+    if (isPanning) {
+      setPosition({
+        x: position.x + (e.clientX - panStart.x),
+        y: position.y + (e.clientY - panStart.y),
+      });
+      setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    // Handle drawing
+    if (drawing) {
+      setCurrentPoint({ x, y });
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+
+    // Handle panning
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+
+    // Finish drawing
+    if (drawing) {
+      setDrawing(false);
+
+      // Create new element
+      if (['room', 'hallway', 'custom'].includes(selectedTool)) {
+        const width = Math.abs(currentPoint.x - startPoint.x);
+        const height = Math.abs(currentPoint.y - startPoint.y);
+        
+        // Only add if it has some size
+        if (width > 5 && height > 5) {
+          const element = {
+            id: generateUniqueId(),
+            type: selectedTool,
+            x: Math.min(startPoint.x, currentPoint.x),
+            y: Math.min(startPoint.y, currentPoint.y),
+            width,
+            height,
+            name: `New ${selectedTool}`,
+            floor: currentFloor,
+            tags: [],
+            custom_attributes: [],
+          };
+          
+          onAddElement(element);
+          toast.success(`Added new ${selectedTool}`);
+        }
+      }
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // Handle keyboard shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'z') {
+        // Undo
+        e.preventDefault();
+      } else if (e.key === 'y') {
+        // Redo
+        e.preventDefault();
+      }
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  // Handle POI placement
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left - position.x) / scale;
+    const y = (e.clientY - rect.top - position.y) / scale;
+
+    if (selectedTool.startsWith('poi-')) {
+      const poiType = selectedTool.split('-')[1];
+      const element = {
+        id: generateUniqueId(),
+        type: 'poi',
+        poiType,
+        x,
+        y,
+        width: 24,
+        height: 24,
+        name: `${poiType.charAt(0).toUpperCase() + poiType.slice(1)}`,
+        floor: currentFloor,
+        tags: [poiType],
+        custom_attributes: [],
+      };
+      
+      onAddElement(element);
+      toast.success(`Added new POI: ${poiType}`);
+    }
+  };
+
+  return (
+    <div 
+      ref={containerRef}
+      className="relative w-full h-full overflow-hidden cursor-crosshair"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onClick={handleCanvasClick}
+    >
+      <BlueprintCanvas
+        scale={scale}
+        position={position}
+        showGrid={showGrid}
+        showLabels={showLabels}
+        showEdges={showEdges}
+        elements={elements}
+        connections={connections}
+        currentFloor={currentFloor}
+        drawing={drawing}
+        startPoint={startPoint}
+        currentPoint={currentPoint}
+        selectedTool={selectedTool}
+      />
+      <BlueprintControls
+        scale={scale}
+        onZoom={handleZoom}
+        position={position}
+        setPosition={setPosition}
+      />
+    </div>
+  );
+};
+
+export default Blueprint;

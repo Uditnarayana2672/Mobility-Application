@@ -5,13 +5,13 @@ import {
   Columns, 
   Printer, 
   DoorClosed, 
-  Stairs, 
+  Stars, 
   Box, 
-  PolygonIcon, 
-  LineIcon, 
+  Hexagon, 
+  LineChart, 
   Move, 
   BellRing, 
-  Bench
+  Sofa
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -26,8 +26,8 @@ const LeftSidebar = ({ selectedTool, onToolSelect }: LeftSidebarProps) => {
   
   const tools = [
     { id: 'select', icon: MousePointer, label: 'Select' },
-    { id: 'draw-polygon', icon: PolygonIcon, label: 'Polygon' },
-    { id: 'draw-line', icon: LineIcon, label: 'Line' },
+    { id: 'draw-polygon', icon: Hexagon, label: 'Polygon' },
+    { id: 'draw-line', icon: LineChart, label: 'Line' },
     { id: 'pan', icon: Move, label: 'Pan' },
   ];
   
@@ -36,13 +36,13 @@ const LeftSidebar = ({ selectedTool, onToolSelect }: LeftSidebarProps) => {
     { id: 'hallway', icon: Columns, label: 'Hallway', color: 'bg-blueprint-element-hallway' },
     { id: 'poi', icon: BellRing, label: 'POI', color: 'bg-blueprint-element-poi' },
     { id: 'entry', icon: DoorClosed, label: 'Entry/Exit', color: 'bg-blueprint-element-entry' },
-    { id: 'stairs', icon: Stairs, label: 'Stairs/Elevator', color: 'bg-blueprint-element-stairs' },
+    { id: 'stairs', icon: Stars, label: 'Stairs/Elevator', color: 'bg-blueprint-element-stairs' },
     { id: 'custom', icon: Box, label: 'Custom Zone', color: 'bg-blueprint-element-custom' },
   ];
   
   const pois = [
     { id: 'printer', icon: Printer, label: 'Printer' },
-    { id: 'bench', icon: Bench, label: 'Bench' },
+    { id: 'bench', icon: Sofa, label: 'Bench' },
     { id: 'water', icon: Box, label: 'Water Cooler' },
   ];
   

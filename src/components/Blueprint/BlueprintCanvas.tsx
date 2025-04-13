@@ -1,10 +1,9 @@
-
 import { useEffect, useRef } from 'react';
 import { 
   Printer, 
   DoorClosed, 
-  Stairs, 
-  Bench, 
+  Stars, 
+  Sofa, 
   Square 
 } from 'lucide-react';
 
@@ -54,7 +53,7 @@ const BlueprintCanvas = ({
   const getPoiIcon = (poiType: string) => {
     switch (poiType) {
       case 'printer': return <Printer className="h-5 w-5 text-blueprint-element-poi" />;
-      case 'bench': return <Bench className="h-5 w-5 text-blueprint-element-poi" />;
+      case 'bench': return <Sofa className="h-5 w-5 text-blueprint-element-poi" />;
       case 'water': return <Square className="h-5 w-5 text-blueprint-element-poi" />; // Placeholder
       default: return <Square className="h-5 w-5 text-blueprint-element-poi" />;
     }
@@ -244,7 +243,7 @@ const BlueprintCanvas = ({
                   height: element.height
                 }}
               >
-                <Stairs className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blueprint-element-stairs" />
+                <Stars className="h-6 w-6 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blueprint-element-stairs" />
                 {showLabels && (
                   <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full mt-1 text-xs bg-white px-1 rounded whitespace-nowrap">
                     {element.name}

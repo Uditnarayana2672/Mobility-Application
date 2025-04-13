@@ -18,8 +18,7 @@ import {
   Droplet,
   Plus,
   ChevronsRight,
-  Curve,
-  Bezier
+  Link2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -68,7 +67,7 @@ const LeftSidebar = ({ selectedTool, onToolSelect, onAddCustomPoi }: LeftSidebar
   const connectors = [
     { id: 'connect-straight', icon: ArrowRight, label: 'Straight Connector' },
     { id: 'connect-path', icon: Link, label: 'Path Connector' },
-    { id: 'connect-bent', icon: Curve, label: 'Bent Connector' },
+    { id: 'connect-bent', icon: Link2, label: 'Bent Connector' },
     { id: 'connect-multi', icon: ChevronsRight, label: 'Multi-Point Path' },
   ];
 

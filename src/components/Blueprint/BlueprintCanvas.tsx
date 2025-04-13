@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -8,7 +7,7 @@ import {
   Square,
   Coffee,
   Utensils,
-  WaterIcon,
+  Droplet,
   Box 
 } from 'lucide-react';
 
@@ -65,7 +64,7 @@ const BlueprintCanvas = ({
     switch (poiType) {
       case 'printer': return <Printer className="h-5 w-5 text-blueprint-element-poi" />;
       case 'bench': return <Sofa className="h-5 w-5 text-blueprint-element-poi" />;
-      case 'water': return <WaterIcon className="h-5 w-5 text-blueprint-element-poi" />;
+      case 'water': return <Droplet className="h-5 w-5 text-blueprint-element-poi" />;
       case 'coffee': return <Coffee className="h-5 w-5 text-blueprint-element-poi" />;
       case 'food': return <Utensils className="h-5 w-5 text-blueprint-element-poi" />;
       default: return <Box className="h-5 w-5 text-blueprint-element-poi" />;

@@ -1,4 +1,3 @@
-
 import { 
   MousePointer, 
   Square, 
@@ -16,11 +15,11 @@ import {
   Link,
   Coffee,
   Utensils,
-  WaterIcon,
+  Droplet,
   Plus,
   ChevronsRight,
-  BendDown,
-  BendLeft
+  Curve,
+  Bezier
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -61,7 +60,7 @@ const LeftSidebar = ({ selectedTool, onToolSelect, onAddCustomPoi }: LeftSidebar
   const pois = [
     { id: 'printer', icon: Printer, label: 'Printer' },
     { id: 'bench', icon: Sofa, label: 'Bench' },
-    { id: 'water', icon: WaterIcon, label: 'Water Cooler' },
+    { id: 'water', icon: Droplet, label: 'Water Cooler' },
     { id: 'coffee', icon: Coffee, label: 'Coffee Machine' },
     { id: 'food', icon: Utensils, label: 'Food Area' },
   ];
@@ -69,7 +68,7 @@ const LeftSidebar = ({ selectedTool, onToolSelect, onAddCustomPoi }: LeftSidebar
   const connectors = [
     { id: 'connect-straight', icon: ArrowRight, label: 'Straight Connector' },
     { id: 'connect-path', icon: Link, label: 'Path Connector' },
-    { id: 'connect-bent', icon: BendDown, label: 'Bent Connector' },
+    { id: 'connect-bent', icon: Curve, label: 'Bent Connector' },
     { id: 'connect-multi', icon: ChevronsRight, label: 'Multi-Point Path' },
   ];
 

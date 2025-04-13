@@ -1,6 +1,5 @@
-
 import { 
-  Save, Download, Undo, Redo, Grid, Tag, Share2, Plus, Upload
+  Save, Download, Undo, Redo, Grid, Tag, Share2, Plus, Upload, FileJson
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -22,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { Textarea } from '@/components/ui/textarea';
 
 interface TopNavBarProps {
   onExport: (format: string) => void;
@@ -37,6 +37,7 @@ interface TopNavBarProps {
   onAddFloor?: (floorName: string) => void;
   onImportJson?: (jsonData: any) => void;
   onSave?: () => void;
+  onShowCurrentJson?: () => void;
 }
 
 const TopNavBar = ({
@@ -52,9 +53,11 @@ const TopNavBar = ({
   onFloorChange,
   onAddFloor,
   onImportJson,
-  onSave
+  onSave,
+  onShowCurrentJson
 }: TopNavBarProps) => {
   const [newFloorName, setNewFloorName] = useState('');
+  const [jsonData, setJsonData] = useState('');
 
   const handleAddFloor = () => {
     if (newFloorName.trim() && onAddFloor) {
@@ -88,18 +91,29 @@ const TopNavBar = ({
     reader.readAsText(file);
   };
 
+  const handleJsonImport = () => {
+    try {
+      if (!jsonData.trim() || !onImportJson) return;
+      const parsedData = JSON.parse(jsonData);
+      onImportJson(parsedData);
+      toast.success('Blueprint imported successfully');
+    } catch (error) {
+      toast.error('Failed to import blueprint. Invalid JSON format.');
+    }
+  };
+
   return (
     <div className="flex justify-between items-center px-4 py-2 bg-blueprint-secondary text-white">
       <div className="flex items-center space-x-2">
         <h1 className="text-lg font-semibold">Blueprint Designer</h1>
         <div className="flex items-center mx-4 space-x-2">
-          <Button variant="outline" size="sm" className="text-white hover:text-blueprint-secondary" onClick={onSave}>
+          <Button variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white hover:text-blueprint-secondary" onClick={onSave}>
             <Save className="h-4 w-4 mr-1" />
             Save
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="text-white hover:text-blueprint-secondary">
+              <Button variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white hover:text-blueprint-secondary">
                 <Download className="h-4 w-4 mr-1" />
                 Export
               </Button>
@@ -115,10 +129,10 @@ const TopNavBar = ({
           </DropdownMenu>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" className="text-white">
+          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
             <Undo className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" className="text-white">
+          <Button variant="ghost" size="sm" className="text-white hover:bg-white/20">
             <Redo className="h-4 w-4" />
           </Button>
         </div>
@@ -150,10 +164,50 @@ const TopNavBar = ({
           />
         </div>
         
-        {/* Import JSON Button */}
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="text-white hover:text-blueprint-secondary">
+            <Button variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white hover:text-blueprint-secondary">
+              <FileJson className="h-4 w-4 mr-1" />
+              JSON
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>JSON Operations</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col space-y-4">
+              <div>
+                <h3 className="font-medium mb-2">Import Blueprint</h3>
+                <div className="flex flex-col space-y-2">
+                  <Input 
+                    type="file" 
+                    accept=".json" 
+                    onChange={handleFileImport}
+                    className="mb-2"
+                  />
+                  <p className="text-xs text-gray-500">Or paste JSON directly:</p>
+                  <Textarea 
+                    placeholder="Paste JSON data here..." 
+                    value={jsonData}
+                    onChange={(e) => setJsonData(e.target.value)}
+                    className="h-32"
+                  />
+                  <Button onClick={handleJsonImport} className="w-full">Import from Text</Button>
+                </div>
+              </div>
+              <div className="border-t pt-4">
+                <h3 className="font-medium mb-2">View Current Blueprint JSON</h3>
+                <Button onClick={onShowCurrentJson} variant="outline" className="w-full">
+                  Show Current JSON
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white hover:text-blueprint-secondary">
               <Upload className="h-4 w-4 mr-1" />
               Import
             </Button>
@@ -174,7 +228,7 @@ const TopNavBar = ({
       
       <div className="flex items-center space-x-2">
         <Select value={currentFloor} onValueChange={onFloorChange}>
-          <SelectTrigger className="w-32 text-white bg-transparent border-white">
+          <SelectTrigger className="w-32 bg-white/10 text-white border-white/20">
             <SelectValue placeholder="Floor" />
           </SelectTrigger>
           <SelectContent>
@@ -186,10 +240,9 @@ const TopNavBar = ({
           </SelectContent>
         </Select>
         
-        {/* Add Floor Dialog */}
         <Dialog>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-white">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
               <Plus className="h-4 w-4" />
             </Button>
           </DialogTrigger>

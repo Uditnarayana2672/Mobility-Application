@@ -6,6 +6,10 @@ import LeftSidebar from '@/components/Sidebar/LeftSidebar';
 import RightSidebar from '@/components/Sidebar/RightSidebar';
 import { toast } from 'sonner';
 import { generateUniqueId } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { FileJson, Copy } from 'lucide-react';
 
 const Index = () => {
   const [selectedTool, setSelectedTool] = useState('select');
@@ -20,6 +24,8 @@ const Index = () => {
     currentFloor: 'Floor 1'
   });
   const [customPois, setCustomPois] = useState<string[]>([]);
+  const [jsonDialogOpen, setJsonDialogOpen] = useState(false);
+  const [currentJson, setCurrentJson] = useState('');
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
@@ -89,6 +95,29 @@ const Index = () => {
       setSelectedTool(`poi-${poiId}`);
       toast.success(`Added new POI type: ${poiName}`);
     }
+  };
+
+  const handleShowCurrentJson = () => {
+    // Generate current json data
+    const jsonData = {
+      floors: blueprintData.floors,
+      elements: blueprintData.elements,
+      connections: blueprintData.connections,
+      currentFloor: blueprintData.currentFloor,
+      metadata: {
+        lastSaved: new Date().toISOString(),
+        customPois: customPois
+      }
+    };
+    
+    setCurrentJson(JSON.stringify(jsonData, null, 2));
+    setJsonDialogOpen(true);
+  };
+  
+  const handleCopyJson = () => {
+    navigator.clipboard.writeText(currentJson)
+      .then(() => toast.success('JSON copied to clipboard'))
+      .catch(() => toast.error('Failed to copy JSON'));
   };
 
   const handleExport = (format: string) => {
@@ -203,6 +232,7 @@ const Index = () => {
         onAddFloor={handleAddFloor}
         onImportJson={handleImportJson}
         onSave={handleSave}
+        onShowCurrentJson={handleShowCurrentJson}
       />
       <div className="flex flex-1 overflow-hidden">
         <LeftSidebar 
@@ -222,6 +252,7 @@ const Index = () => {
             onElementSelect={handleElementSelect}
             onAddElement={handleAddElement}
             onAddConnection={handleAddConnection}
+            onElementUpdate={handleElementUpdate}
           />
         </div>
         <RightSidebar 
@@ -229,6 +260,29 @@ const Index = () => {
           onElementUpdate={handleElementUpdate}
         />
       </div>
+
+      {/* JSON View Dialog */}
+      <Dialog open={jsonDialogOpen} onOpenChange={setJsonDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileJson className="h-5 w-5" /> Current Blueprint JSON
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto max-h-[60vh]">
+            <Textarea
+              className="font-mono text-sm h-96 resize-none"
+              readOnly
+              value={currentJson}
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={handleCopyJson}>
+              <Copy className="h-4 w-4 mr-2" /> Copy JSON
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

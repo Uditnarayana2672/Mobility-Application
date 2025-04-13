@@ -1,9 +1,13 @@
-
 import { useRef, useState, useEffect } from 'react';
 import BlueprintCanvas from './BlueprintCanvas';
 import BlueprintControls from './BlueprintControls';
 import { generateUniqueId } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface BlueprintProps {
   selectedTool: string;
@@ -16,6 +20,7 @@ interface BlueprintProps {
   onElementSelect: (element: any) => void;
   onAddElement: (element: any) => void;
   onAddConnection: (connection: any) => void;
+  onElementUpdate?: (element: any) => void;
 }
 
 const Blueprint = ({
@@ -28,7 +33,8 @@ const Blueprint = ({
   currentFloor,
   onElementSelect,
   onAddElement,
-  onAddConnection
+  onAddConnection,
+  onElementUpdate
 }: BlueprintProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -43,6 +49,9 @@ const Blueprint = ({
   const [connectionPoints, setConnectionPoints] = useState<{x: number, y: number}[]>([]);
   const [isMultiPointConnecting, setIsMultiPointConnecting] = useState(false);
   const [customPois, setCustomPois] = useState<string[]>([]);
+  const [selectedCoordinatesElement, setSelectedCoordinatesElement] = useState<any>(null);
+  const [coordinatesDialogOpen, setCoordinatesDialogOpen] = useState(false);
+  const [coordinates, setCoordinates] = useState({ latitude: '', longitude: '', position: 'center' });
 
   const handleZoom = (delta: number) => {
     const newScale = Math.max(0.1, Math.min(5, scale + delta * 0.1));
@@ -80,20 +89,15 @@ const Blueprint = ({
       return;
     }
 
-    // Handle element selection and connection start
     if (selectedTool === 'select' || selectedTool.startsWith('connect-')) {
       const clickedElement = findElementAtPosition(x, y);
 
       if (clickedElement) {
-        // Connection mode
         if (selectedTool.startsWith('connect-')) {
-          // Multi-point mode
           if (selectedTool === 'connect-multi') {
             if (!isMultiPointConnecting) {
-              // Start multi-point connecting
               setIsMultiPointConnecting(true);
               setSourceElement(clickedElement);
-              setConnectionPoints([]);
               const startPos = { 
                 x: clickedElement.x + clickedElement.width / 2, 
                 y: clickedElement.y + clickedElement.height / 2 
@@ -106,7 +110,6 @@ const Blueprint = ({
             return;
           } 
           
-          // Standard connecting
           setConnectingElements(true);
           setSourceElement(clickedElement);
           setStartPoint({ 
@@ -121,17 +124,14 @@ const Blueprint = ({
           return;
         }
 
-        // Selection mode
         onElementSelect(clickedElement);
         return;
       } else if (isMultiPointConnecting) {
-        // Add a bend point to multi-point connection
         setConnectionPoints([...connectionPoints, { x, y }]);
         return;
       }
     }
 
-    // Start drawing
     if (['room', 'hallway', 'custom', 'entry', 'stairs'].includes(selectedTool)) {
       setDrawing(true);
       setStartPoint({ x, y });
@@ -146,7 +146,6 @@ const Blueprint = ({
     const x = (e.clientX - rect.left - position.x) / scale;
     const y = (e.clientY - rect.top - position.y) / scale;
 
-    // Handle panning
     if (isPanning) {
       setPosition({
         x: position.x + (e.clientX - panStart.x),
@@ -156,7 +155,6 @@ const Blueprint = ({
       return;
     }
 
-    // Handle drawing or connecting
     if (drawing) {
       setCurrentPoint({ x, y });
     }
@@ -168,27 +166,22 @@ const Blueprint = ({
     const x = (e.clientX - rect.left - position.x) / scale;
     const y = (e.clientY - rect.top - position.y) / scale;
 
-    // Handle panning
     if (isPanning) {
       setIsPanning(false);
       return;
     }
 
-    // Finish drawing or connecting
     if (drawing && !isMultiPointConnecting) {
       setDrawing(false);
 
-      // Handle connecting elements
       if (connectingElements && sourceElement) {
         const targetElement = findElementAtPosition(x, y);
         
         if (targetElement && targetElement.id !== sourceElement.id) {
-          // Create a connection
           const connectionType = selectedTool.replace('connect-', '');
           let points = [];
           
           if (connectionType === 'bent') {
-            // For bent connections, add a midpoint
             const midX = (sourceElement.x + targetElement.x + targetElement.width) / 2;
             const midY = (sourceElement.y + targetElement.y + targetElement.height) / 2;
             points = [
@@ -231,12 +224,10 @@ const Blueprint = ({
         return;
       }
 
-      // Create new element
       if (['room', 'hallway', 'custom', 'entry', 'stairs'].includes(selectedTool)) {
         const width = Math.abs(currentPoint.x - startPoint.x);
         const height = Math.abs(currentPoint.y - startPoint.y);
         
-        // Only add if it has some size
         if (width > 5 && height > 5) {
           const element = {
             id: generateUniqueId(),
@@ -260,13 +251,16 @@ const Blueprint = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    // Complete multi-point connection on Enter
     if (e.key === 'Enter' && isMultiPointConnecting && sourceElement && connectionPoints.length > 1) {
       const lastPoint = connectionPoints[connectionPoints.length - 1];
       const targetElement = findElementAtPosition(lastPoint.x, lastPoint.y);
 
       if (targetElement && targetElement.id !== sourceElement.id) {
-        // Create a connection with multiple points
+        const finalPoints = [...connectionPoints, {
+          x: targetElement.x + targetElement.width / 2,
+          y: targetElement.y + targetElement.height / 2
+        }];
+
         const connection = {
           id: generateUniqueId(),
           source: sourceElement.id,
@@ -277,7 +271,7 @@ const Blueprint = ({
           label: '',
           distance: 0,
           travel_time: 0,
-          points: connectionPoints,
+          points: finalPoints,
           width: 1,
           capacity: 1,
           wheelchair_accessible: true,
@@ -287,9 +281,10 @@ const Blueprint = ({
         
         onAddConnection(connection);
         toast.success('Created multi-point connection');
+      } else {
+        toast.error('No target element found for connection');
       }
       
-      // Reset connection state
       setIsMultiPointConnecting(false);
       setConnectingElements(false);
       setSourceElement(null);
@@ -298,7 +293,6 @@ const Blueprint = ({
       e.preventDefault();
     }
     
-    // Cancel multi-point connection on Escape
     if (e.key === 'Escape' && isMultiPointConnecting) {
       setIsMultiPointConnecting(false);
       setConnectingElements(false);
@@ -308,13 +302,10 @@ const Blueprint = ({
       e.preventDefault();
     }
 
-    // Handle keyboard shortcuts
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'z') {
-        // Undo
         e.preventDefault();
       } else if (e.key === 'y') {
-        // Redo
         e.preventDefault();
       }
     }
@@ -327,7 +318,6 @@ const Blueprint = ({
     };
   }, [isMultiPointConnecting, sourceElement, connectionPoints]);
 
-  // Handle POI placement
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
     
@@ -354,15 +344,40 @@ const Blueprint = ({
       
       onAddElement(element);
       toast.success(`Added new POI: ${poiType}`);
+    } else if (selectedTool === 'coordinates') {
+      const clickedElement = findElementAtPosition(x, y);
+      if (clickedElement) {
+        setSelectedCoordinatesElement(clickedElement);
+        setCoordinates({
+          latitude: clickedElement.latitude || '',
+          longitude: clickedElement.longitude || '',
+          position: clickedElement.coordinatePosition || 'center'
+        });
+        setCoordinatesDialogOpen(true);
+      }
     }
   };
 
-  // Add a custom POI type
   const handleAddCustomPoi = (poiName: string) => {
     const poiId = poiName.toLowerCase().replace(/\s+/g, '-');
     if (!customPois.includes(poiId)) {
       setCustomPois([...customPois, poiId]);
       toast.success(`Added new POI type: ${poiName}`);
+    }
+  };
+
+  const saveCoordinates = () => {
+    if (selectedCoordinatesElement && onElementUpdate) {
+      const updatedElement = {
+        ...selectedCoordinatesElement,
+        latitude: parseFloat(coordinates.latitude),
+        longitude: parseFloat(coordinates.longitude),
+        coordinatePosition: coordinates.position
+      };
+      
+      onElementUpdate(updatedElement);
+      setCoordinatesDialogOpen(false);
+      toast.success('Coordinates saved');
     }
   };
 
@@ -403,6 +418,55 @@ const Blueprint = ({
           Click to add bend points. Press Enter to complete the connection or Esc to cancel.
         </div>
       )}
+
+      <Dialog open={coordinatesDialogOpen} onOpenChange={setCoordinatesDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Coordinates</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="latitude">Latitude</Label>
+              <Input 
+                id="latitude" 
+                type="number" 
+                step="0.000001" 
+                value={coordinates.latitude} 
+                onChange={e => setCoordinates({...coordinates, latitude: e.target.value})} 
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="longitude">Longitude</Label>
+              <Input 
+                id="longitude" 
+                type="number" 
+                step="0.000001" 
+                value={coordinates.longitude} 
+                onChange={e => setCoordinates({...coordinates, longitude: e.target.value})} 
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="position">Position</Label>
+              <Select 
+                value={coordinates.position} 
+                onValueChange={value => setCoordinates({...coordinates, position: value})}
+              >
+                <SelectTrigger id="position">
+                  <SelectValue placeholder="Position" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="center">Center</SelectItem>
+                  <SelectItem value="top-left">Top Left</SelectItem>
+                  <SelectItem value="top-right">Top Right</SelectItem>
+                  <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                  <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={saveCoordinates}>Save Coordinates</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

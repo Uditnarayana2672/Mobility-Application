@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -20,6 +21,7 @@ interface BlueprintCanvasProps {
   startPoint: { x: number; y: number };
   currentPoint: { x: number; y: number };
   selectedTool: string;
+  connectingElements: boolean;
 }
 
 const BlueprintCanvas = ({
@@ -34,7 +36,8 @@ const BlueprintCanvas = ({
   drawing,
   startPoint,
   currentPoint,
-  selectedTool
+  selectedTool,
+  connectingElements
 }: BlueprintCanvasProps) => {
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -111,10 +114,13 @@ const BlueprintCanvas = ({
       
       if (!source || !target) return null;
       
-      const sourceX = source.x + source.width / 2;
-      const sourceY = source.y + source.height / 2;
-      const targetX = target.x + target.width / 2;
-      const targetY = target.y + target.height / 2;
+      const sourceX = source.x + (source.width / 2);
+      const sourceY = source.y + (source.height / 2);
+      const targetX = target.x + (target.width / 2);
+      const targetY = target.y + (target.height / 2);
+      
+      // Calculate arrow angle for directed connections
+      const angle = Math.atan2(targetY - sourceY, targetX - sourceX) * 180 / Math.PI;
       
       return (
         <g key={connection.id}>
@@ -125,14 +131,24 @@ const BlueprintCanvas = ({
             y2={targetY}
             stroke="#3498DB"
             strokeWidth="2"
-            strokeDasharray={connection.type === 'dashed' ? '5,5' : undefined}
+            strokeDasharray={connection.type === 'path' ? '5,5' : undefined}
           />
           {connection.directed && (
             <polygon
               points="0,-5 10,0 0,5"
-              transform={`translate(${targetX},${targetY}) rotate(${Math.atan2(targetY - sourceY, targetX - sourceX) * 180 / Math.PI})`}
+              transform={`translate(${targetX - 10 * Math.cos(angle * Math.PI / 180)},${targetY - 10 * Math.sin(angle * Math.PI / 180)}) rotate(${angle})`}
               fill="#3498DB"
             />
+          )}
+          {showLabels && connection.label && (
+            <text
+              x={(sourceX + targetX) / 2}
+              y={(sourceY + targetY) / 2 - 10}
+              textAnchor="middle"
+              className="fill-black text-xs bg-white px-1 rounded"
+            >
+              {connection.label}
+            </text>
           )}
         </g>
       );
@@ -142,29 +158,48 @@ const BlueprintCanvas = ({
   const renderDrawingPreview = () => {
     if (!drawing) return null;
     
-    const x = Math.min(startPoint.x, currentPoint.x);
-    const y = Math.min(startPoint.y, currentPoint.y);
-    const width = Math.abs(currentPoint.x - startPoint.x);
-    const height = Math.abs(currentPoint.y - startPoint.y);
-    
-    let color = '';
-    
-    switch (selectedTool) {
-      case 'room': color = 'stroke-blueprint-element-room fill-blueprint-element-room/20'; break;
-      case 'hallway': color = 'stroke-blueprint-element-hallway fill-blueprint-element-hallway/20'; break;
-      case 'custom': color = 'stroke-blueprint-element-custom fill-blueprint-element-custom/20'; break;
-      default: color = 'stroke-gray-400 fill-gray-200/20';
+    if (connectingElements) {
+      // Render connection line preview
+      return (
+        <line
+          x1={startPoint.x}
+          y1={startPoint.y}
+          x2={currentPoint.x}
+          y2={currentPoint.y}
+          stroke="#3498DB"
+          strokeWidth="2"
+          strokeDasharray={selectedTool === 'connect-path' ? '5,5' : undefined}
+        />
+      );
     }
     
-    return (
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        className={`${color} stroke-2 stroke-dashed`}
-      />
-    );
+    if (['room', 'hallway', 'custom', 'entry', 'stairs'].includes(selectedTool)) {
+      const x = Math.min(startPoint.x, currentPoint.x);
+      const y = Math.min(startPoint.y, currentPoint.y);
+      const width = Math.abs(currentPoint.x - startPoint.x);
+      const height = Math.abs(currentPoint.y - startPoint.y);
+      
+      let color = '';
+      
+      switch (selectedTool) {
+        case 'room': color = 'stroke-blueprint-element-room fill-blueprint-element-room/20'; break;
+        case 'hallway': color = 'stroke-blueprint-element-hallway fill-blueprint-element-hallway/20'; break;
+        case 'entry': color = 'stroke-blueprint-element-entry fill-blueprint-element-entry/20'; break;
+        case 'stairs': color = 'stroke-blueprint-element-stairs fill-blueprint-element-stairs/20'; break;
+        case 'custom': color = 'stroke-blueprint-element-custom fill-blueprint-element-custom/20'; break;
+        default: color = 'stroke-gray-400 fill-gray-200/20';
+      }
+      
+      return (
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          className={`${color} stroke-2 stroke-dashed`}
+        />
+      );
+    }
   };
 
   return (

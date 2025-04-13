@@ -11,7 +11,9 @@ import {
   LineChart, 
   Move, 
   BellRing, 
-  Sofa
+  Sofa,
+  ArrowRight,
+  Link
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -46,6 +48,11 @@ const LeftSidebar = ({ selectedTool, onToolSelect }: LeftSidebarProps) => {
     { id: 'water', icon: Box, label: 'Water Cooler' },
   ];
   
+  const connectors = [
+    { id: 'connect-straight', icon: ArrowRight, label: 'Straight Connector' },
+    { id: 'connect-path', icon: Link, label: 'Path Connector' },
+  ];
+  
   return (
     <div className="w-60 bg-sidebar flex flex-col border-r border-gray-200">
       <div className="p-3">
@@ -75,7 +82,7 @@ const LeftSidebar = ({ selectedTool, onToolSelect }: LeftSidebarProps) => {
             {elements.map((element) => (
               <Button
                 key={element.id}
-                variant="ghost"
+                variant={selectedTool === element.id ? "secondary" : "ghost"}
                 size="sm"
                 className="w-full justify-start"
                 onClick={() => onToolSelect(element.id)}
@@ -96,13 +103,33 @@ const LeftSidebar = ({ selectedTool, onToolSelect }: LeftSidebarProps) => {
             {pois.map((poi) => (
               <Button
                 key={poi.id}
-                variant="ghost"
+                variant={selectedTool === `poi-${poi.id}` ? "secondary" : "ghost"}
                 size="sm"
                 className="w-full justify-start"
                 onClick={() => onToolSelect(`poi-${poi.id}`)}
               >
                 <poi.icon className="h-4 w-4 mr-2" />
                 {poi.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <Separator />
+        
+        <div className="p-3">
+          <h2 className="font-medium text-sm mb-2">Connectors</h2>
+          <div className="space-y-1">
+            {connectors.map((connector) => (
+              <Button
+                key={connector.id}
+                variant={selectedTool === connector.id ? "secondary" : "ghost"}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => onToolSelect(connector.id)}
+              >
+                <connector.icon className="h-4 w-4 mr-2" />
+                {connector.label}
               </Button>
             ))}
           </div>

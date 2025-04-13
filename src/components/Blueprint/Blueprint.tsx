@@ -38,10 +38,30 @@ const Blueprint = ({
   const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [connectingElements, setConnectingElements] = useState(false);
+  const [sourceElement, setSourceElement] = useState<any>(null);
 
   const handleZoom = (delta: number) => {
     const newScale = Math.max(0.1, Math.min(5, scale + delta * 0.1));
     setScale(newScale);
+  };
+
+  const findElementAtPosition = (x: number, y: number) => {
+    return elements.find(element => {
+      if (element.type === 'poi') {
+        const centerX = element.x;
+        const centerY = element.y;
+        const radius = element.width / 2;
+        return Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)) <= radius;
+      } else {
+        return (
+          x >= element.x &&
+          x <= element.x + element.width &&
+          y >= element.y &&
+          y <= element.y + element.height
+        );
+      }
+    });
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -57,26 +77,29 @@ const Blueprint = ({
       return;
     }
 
-    // Handle element selection
-    if (selectedTool === 'select') {
-      const clickedElement = elements.find(element => {
-        // Simple rectangular hit testing
-        return (
-          x >= element.x &&
-          x <= element.x + element.width &&
-          y >= element.y &&
-          y <= element.y + element.height
-        );
-      });
+    // Handle element selection and connection start
+    if (selectedTool === 'select' || selectedTool.startsWith('connect-')) {
+      const clickedElement = findElementAtPosition(x, y);
 
       if (clickedElement) {
+        // Connection mode
+        if (selectedTool.startsWith('connect-')) {
+          setConnectingElements(true);
+          setSourceElement(clickedElement);
+          setStartPoint({ x: clickedElement.x + clickedElement.width / 2, y: clickedElement.y + clickedElement.height / 2 });
+          setCurrentPoint({ x: clickedElement.x + clickedElement.width / 2, y: clickedElement.y + clickedElement.height / 2 });
+          setDrawing(true);
+          return;
+        }
+
+        // Selection mode
         onElementSelect(clickedElement);
         return;
       }
     }
 
     // Start drawing
-    if (['room', 'hallway', 'custom'].includes(selectedTool)) {
+    if (['room', 'hallway', 'custom', 'entry', 'stairs'].includes(selectedTool)) {
       setDrawing(true);
       setStartPoint({ x, y });
       setCurrentPoint({ x, y });
@@ -100,7 +123,7 @@ const Blueprint = ({
       return;
     }
 
-    // Handle drawing
+    // Handle drawing or connecting
     if (drawing) {
       setCurrentPoint({ x, y });
     }
@@ -108,6 +131,9 @@ const Blueprint = ({
 
   const handleMouseUp = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left - position.x) / scale;
+    const y = (e.clientY - rect.top - position.y) / scale;
 
     // Handle panning
     if (isPanning) {
@@ -115,12 +141,40 @@ const Blueprint = ({
       return;
     }
 
-    // Finish drawing
+    // Finish drawing or connecting
     if (drawing) {
       setDrawing(false);
 
+      // Handle connecting elements
+      if (connectingElements && sourceElement) {
+        const targetElement = findElementAtPosition(x, y);
+        
+        if (targetElement && targetElement.id !== sourceElement.id) {
+          // Create a connection
+          const connection = {
+            id: generateUniqueId(),
+            source: sourceElement.id,
+            target: targetElement.id,
+            type: selectedTool === 'connect-straight' ? 'straight' : 'path',
+            floor: currentFloor,
+            directed: true,
+            label: '',
+            distance: 0,
+            travel_time: 0,
+            custom_attributes: []
+          };
+          
+          onAddConnection(connection);
+          toast.success('Created new connection');
+        }
+        
+        setConnectingElements(false);
+        setSourceElement(null);
+        return;
+      }
+
       // Create new element
-      if (['room', 'hallway', 'custom'].includes(selectedTool)) {
+      if (['room', 'hallway', 'custom', 'entry', 'stairs'].includes(selectedTool)) {
         const width = Math.abs(currentPoint.x - startPoint.x);
         const height = Math.abs(currentPoint.y - startPoint.y);
         
@@ -217,6 +271,7 @@ const Blueprint = ({
         startPoint={startPoint}
         currentPoint={currentPoint}
         selectedTool={selectedTool}
+        connectingElements={connectingElements}
       />
       <BlueprintControls
         scale={scale}

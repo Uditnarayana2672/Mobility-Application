@@ -4,6 +4,7 @@ import Blueprint from '@/components/Blueprint/Blueprint';
 import TopNavBar from '@/components/Navigation/TopNavBar';
 import LeftSidebar from '@/components/Sidebar/LeftSidebar';
 import RightSidebar from '@/components/Sidebar/RightSidebar';
+import { toast } from 'sonner';
 
 const Index = () => {
   const [selectedTool, setSelectedTool] = useState('select');
@@ -17,6 +18,7 @@ const Index = () => {
     floors: ['Floor 1'],
     currentFloor: 'Floor 1'
   });
+  const [customPois, setCustomPois] = useState<string[]>([]);
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
@@ -70,6 +72,15 @@ const Index = () => {
     });
   };
 
+  const handleAddCustomPoi = (poiName: string) => {
+    const poiId = poiName.toLowerCase().replace(/\s+/g, '-');
+    if (!customPois.includes(poiId)) {
+      setCustomPois([...customPois, poiId]);
+      setSelectedTool(`poi-${poiId}`);
+      toast.success(`Added new POI type: ${poiName}`);
+    }
+  };
+
   const handleExport = (format: string) => {
     // Generate export data based on the format
     const exportData = {
@@ -78,7 +89,8 @@ const Index = () => {
       connections: blueprintData.connections,
       metadata: {
         createdAt: new Date().toISOString(),
-        format: format
+        format: format,
+        customPois: customPois
       }
     };
 
@@ -111,6 +123,7 @@ const Index = () => {
         <LeftSidebar 
           selectedTool={selectedTool} 
           onToolSelect={handleToolSelect} 
+          onAddCustomPoi={handleAddCustomPoi}
         />
         <div className="flex-1 overflow-hidden bg-white">
           <Blueprint 

@@ -5,7 +5,11 @@ import {
   DoorClosed, 
   Stars, 
   Sofa, 
-  Square 
+  Square,
+  Coffee,
+  Utensils,
+  WaterIcon,
+  Box 
 } from 'lucide-react';
 
 interface BlueprintCanvasProps {
@@ -22,6 +26,8 @@ interface BlueprintCanvasProps {
   currentPoint: { x: number; y: number };
   selectedTool: string;
   connectingElements: boolean;
+  connectionPoints?: { x: number; y: number }[];
+  isMultiPointConnecting?: boolean;
 }
 
 const BlueprintCanvas = ({
@@ -37,7 +43,9 @@ const BlueprintCanvas = ({
   startPoint,
   currentPoint,
   selectedTool,
-  connectingElements
+  connectingElements,
+  connectionPoints = [],
+  isMultiPointConnecting = false
 }: BlueprintCanvasProps) => {
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -57,8 +65,10 @@ const BlueprintCanvas = ({
     switch (poiType) {
       case 'printer': return <Printer className="h-5 w-5 text-blueprint-element-poi" />;
       case 'bench': return <Sofa className="h-5 w-5 text-blueprint-element-poi" />;
-      case 'water': return <Square className="h-5 w-5 text-blueprint-element-poi" />; // Placeholder
-      default: return <Square className="h-5 w-5 text-blueprint-element-poi" />;
+      case 'water': return <WaterIcon className="h-5 w-5 text-blueprint-element-poi" />;
+      case 'coffee': return <Coffee className="h-5 w-5 text-blueprint-element-poi" />;
+      case 'food': return <Utensils className="h-5 w-5 text-blueprint-element-poi" />;
+      default: return <Box className="h-5 w-5 text-blueprint-element-poi" />;
     }
   };
 
@@ -122,51 +132,179 @@ const BlueprintCanvas = ({
       // Calculate arrow angle for directed connections
       const angle = Math.atan2(targetY - sourceY, targetX - sourceX) * 180 / Math.PI;
       
-      return (
-        <g key={connection.id}>
-          <line
-            x1={sourceX}
-            y1={sourceY}
-            x2={targetX}
-            y2={targetY}
-            stroke="#3498DB"
-            strokeWidth="2"
-            strokeDasharray={connection.type === 'path' ? '5,5' : undefined}
-          />
-          {connection.directed && (
-            <polygon
-              points="0,-5 10,0 0,5"
-              transform={`translate(${targetX - 10 * Math.cos(angle * Math.PI / 180)},${targetY - 10 * Math.sin(angle * Math.PI / 180)}) rotate(${angle})`}
-              fill="#3498DB"
+      // Handle different connection types
+      if (connection.type === 'bent' || connection.type === 'multi') {
+        const points = connection.points || [];
+        if (points.length < 2) {
+          // Fallback to straight line if no points
+          return renderStraightConnection(connection, source, target, sourceX, sourceY, targetX, targetY, angle);
+        }
+        
+        // Create polyline path
+        let pathPoints = '';
+        points.forEach((point: {x: number, y: number}, index: number) => {
+          pathPoints += index === 0 ? `M ${point.x} ${point.y} ` : `L ${point.x} ${point.y} `;
+        });
+        
+        // Calculate arrow angle from the last segment
+        const lastPoint = points[points.length - 2] || { x: sourceX, y: sourceY };
+        const arrowAngle = Math.atan2(targetY - lastPoint.y, targetX - lastPoint.x) * 180 / Math.PI;
+        
+        return (
+          <g key={connection.id}>
+            <path
+              d={pathPoints}
+              stroke={connection.allow_vehicles ? "#3498DB" : "#6C63FF"}
+              strokeWidth={connection.width || 2}
+              fill="none"
+              strokeDasharray={connection.type === 'multi' ? '5,5' : undefined}
             />
-          )}
-          {showLabels && connection.label && (
-            <text
-              x={(sourceX + targetX) / 2}
-              y={(sourceY + targetY) / 2 - 10}
-              textAnchor="middle"
-              className="fill-black text-xs bg-white px-1 rounded"
-            >
-              {connection.label}
-            </text>
-          )}
-        </g>
-      );
+            
+            {connection.directed && (
+              <polygon
+                points="0,-5 10,0 0,5"
+                transform={`translate(${targetX - 10 * Math.cos(arrowAngle * Math.PI / 180)},${targetY - 10 * Math.sin(arrowAngle * Math.PI / 180)}) rotate(${arrowAngle})`}
+                fill={connection.allow_vehicles ? "#3498DB" : "#6C63FF"}
+              />
+            )}
+            
+            {showLabels && connection.label && (
+              <text
+                x={(sourceX + targetX) / 2}
+                y={(sourceY + targetY) / 2 - 10}
+                textAnchor="middle"
+                className="fill-black text-xs bg-white px-1 rounded"
+              >
+                {connection.label}
+                {connection.distance ? ` (${connection.distance}m)` : ''}
+              </text>
+            )}
+            
+            {/* Render bend points as small circles */}
+            {points.map((point: {x: number, y: number}, index: number) => (
+              index !== 0 && index !== points.length - 1 && (
+                <circle
+                  key={`bend-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={3}
+                  fill="#6C63FF"
+                  opacity={0.7}
+                />
+              )
+            ))}
+          </g>
+        );
+      }
+      
+      // Standard straight or path connection
+      return renderStraightConnection(connection, source, target, sourceX, sourceY, targetX, targetY, angle);
     });
+  };
+  
+  const renderStraightConnection = (
+    connection: any, 
+    source: any, 
+    target: any, 
+    sourceX: number, 
+    sourceY: number, 
+    targetX: number, 
+    targetY: number, 
+    angle: number
+  ) => {
+    return (
+      <g key={connection.id}>
+        <line
+          x1={sourceX}
+          y1={sourceY}
+          x2={targetX}
+          y2={targetY}
+          stroke={connection.allow_vehicles ? "#3498DB" : "#6C63FF"}
+          strokeWidth={connection.width || 2}
+          strokeDasharray={connection.type === 'path' ? '5,5' : undefined}
+          className={!connection.wheelchair_accessible ? "opacity-50" : ""}
+        />
+        {connection.directed && (
+          <polygon
+            points="0,-5 10,0 0,5"
+            transform={`translate(${targetX - 10 * Math.cos(angle * Math.PI / 180)},${targetY - 10 * Math.sin(angle * Math.PI / 180)}) rotate(${angle})`}
+            fill={connection.allow_vehicles ? "#3498DB" : "#6C63FF"}
+          />
+        )}
+        {showLabels && (
+          <g>
+            {connection.label && (
+              <text
+                x={(sourceX + targetX) / 2}
+                y={(sourceY + targetY) / 2 - 10}
+                textAnchor="middle"
+                className="fill-black text-xs bg-white px-1 py-0.5 rounded"
+              >
+                {connection.label}
+              </text>
+            )}
+            
+            {connection.distance > 0 && (
+              <text
+                x={(sourceX + targetX) / 2}
+                y={(sourceY + targetY) / 2 + 10}
+                textAnchor="middle"
+                className="fill-black text-xs bg-white/70 px-1 py-0.5 rounded"
+              >
+                {connection.distance}m
+              </text>
+            )}
+          </g>
+        )}
+      </g>
+    );
   };
 
   const renderDrawingPreview = () => {
     if (!drawing) return null;
     
-    if (connectingElements) {
-      // Render connection line preview
+    if (connectingElements || isMultiPointConnecting) {
+      // Multi-point connection preview
+      if (isMultiPointConnecting && connectionPoints.length > 0) {
+        let pathPoints = '';
+        connectionPoints.forEach((point, index) => {
+          pathPoints += index === 0 ? `M ${point.x} ${point.y} ` : `L ${point.x} ${point.y} `;
+        });
+        pathPoints += `L ${currentPoint.x} ${currentPoint.y}`;
+        
+        return (
+          <g>
+            <path
+              d={pathPoints}
+              stroke="#6C63FF"
+              strokeWidth={2}
+              fill="none"
+              strokeDasharray="5,5"
+            />
+            {connectionPoints.map((point, index) => (
+              index > 0 && (
+                <circle
+                  key={`preview-bend-${index}`}
+                  cx={point.x}
+                  cy={point.y}
+                  r={3}
+                  fill="#6C63FF"
+                  opacity={0.7}
+                />
+              )
+            ))}
+          </g>
+        );
+      }
+      
+      // Basic connection preview
       return (
         <line
           x1={startPoint.x}
           y1={startPoint.y}
           x2={currentPoint.x}
           y2={currentPoint.y}
-          stroke="#3498DB"
+          stroke="#6C63FF"
           strokeWidth="2"
           strokeDasharray={selectedTool === 'connect-path' ? '5,5' : undefined}
         />
@@ -302,6 +440,11 @@ const BlueprintCanvas = ({
               {showLabels && (
                 <span className="absolute top-2 left-2 text-xs bg-white/70 px-1 rounded">
                   {element.name}
+                </span>
+              )}
+              {element.capacity > 0 && showLabels && (
+                <span className="absolute bottom-2 right-2 text-xs bg-white/70 px-1 rounded">
+                  Cap: {element.capacity}
                 </span>
               )}
             </div>

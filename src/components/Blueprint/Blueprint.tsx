@@ -40,6 +40,9 @@ const Blueprint = ({
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [connectingElements, setConnectingElements] = useState(false);
   const [sourceElement, setSourceElement] = useState<any>(null);
+  const [connectionPoints, setConnectionPoints] = useState<{x: number, y: number}[]>([]);
+  const [isMultiPointConnecting, setIsMultiPointConnecting] = useState(false);
+  const [customPois, setCustomPois] = useState<string[]>([]);
 
   const handleZoom = (delta: number) => {
     const newScale = Math.max(0.1, Math.min(5, scale + delta * 0.1));
@@ -84,16 +87,46 @@ const Blueprint = ({
       if (clickedElement) {
         // Connection mode
         if (selectedTool.startsWith('connect-')) {
+          // Multi-point mode
+          if (selectedTool === 'connect-multi') {
+            if (!isMultiPointConnecting) {
+              // Start multi-point connecting
+              setIsMultiPointConnecting(true);
+              setSourceElement(clickedElement);
+              setConnectionPoints([]);
+              const startPos = { 
+                x: clickedElement.x + clickedElement.width / 2, 
+                y: clickedElement.y + clickedElement.height / 2 
+              };
+              setConnectionPoints([startPos]);
+              setStartPoint(startPos);
+              setCurrentPoint(startPos);
+              setDrawing(true);
+            }
+            return;
+          } 
+          
+          // Standard connecting
           setConnectingElements(true);
           setSourceElement(clickedElement);
-          setStartPoint({ x: clickedElement.x + clickedElement.width / 2, y: clickedElement.y + clickedElement.height / 2 });
-          setCurrentPoint({ x: clickedElement.x + clickedElement.width / 2, y: clickedElement.y + clickedElement.height / 2 });
+          setStartPoint({ 
+            x: clickedElement.x + clickedElement.width / 2, 
+            y: clickedElement.y + clickedElement.height / 2 
+          });
+          setCurrentPoint({ 
+            x: clickedElement.x + clickedElement.width / 2, 
+            y: clickedElement.y + clickedElement.height / 2 
+          });
           setDrawing(true);
           return;
         }
 
         // Selection mode
         onElementSelect(clickedElement);
+        return;
+      } else if (isMultiPointConnecting) {
+        // Add a bend point to multi-point connection
+        setConnectionPoints([...connectionPoints, { x, y }]);
         return;
       }
     }
@@ -142,7 +175,7 @@ const Blueprint = ({
     }
 
     // Finish drawing or connecting
-    if (drawing) {
+    if (drawing && !isMultiPointConnecting) {
       setDrawing(false);
 
       // Handle connecting elements
@@ -151,16 +184,41 @@ const Blueprint = ({
         
         if (targetElement && targetElement.id !== sourceElement.id) {
           // Create a connection
+          const connectionType = selectedTool.replace('connect-', '');
+          let points = [];
+          
+          if (connectionType === 'bent') {
+            // For bent connections, add a midpoint
+            const midX = (sourceElement.x + targetElement.x + targetElement.width) / 2;
+            const midY = (sourceElement.y + targetElement.y + targetElement.height) / 2;
+            points = [
+              { 
+                x: sourceElement.x + sourceElement.width/2, 
+                y: sourceElement.y + sourceElement.height/2 
+              },
+              { x: midX, y: midY },
+              { 
+                x: targetElement.x + targetElement.width/2, 
+                y: targetElement.y + targetElement.height/2 
+              }
+            ];
+          }
+          
           const connection = {
             id: generateUniqueId(),
             source: sourceElement.id,
             target: targetElement.id,
-            type: selectedTool === 'connect-straight' ? 'straight' : 'path',
+            type: connectionType,
             floor: currentFloor,
             directed: true,
             label: '',
             distance: 0,
             travel_time: 0,
+            points: points,
+            width: 1,
+            capacity: 1,
+            wheelchair_accessible: true,
+            allow_vehicles: false,
             custom_attributes: []
           };
           
@@ -191,6 +249,7 @@ const Blueprint = ({
             floor: currentFloor,
             tags: [],
             custom_attributes: [],
+            capacity: 0
           };
           
           onAddElement(element);
@@ -201,6 +260,54 @@ const Blueprint = ({
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
+    // Complete multi-point connection on Enter
+    if (e.key === 'Enter' && isMultiPointConnecting && sourceElement && connectionPoints.length > 1) {
+      const lastPoint = connectionPoints[connectionPoints.length - 1];
+      const targetElement = findElementAtPosition(lastPoint.x, lastPoint.y);
+
+      if (targetElement && targetElement.id !== sourceElement.id) {
+        // Create a connection with multiple points
+        const connection = {
+          id: generateUniqueId(),
+          source: sourceElement.id,
+          target: targetElement.id,
+          type: 'multi',
+          floor: currentFloor,
+          directed: true,
+          label: '',
+          distance: 0,
+          travel_time: 0,
+          points: connectionPoints,
+          width: 1,
+          capacity: 1,
+          wheelchair_accessible: true,
+          allow_vehicles: false,
+          custom_attributes: []
+        };
+        
+        onAddConnection(connection);
+        toast.success('Created multi-point connection');
+      }
+      
+      // Reset connection state
+      setIsMultiPointConnecting(false);
+      setConnectingElements(false);
+      setSourceElement(null);
+      setConnectionPoints([]);
+      setDrawing(false);
+      e.preventDefault();
+    }
+    
+    // Cancel multi-point connection on Escape
+    if (e.key === 'Escape' && isMultiPointConnecting) {
+      setIsMultiPointConnecting(false);
+      setConnectingElements(false);
+      setSourceElement(null);
+      setConnectionPoints([]);
+      setDrawing(false);
+      e.preventDefault();
+    }
+
     // Handle keyboard shortcuts
     if (e.ctrlKey || e.metaKey) {
       if (e.key === 'z') {
@@ -218,7 +325,7 @@ const Blueprint = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [isMultiPointConnecting, sourceElement, connectionPoints]);
 
   // Handle POI placement
   const handleCanvasClick = (e: React.MouseEvent) => {
@@ -242,10 +349,20 @@ const Blueprint = ({
         floor: currentFloor,
         tags: [poiType],
         custom_attributes: [],
+        capacity: 0
       };
       
       onAddElement(element);
       toast.success(`Added new POI: ${poiType}`);
+    }
+  };
+
+  // Add a custom POI type
+  const handleAddCustomPoi = (poiName: string) => {
+    const poiId = poiName.toLowerCase().replace(/\s+/g, '-');
+    if (!customPois.includes(poiId)) {
+      setCustomPois([...customPois, poiId]);
+      toast.success(`Added new POI type: ${poiName}`);
     }
   };
 
@@ -272,6 +389,8 @@ const Blueprint = ({
         currentPoint={currentPoint}
         selectedTool={selectedTool}
         connectingElements={connectingElements}
+        connectionPoints={connectionPoints}
+        isMultiPointConnecting={isMultiPointConnecting}
       />
       <BlueprintControls
         scale={scale}
@@ -279,6 +398,11 @@ const Blueprint = ({
         position={position}
         setPosition={setPosition}
       />
+      {isMultiPointConnecting && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white p-2 rounded shadow-md text-xs">
+          Click to add bend points. Press Enter to complete the connection or Esc to cancel.
+        </div>
+      )}
     </div>
   );
 };

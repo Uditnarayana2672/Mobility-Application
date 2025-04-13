@@ -13,18 +13,34 @@ import {
   BellRing, 
   Sofa,
   ArrowRight,
-  Link
+  Link,
+  Coffee,
+  Utensils,
+  WaterIcon,
+  Plus,
+  ChevronsRight,
+  BendDown,
+  BendLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface LeftSidebarProps {
   selectedTool: string;
   onToolSelect: (tool: string) => void;
+  onAddCustomPoi?: (name: string) => void;
 }
 
-const LeftSidebar = ({ selectedTool, onToolSelect }: LeftSidebarProps) => {
+const LeftSidebar = ({ selectedTool, onToolSelect, onAddCustomPoi }: LeftSidebarProps) => {
+  const [newPoiName, setNewPoiName] = useState('');
   
   const tools = [
     { id: 'select', icon: MousePointer, label: 'Select' },
@@ -45,13 +61,24 @@ const LeftSidebar = ({ selectedTool, onToolSelect }: LeftSidebarProps) => {
   const pois = [
     { id: 'printer', icon: Printer, label: 'Printer' },
     { id: 'bench', icon: Sofa, label: 'Bench' },
-    { id: 'water', icon: Box, label: 'Water Cooler' },
+    { id: 'water', icon: WaterIcon, label: 'Water Cooler' },
+    { id: 'coffee', icon: Coffee, label: 'Coffee Machine' },
+    { id: 'food', icon: Utensils, label: 'Food Area' },
   ];
   
   const connectors = [
     { id: 'connect-straight', icon: ArrowRight, label: 'Straight Connector' },
     { id: 'connect-path', icon: Link, label: 'Path Connector' },
+    { id: 'connect-bent', icon: BendDown, label: 'Bent Connector' },
+    { id: 'connect-multi', icon: ChevronsRight, label: 'Multi-Point Path' },
   ];
+
+  const handleAddCustomPoi = () => {
+    if (newPoiName.trim() && onAddCustomPoi) {
+      onAddCustomPoi(newPoiName.trim());
+      setNewPoiName('');
+    }
+  };
   
   return (
     <div className="w-60 bg-sidebar flex flex-col border-r border-gray-200">
@@ -112,6 +139,30 @@ const LeftSidebar = ({ selectedTool, onToolSelect }: LeftSidebarProps) => {
                 {poi.label}
               </Button>
             ))}
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Custom POI
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60">
+                <div className="flex gap-2">
+                  <Input 
+                    value={newPoiName}
+                    onChange={(e) => setNewPoiName(e.target.value)}
+                    placeholder="POI Name"
+                    className="flex-1"
+                  />
+                  <Button size="sm" onClick={handleAddCustomPoi}>Add</Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 

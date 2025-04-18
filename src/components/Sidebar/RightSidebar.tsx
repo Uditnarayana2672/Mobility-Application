@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Plus, X, Upload, Image } from 'lucide-react';
+import { Plus, X, Upload, Image, Compass } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
@@ -172,6 +173,7 @@ const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) =
             <SelectItem value="entry">Entry/Exit</SelectItem>
             <SelectItem value="stairs">Stairs/Elevator</SelectItem>
             <SelectItem value="custom">Custom Zone</SelectItem>
+            <SelectItem value="wall">Wall</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -216,11 +218,12 @@ const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) =
           </div>
         ) : (
           <div className="space-y-2">
-            <Label htmlFor="element-coordinates">Coordinates</Label>
+            <Label htmlFor="element-label">Label</Label>
             <Input 
-              id="element-coordinates" 
-              value={selectedElement.coordinates || ''} 
-              onChange={(e) => handleInputChange('coordinates', e.target.value)} 
+              id="element-label" 
+              value={selectedElement.label || ''} 
+              onChange={(e) => handleInputChange('label', e.target.value)} 
+              placeholder="Display label"
             />
           </div>
         )}
@@ -264,6 +267,21 @@ const RightSidebar = ({ selectedElement, onElementUpdate }: RightSidebarProps) =
           />
         </div>
       </div>
+      
+      {selectedElement.type === 'wall' && (
+        <div className="space-y-2">
+          <Label htmlFor="wall-thickness">Wall Thickness</Label>
+          <div className="flex items-center space-x-2">
+            <Input
+              id="wall-thickness"
+              type="number"
+              value={selectedElement.wallThickness || 1}
+              onChange={(e) => handleInputChange('wallThickness', Number(e.target.value))}
+            />
+            <span className="text-sm text-muted-foreground">{dimension}</span>
+          </div>
+        </div>
+      )}
       
       <div className="space-y-2 border-t pt-4 mt-4">
         <Label>Geolocation</Label>

@@ -9,7 +9,7 @@ import { generateUniqueId } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { FileJson, Copy } from 'lucide-react';
+import { FileJson, Copy, Compass } from 'lucide-react';
 
 const Index = () => {
   const [selectedTool, setSelectedTool] = useState('select');
@@ -21,7 +21,8 @@ const Index = () => {
     elements: [],
     connections: [],
     floors: ['Floor 1'],
-    currentFloor: 'Floor 1'
+    currentFloor: 'Floor 1',
+    trueNorth: 0
   });
   const [customPois, setCustomPois] = useState<string[]>([]);
   const [jsonDialogOpen, setJsonDialogOpen] = useState(false);
@@ -104,6 +105,7 @@ const Index = () => {
       elements: blueprintData.elements,
       connections: blueprintData.connections,
       currentFloor: blueprintData.currentFloor,
+      trueNorth: blueprintData.trueNorth,
       metadata: {
         lastSaved: new Date().toISOString(),
         customPois: customPois
@@ -126,6 +128,7 @@ const Index = () => {
       floors: blueprintData.floors,
       elements: blueprintData.elements,
       connections: blueprintData.connections,
+      trueNorth: blueprintData.trueNorth,
       metadata: {
         createdAt: new Date().toISOString(),
         format: format,
@@ -150,6 +153,7 @@ const Index = () => {
       elements: blueprintData.elements,
       connections: blueprintData.connections,
       currentFloor: blueprintData.currentFloor,
+      trueNorth: blueprintData.trueNorth,
       metadata: {
         lastSaved: new Date().toISOString(),
         customPois: customPois
@@ -177,7 +181,8 @@ const Index = () => {
         elements: jsonData.elements || [],
         connections: jsonData.connections || [],
         floors: jsonData.floors,
-        currentFloor: jsonData.currentFloor || jsonData.floors[0]
+        currentFloor: jsonData.currentFloor || jsonData.floors[0],
+        trueNorth: jsonData.trueNorth || 0
       });
       
       // Set custom POIs if available
@@ -202,7 +207,8 @@ const Index = () => {
           elements: parsedData.elements || [],
           connections: parsedData.connections || [],
           floors: parsedData.floors || ['Floor 1'],
-          currentFloor: parsedData.currentFloor || 'Floor 1'
+          currentFloor: parsedData.currentFloor || 'Floor 1',
+          trueNorth: parsedData.trueNorth || 0
         });
         
         if (parsedData.metadata?.customPois) {

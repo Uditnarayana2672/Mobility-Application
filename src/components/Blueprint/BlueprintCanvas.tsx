@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -9,7 +8,8 @@ import {
   Coffee,
   Utensils,
   Droplet,
-  Box 
+  Box,
+  Compass
 } from 'lucide-react';
 
 interface BlueprintCanvasProps {
@@ -28,6 +28,7 @@ interface BlueprintCanvasProps {
   connectingElements: boolean;
   connectionPoints?: { x: number; y: number }[];
   isMultiPointConnecting?: boolean;
+  trueNorth?: number; // True north orientation in degrees
 }
 
 const BlueprintCanvas = ({
@@ -45,7 +46,8 @@ const BlueprintCanvas = ({
   selectedTool,
   connectingElements,
   connectionPoints = [],
-  isMultiPointConnecting = false
+  isMultiPointConnecting = false,
+  trueNorth = 0
 }: BlueprintCanvasProps) => {
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -56,6 +58,7 @@ const BlueprintCanvas = ({
       case 'poi': return 'bg-blueprint-element-poi/20 border-blueprint-element-poi';
       case 'entry': return 'bg-blueprint-element-entry/20 border-blueprint-element-entry';
       case 'stairs': return 'bg-blueprint-element-stairs/20 border-blueprint-element-stairs';
+      case 'wall': return 'bg-gray-700 border-gray-800';
       case 'custom': return 'bg-blueprint-element-custom/20 border-blueprint-element-custom';
       default: return 'bg-gray-200/20 border-gray-400';
     }
@@ -314,7 +317,7 @@ const BlueprintCanvas = ({
       );
     }
     
-    if (['room', 'hallway', 'custom', 'entry', 'stairs'].includes(selectedTool)) {
+    if (['room', 'hallway', 'custom', 'entry', 'stairs', 'wall'].includes(selectedTool)) {
       const x = Math.min(startPoint.x, currentPoint.x);
       const y = Math.min(startPoint.y, currentPoint.y);
       const width = Math.abs(currentPoint.x - startPoint.x);
@@ -327,6 +330,7 @@ const BlueprintCanvas = ({
         case 'hallway': color = 'stroke-blueprint-element-hallway fill-blueprint-element-hallway/20'; break;
         case 'entry': color = 'stroke-blueprint-element-entry fill-blueprint-element-entry/20'; break;
         case 'stairs': color = 'stroke-blueprint-element-stairs fill-blueprint-element-stairs/20'; break;
+        case 'wall': color = 'stroke-gray-700 fill-gray-700'; break;
         case 'custom': color = 'stroke-blueprint-element-custom fill-blueprint-element-custom/20'; break;
         default: color = 'stroke-gray-400 fill-gray-200/20';
       }
@@ -343,7 +347,6 @@ const BlueprintCanvas = ({
     }
   };
   
-  // Render coordinates marker when available
   const renderCoordinatesMarker = (element: any) => {
     if (!element.latitude || !element.longitude) return null;
     
@@ -394,6 +397,37 @@ const BlueprintCanvas = ({
     );
   };
 
+  const renderTrueNorth = () => {
+    return (
+      <g transform={`translate(50, 50) rotate(${trueNorth})`}>
+        <Compass className="w-8 h-8 text-blue-600 stroke-2" />
+        <text x="0" y="-20" textAnchor="middle" fill="blue" className="text-xs font-bold">N</text>
+      </g>
+    );
+  };
+
+  const renderWall = (element: any) => {
+    return (
+      <div
+        key={element.id}
+        className="absolute border-0 bg-gray-700"
+        style={{
+          left: element.x,
+          top: element.y,
+          width: element.width,
+          height: element.height,
+          opacity: 0.9,
+        }}
+      >
+        {showLabels && element.label && (
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xs bg-white/70 px-1 py-0.5 rounded whitespace-nowrap">
+            {element.label}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div 
       ref={canvasRef}
@@ -407,6 +441,7 @@ const BlueprintCanvas = ({
         {renderGrid()}
         {renderConnections()}
         {renderDrawingPreview()}
+        {renderTrueNorth()}
         {/* Render coordinate markers */}
         {showLabels && elements
           .filter(element => element.floor === currentFloor && element.latitude && element.longitude)
@@ -421,6 +456,10 @@ const BlueprintCanvas = ({
       {elements
         .filter(element => element.floor === currentFloor)
         .map(element => {
+          if (element.type === 'wall') {
+            return renderWall(element);
+          }
+          
           const classes = getElementColor(element.type);
           
           if (element.type === 'poi') {
@@ -513,11 +552,18 @@ const BlueprintCanvas = ({
                 backgroundPosition: 'center'
               }}
             >
-              {showLabels && (
+              {showLabels && element.label && (
+                <div className="absolute top-2 left-2 text-xs bg-white/70 px-1 rounded">
+                  {element.label}
+                </div>
+              )}
+              
+              {!element.label && showLabels && (
                 <div className="absolute top-2 left-2 text-xs bg-white/70 px-1 rounded">
                   {element.name}
                 </div>
               )}
+              
               {element.capacity > 0 && showLabels && (
                 <div className="absolute bottom-2 right-2 text-xs bg-white/70 px-1 rounded">
                   Cap: {element.capacity}

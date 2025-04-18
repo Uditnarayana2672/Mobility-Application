@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import BlueprintCanvas from './BlueprintCanvas';
 import BlueprintControls from './BlueprintControls';
@@ -8,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider"; 
+import { Compass } from "lucide-react";
 
 interface BlueprintProps {
   selectedTool: string;
@@ -52,6 +55,8 @@ const Blueprint = ({
   const [selectedCoordinatesElement, setSelectedCoordinatesElement] = useState<any>(null);
   const [coordinatesDialogOpen, setCoordinatesDialogOpen] = useState(false);
   const [coordinates, setCoordinates] = useState({ latitude: '', longitude: '', position: 'center' });
+  const [trueNorthDialogOpen, setTrueNorthDialogOpen] = useState(false);
+  const [trueNorth, setTrueNorth] = useState(0); // Degrees, 0 = North up
 
   const handleZoom = (delta: number) => {
     const newScale = Math.max(0.1, Math.min(5, scale + delta * 0.1));
@@ -86,6 +91,11 @@ const Blueprint = ({
     if (selectedTool === 'pan') {
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    if (selectedTool === 'true-north') {
+      setTrueNorthDialogOpen(true);
       return;
     }
 
@@ -132,7 +142,7 @@ const Blueprint = ({
       }
     }
 
-    if (['room', 'hallway', 'custom', 'entry', 'stairs'].includes(selectedTool)) {
+    if (['room', 'hallway', 'custom', 'entry', 'stairs', 'wall'].includes(selectedTool)) {
       setDrawing(true);
       setStartPoint({ x, y });
       setCurrentPoint({ x, y });
@@ -224,12 +234,12 @@ const Blueprint = ({
         return;
       }
 
-      if (['room', 'hallway', 'custom', 'entry', 'stairs'].includes(selectedTool)) {
+      if (['room', 'hallway', 'custom', 'entry', 'stairs', 'wall'].includes(selectedTool)) {
         const width = Math.abs(currentPoint.x - startPoint.x);
         const height = Math.abs(currentPoint.y - startPoint.y);
         
         if (width > 5 && height > 5) {
-          const element = {
+          const defaultProps = {
             id: generateUniqueId(),
             type: selectedTool,
             x: Math.min(startPoint.x, currentPoint.x),
@@ -242,6 +252,15 @@ const Blueprint = ({
             custom_attributes: [],
             capacity: 0
           };
+          
+          // Add wall-specific properties if it's a wall
+          const element = selectedTool === 'wall' 
+            ? { 
+                ...defaultProps, 
+                wallThickness: 1,
+                label: 'Wall'
+              } 
+            : defaultProps;
           
           onAddElement(element);
           toast.success(`Added new ${selectedTool}`);
@@ -381,6 +400,11 @@ const Blueprint = ({
     }
   };
 
+  const saveTrueNorth = () => {
+    setTrueNorthDialogOpen(false);
+    toast.success(`True north orientation set to ${trueNorth}°`);
+  };
+
   return (
     <div 
       ref={containerRef}
@@ -406,6 +430,7 @@ const Blueprint = ({
         connectingElements={connectingElements}
         connectionPoints={connectionPoints}
         isMultiPointConnecting={isMultiPointConnecting}
+        trueNorth={trueNorth}
       />
       <BlueprintControls
         scale={scale}
@@ -464,6 +489,52 @@ const Blueprint = ({
               </Select>
             </div>
             <Button onClick={saveCoordinates}>Save Coordinates</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={trueNorthDialogOpen} onOpenChange={setTrueNorthDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Compass className="h-5 w-5" /> Set True North Orientation
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex items-center gap-4">
+              <Label htmlFor="true-north">Rotation (degrees)</Label>
+              <div className="flex-1">
+                <Slider
+                  id="true-north"
+                  min={0}
+                  max={359}
+                  step={1}
+                  value={[trueNorth]}
+                  onValueChange={(values) => setTrueNorth(values[0])}
+                />
+              </div>
+              <Input 
+                type="number" 
+                min={0}
+                max={359}
+                value={trueNorth} 
+                onChange={e => setTrueNorth(parseInt(e.target.value) || 0)} 
+                className="w-16"
+              />
+            </div>
+            
+            <div className="flex justify-center py-8">
+              <div className="relative w-24 h-24">
+                <Compass className="w-24 h-24 text-blue-600" style={{ transform: `rotate(${trueNorth}deg)` }} />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 text-blue-600 font-bold">N</div>
+              </div>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Set the angle of true north relative to the top of the plan (0° = North is up)
+            </p>
+            
+            <Button onClick={saveTrueNorth}>Apply Orientation</Button>
           </div>
         </DialogContent>
       </Dialog>

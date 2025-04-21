@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Blueprint from '@/components/Blueprint/Blueprint';
 import TopNavBar from '@/components/Navigation/TopNavBar';
 import LeftSidebar from '@/components/Sidebar/LeftSidebar';
@@ -10,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { FileJson, Copy, Compass } from 'lucide-react';
+import { Undo2, Redo2 } from 'lucide-react';
 
 const Index = () => {
   const [selectedTool, setSelectedTool] = useState('select');
@@ -29,6 +29,60 @@ const Index = () => {
   const [currentJson, setCurrentJson] = useState('');
   const [jsonImportDialogOpen, setJsonImportDialogOpen] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
+  
+  // New states for undo/redo and coordinate system
+  const [history, setHistory] = useState<Array<any>>([]);
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
+  const [originElement, setOriginElement] = useState<string | null>(null);
+
+  // Create a function to save state to history
+  const saveToHistory = useCallback((newState: any) => {
+    const newHistory = history.slice(0, currentHistoryIndex + 1);
+    newHistory.push(newState);
+    setHistory(newHistory);
+    setCurrentHistoryIndex(newHistory.length - 1);
+  }, [history, currentHistoryIndex]);
+
+  const handleUndo = useCallback(() => {
+    if (currentHistoryIndex > 0) {
+      setCurrentHistoryIndex(currentHistoryIndex - 1);
+      setBlueprintData(history[currentHistoryIndex - 1]);
+    }
+  }, [currentHistoryIndex, history]);
+
+  const handleRedo = useCallback(() => {
+    if (currentHistoryIndex < history.length - 1) {
+      setCurrentHistoryIndex(currentHistoryIndex + 1);
+      setBlueprintData(history[currentHistoryIndex + 1]);
+    }
+  }, [currentHistoryIndex, history]);
+
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        if (!e.shiftKey) {
+          handleUndo();
+        } else {
+          handleRedo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
+
+  // Save state to history when blueprint data changes
+  useEffect(() => {
+    if (blueprintData.elements.length > 0 || blueprintData.connections.length > 0) {
+      saveToHistory(blueprintData);
+    }
+  }, [blueprintData, saveToHistory]);
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
@@ -46,8 +100,29 @@ const Index = () => {
     setShowEdges(!showEdges);
   };
 
+  // Updated element handlers
   const handleElementSelect = (element: any) => {
     setSelectedElement(element);
+    // If Ctrl/Cmd is pressed when selecting, set as origin
+    if (window.event?.ctrlKey || window.event?.metaKey) {
+      setOriginElement(element.id);
+      // Update all other elements' coordinates relative to this one
+      const originX = element.x;
+      const originY = element.y;
+      
+      const updatedElements = blueprintData.elements.map(el => ({
+        ...el,
+        relativeX: el.x - originX,
+        relativeY: el.y - originY
+      }));
+
+      setBlueprintData({
+        ...blueprintData,
+        elements: updatedElements
+      });
+      
+      toast.success('Set as coordinate origin point');
+    }
   };
 
   const handleElementUpdate = (updatedElement: any) => {
@@ -260,22 +335,41 @@ const Index = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
-      <TopNavBar 
-        onExport={handleExport}
-        showGrid={showGrid}
-        onToggleGrid={handleToggleGrid}
-        showLabels={showLabels}
-        onToggleLabels={handleToggleLabels}
-        showEdges={showEdges}
-        onToggleEdges={handleToggleEdges}
-        floors={blueprintData.floors}
-        currentFloor={blueprintData.currentFloor}
-        onFloorChange={handleFloorChange}
-        onAddFloor={handleAddFloor}
-        onImportJson={handleImportJson}
-        onSave={handleSave}
-        onShowCurrentJson={handleShowCurrentJson}
-      />
+      <div className="flex items-center gap-2 px-4 py-2 bg-white border-b">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleUndo}
+          disabled={currentHistoryIndex <= 0}
+        >
+          <Undo2 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleRedo}
+          disabled={currentHistoryIndex >= history.length - 1}
+        >
+          <Redo2 className="h-4 w-4" />
+        </Button>
+        <TopNavBar 
+          onExport={handleExport}
+          showGrid={showGrid}
+          onToggleGrid={handleToggleGrid}
+          showLabels={showLabels}
+          onToggleLabels={handleToggleLabels}
+          showEdges={showEdges}
+          onToggleEdges={handleToggleEdges}
+          floors={blueprintData.floors}
+          currentFloor={blueprintData.currentFloor}
+          onFloorChange={handleFloorChange}
+          onAddFloor={handleAddFloor}
+          onImportJson={handleImportJson}
+          onSave={handleSave}
+          onShowCurrentJson={handleShowCurrentJson}
+        />
+      </div>
+      
       <div className="flex flex-1 overflow-hidden">
         <LeftSidebar 
           selectedTool={selectedTool} 

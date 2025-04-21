@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -440,9 +439,14 @@ const BlueprintCanvas = ({
 
   const renderTrueNorth = () => {
     return (
-      <g transform={`translate(50, 50) rotate(${trueNorth})`}>
-        <Compass className="w-8 h-8 text-blue-600 stroke-2" />
-        <text x="0" y="-20" textAnchor="middle" fill="blue" className="text-xs font-bold">N</text>
+      <g transform={`translate(50, 50)`}>
+        <g transform={`rotate(${trueNorth})`}>
+          <Compass className="w-8 h-8 text-blue-600 stroke-2" />
+          <text x="0" y="-20" textAnchor="middle" fill="blue" className="text-xs font-bold">N</text>
+        </g>
+        <text x="0" y="30" textAnchor="middle" fill="blue" className="text-xs">
+          {trueNorth}°
+        </text>
       </g>
     );
   };

@@ -631,13 +631,8 @@ const Blueprint = ({
   const saveTrueNorth = () => {
     setTrueNorthDialogOpen(false);
     if (onElementUpdate) {
-      const updatedElement = {
-        ...selectedElement,
-        trueNorth: trueNorth
-      };
-      onElementUpdate(updatedElement);
+      toast.success(`True north azimuth set to ${trueNorth}°`);
     }
-    toast.success(`True north azimuth set to ${trueNorth}°`);
   };
 
   return (

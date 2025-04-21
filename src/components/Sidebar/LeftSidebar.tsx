@@ -19,7 +19,6 @@ import {
   DoorClosed,
   Stars,
   PlusCircle,
-  Rectangle,
   Sliders,
   LineChart,
   Workflow,
@@ -29,9 +28,10 @@ import {
   Pipette,
   GripHorizontal,
   Move,
-  FlowArrow,
   Footprints
 } from "lucide-react";
+// Replacing Rectangle with RectangleHorizontal
+import { RectangleHorizontal } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
@@ -103,7 +103,7 @@ const LeftSidebar = ({
 
           <div className="mb-4">
             <h3 className="text-sm font-medium mb-2">Elements</h3>
-            {renderToolButton('room', 'Room', <Rectangle className="h-4 w-4 mr-2" />)}
+            {renderToolButton('room', 'Room', <RectangleHorizontal className="h-4 w-4 mr-2" />)}
             {renderToolButton('hallway', 'Hallway', <Footprints className="h-4 w-4 mr-2" />)}
             {renderToolButton('entry', 'Entry/Exit', <DoorClosed className="h-4 w-4 mr-2" />)}
             {renderToolButton('stairs', 'Stairs/Elevator', <Stars className="h-4 w-4 mr-2" />)}

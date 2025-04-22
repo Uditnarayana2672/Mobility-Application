@@ -24,6 +24,9 @@ interface BlueprintProps {
   onAddElement: (element: any) => void;
   onAddConnection: (connection: any) => void;
   onElementUpdate?: (element: any) => void;
+  onDeleteElement?: (elementId: string) => void;
+  onDeleteConnection?: (connectionId: string) => void;
+  onMoveElement?: (elementId: string, deltaX: number, deltaY: number) => void;
 }
 
 const Blueprint = ({
@@ -37,7 +40,10 @@ const Blueprint = ({
   onElementSelect,
   onAddElement,
   onAddConnection,
-  onElementUpdate
+  onElementUpdate,
+  onDeleteElement,
+  onDeleteConnection,
+  onMoveElement
 }: BlueprintProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -57,6 +63,11 @@ const Blueprint = ({
   const [coordinates, setCoordinates] = useState({ latitude: '', longitude: '', position: 'center' });
   const [trueNorthDialogOpen, setTrueNorthDialogOpen] = useState(false);
   const [trueNorth, setTrueNorth] = useState(0); // Degrees, 0 = North up
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedElement, setDraggedElement] = useState<any>(null);
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
+  const [originSet, setOriginSet] = useState(false);
+  const [originPoint, setOriginPoint] = useState({ x: 0, y: 0 });
 
   const handleZoom = (delta: number) => {
     const newScale = Math.max(0.1, Math.min(5, scale + delta * 0.1));
@@ -88,6 +99,14 @@ const Blueprint = ({
     const x = (e.clientX - rect.left - position.x) / scale;
     const y = (e.clientY - rect.top - position.y) / scale;
 
+    // Set origin point if Ctrl/Cmd key is pressed
+    if ((e.ctrlKey || e.metaKey) && selectedTool === 'select') {
+      setOriginPoint({ x, y });
+      setOriginSet(true);
+      toast.success(`Origin set at (${Math.round(x)}, ${Math.round(y)})`);
+      return;
+    }
+
     if (selectedTool === 'pan') {
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
@@ -103,6 +122,13 @@ const Blueprint = ({
       const clickedElement = findElementAtPosition(x, y);
 
       if (clickedElement) {
+        if (selectedTool === 'select') {
+          // Start dragging the element
+          setIsDragging(true);
+          setDraggedElement(clickedElement);
+          setDragStartPos({ x, y });
+        }
+        
         if (selectedTool.startsWith('connect-')) {
           if (selectedTool === 'connect-multi') {
             if (!isMultiPointConnecting) {
@@ -165,6 +191,17 @@ const Blueprint = ({
       return;
     }
 
+    if (isDragging && draggedElement && onMoveElement) {
+      const deltaX = x - dragStartPos.x;
+      const deltaY = y - dragStartPos.y;
+      
+      if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+        onMoveElement(draggedElement.id, deltaX, deltaY);
+        setDragStartPos({ x, y });
+      }
+      return;
+    }
+
     if (drawing) {
       setCurrentPoint({ x, y });
     }
@@ -178,6 +215,12 @@ const Blueprint = ({
 
     if (isPanning) {
       setIsPanning(false);
+      return;
+    }
+
+    if (isDragging) {
+      setIsDragging(false);
+      setDraggedElement(null);
       return;
     }
 
@@ -205,6 +248,18 @@ const Blueprint = ({
                 y: targetElement.y + targetElement.height/2 
               }
             ];
+          } else if (connectionType === 'path') {
+            // For path type, just have start and end points for bidirectional
+            points = [
+              { 
+                x: sourceElement.x + sourceElement.width/2, 
+                y: sourceElement.y + sourceElement.height/2 
+              },
+              { 
+                x: targetElement.x + targetElement.width/2, 
+                y: targetElement.y + targetElement.height/2 
+              }
+            ];
           }
           
           const connection = {
@@ -213,7 +268,8 @@ const Blueprint = ({
             target: targetElement.id,
             type: connectionType,
             floor: currentFloor,
-            directed: true,
+            directed: connectionType !== 'path', // Path connectors are bidirectional
+            bidirectional: connectionType === 'path', // Add this explicitly for path
             label: '',
             distance: 0,
             travel_time: 0,
@@ -287,6 +343,7 @@ const Blueprint = ({
           type: 'multi',
           floor: currentFloor,
           directed: true,
+          bidirectional: false,
           label: '',
           distance: 0,
           travel_time: 0,
@@ -321,10 +378,20 @@ const Blueprint = ({
       e.preventDefault();
     }
 
-    if (e.ctrlKey || e.metaKey) {
-      if (e.key === 'z') {
-        e.preventDefault();
-      } else if (e.key === 'y') {
+    if (e.key === 'Delete') {
+      const selectedElementInCanvas = draggedElement;
+      if (selectedElementInCanvas) {
+        if (selectedElementInCanvas.source) {
+          // It's a connection
+          if (onDeleteConnection) {
+            onDeleteConnection(selectedElementInCanvas.id);
+          }
+        } else {
+          // It's an element
+          if (onDeleteElement) {
+            onDeleteElement(selectedElementInCanvas.id);
+          }
+        }
         e.preventDefault();
       }
     }
@@ -335,7 +402,7 @@ const Blueprint = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isMultiPointConnecting, sourceElement, connectionPoints]);
+  }, [isMultiPointConnecting, sourceElement, connectionPoints, draggedElement]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
@@ -431,6 +498,8 @@ const Blueprint = ({
         connectionPoints={connectionPoints}
         isMultiPointConnecting={isMultiPointConnecting}
         trueNorth={trueNorth}
+        originPoint={originPoint}
+        originSet={originSet}
       />
       <BlueprintControls
         scale={scale}

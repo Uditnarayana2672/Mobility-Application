@@ -1,30 +1,39 @@
-import { 
-  Save, Download, Undo, Redo, Grid, Tag, Share2, Plus, Upload, FileJson
-} from 'lucide-react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { 
+  Grid3x3, 
+  Tag, 
+  Box, 
+  Save, 
+  Download, 
+  Upload, 
+  Plus,
+  MoreVertical,
+  FileJson,
+  Undo,
+  Redo,
+  Trash
+} from 'lucide-react';
 import { toast } from 'sonner';
-import { Textarea } from '@/components/ui/textarea';
 
 interface TopNavBarProps {
-  onExport: (format: string) => void;
   showGrid: boolean;
   onToggleGrid: () => void;
   showLabels: boolean;
@@ -34,14 +43,16 @@ interface TopNavBarProps {
   floors: string[];
   currentFloor: string;
   onFloorChange: (floor: string) => void;
-  onAddFloor?: (floorName: string) => void;
-  onImportJson?: (jsonData: any) => void;
-  onSave?: () => void;
-  onShowCurrentJson?: () => void;
+  onAddFloor: (floorName: string) => void;
+  onImportJson: (jsonData: any) => void;
+  onSave: () => void;
+  onShowCurrentJson: () => void;
+  onExport: (format: string) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 const TopNavBar = ({
-  onExport,
   showGrid,
   onToggleGrid,
   showLabels,
@@ -54,7 +65,10 @@ const TopNavBar = ({
   onAddFloor,
   onImportJson,
   onSave,
-  onShowCurrentJson
+  onShowCurrentJson,
+  onExport,
+  onUndo,
+  onRedo
 }: TopNavBarProps) => {
   const [newFloorName, setNewFloorName] = useState('');
   const [jsonData, setJsonData] = useState('');

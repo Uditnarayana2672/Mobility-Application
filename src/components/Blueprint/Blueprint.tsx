@@ -56,16 +56,7 @@ const Blueprint = ({
   const [coordinatesDialogOpen, setCoordinatesDialogOpen] = useState(false);
   const [coordinates, setCoordinates] = useState({ latitude: '', longitude: '', position: 'center' });
   const [trueNorthDialogOpen, setTrueNorthDialogOpen] = useState(false);
-  const [trueNorth, setTrueNorth] = useState(0);
-  
-  // New states for element manipulation
-  const [isMovingElement, setIsMovingElement] = useState(false);
-  const [movingElement, setMovingElement] = useState<any>(null);
-  const [elementOffset, setElementOffset] = useState({ x: 0, y: 0 });
-  const [isResizingElement, setIsResizingElement] = useState(false);
-  const [resizeDirection, setResizeDirection] = useState('');
-  const [isDrawingWall, setIsDrawingWall] = useState(false);
-  const [wallPoints, setWallPoints] = useState<{x: number, y: number}[]>([]);
+  const [trueNorth, setTrueNorth] = useState(0); // Degrees, 0 = North up
 
   const handleZoom = (delta: number) => {
     const newScale = Math.max(0.1, Math.min(5, scale + delta * 0.1));
@@ -73,14 +64,7 @@ const Blueprint = ({
   };
 
   const findElementAtPosition = (x: number, y: number) => {
-    // Sort elements by size (smallest first) to prioritize selection of smaller elements
-    const sortedElements = [...elements].sort((a, b) => {
-      const areaA = a.width * a.height;
-      const areaB = b.width * b.height;
-      return areaA - areaB;
-    });
-    
-    return sortedElements.find(element => {
+    return elements.find(element => {
       if (element.type === 'poi') {
         const centerX = element.x;
         const centerY = element.y;
@@ -97,29 +81,6 @@ const Blueprint = ({
     });
   };
 
-  // Check if point is near element edge or corner for resizing
-  const getResizeHandleAtPosition = (x: number, y: number, element: any) => {
-    const handleSize = 10 / scale; // Adjust handle size based on zoom
-    const edges = {
-      'nw': { x: element.x, y: element.y },
-      'n': { x: element.x + element.width / 2, y: element.y },
-      'ne': { x: element.x + element.width, y: element.y },
-      'e': { x: element.x + element.width, y: element.y + element.height / 2 },
-      'se': { x: element.x + element.width, y: element.y + element.height },
-      's': { x: element.x + element.width / 2, y: element.y + element.height },
-      'sw': { x: element.x, y: element.y + element.height },
-      'w': { x: element.x, y: element.y + element.height / 2 }
-    };
-
-    for (const [direction, point] of Object.entries(edges)) {
-      if (Math.abs(x - point.x) <= handleSize && Math.abs(y - point.y) <= handleSize) {
-        return direction;
-      }
-    }
-    
-    return null;
-  };
-
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
 
@@ -127,88 +88,53 @@ const Blueprint = ({
     const x = (e.clientX - rect.left - position.x) / scale;
     const y = (e.clientY - rect.top - position.y) / scale;
 
-    // True North tool handling
-    if (selectedTool === 'true-north') {
-      setTrueNorthDialogOpen(true);
-      return;
-    }
-    
-    // Wall drawing tool
-    if (selectedTool === 'wall-draw') {
-      if (!isDrawingWall) {
-        setIsDrawingWall(true);
-        setWallPoints([{ x, y }]);
-      } else {
-        // Add point to wall
-        setWallPoints([...wallPoints, { x, y }]);
-      }
-      return;
-    }
-
     if (selectedTool === 'pan') {
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
       return;
     }
 
-    if (selectedTool === 'select') {
-      const clickedElement = findElementAtPosition(x, y);
-      
-      if (clickedElement) {
-        // Check if clicking on a resize handle
-        const resizeHandle = getResizeHandleAtPosition(x, y, clickedElement);
-        
-        if (resizeHandle) {
-          setIsResizingElement(true);
-          setResizeDirection(resizeHandle);
-          setMovingElement(clickedElement);
-          onElementSelect(clickedElement);
-          return;
-        }
-        
-        // If not on resize handle, start moving the element
-        setIsMovingElement(true);
-        setMovingElement(clickedElement);
-        setElementOffset({ 
-          x: x - clickedElement.x, 
-          y: y - clickedElement.y 
-        });
-        onElementSelect(clickedElement);
-        return;
-      }
+    if (selectedTool === 'true-north') {
+      setTrueNorthDialogOpen(true);
+      return;
     }
 
-    if (selectedTool.startsWith('connect-')) {
+    if (selectedTool === 'select' || selectedTool.startsWith('connect-')) {
       const clickedElement = findElementAtPosition(x, y);
 
       if (clickedElement) {
-        if (selectedTool === 'connect-multi') {
-          if (!isMultiPointConnecting) {
-            setIsMultiPointConnecting(true);
-            setSourceElement(clickedElement);
-            const startPos = { 
-              x: clickedElement.x + clickedElement.width / 2, 
-              y: clickedElement.y + clickedElement.height / 2 
-            };
-            setConnectionPoints([startPos]);
-            setStartPoint(startPos);
-            setCurrentPoint(startPos);
-            setDrawing(true);
-          }
+        if (selectedTool.startsWith('connect-')) {
+          if (selectedTool === 'connect-multi') {
+            if (!isMultiPointConnecting) {
+              setIsMultiPointConnecting(true);
+              setSourceElement(clickedElement);
+              const startPos = { 
+                x: clickedElement.x + clickedElement.width / 2, 
+                y: clickedElement.y + clickedElement.height / 2 
+              };
+              setConnectionPoints([startPos]);
+              setStartPoint(startPos);
+              setCurrentPoint(startPos);
+              setDrawing(true);
+            }
+            return;
+          } 
+          
+          setConnectingElements(true);
+          setSourceElement(clickedElement);
+          setStartPoint({ 
+            x: clickedElement.x + clickedElement.width / 2, 
+            y: clickedElement.y + clickedElement.height / 2 
+          });
+          setCurrentPoint({ 
+            x: clickedElement.x + clickedElement.width / 2, 
+            y: clickedElement.y + clickedElement.height / 2 
+          });
+          setDrawing(true);
           return;
-        } 
-        
-        setConnectingElements(true);
-        setSourceElement(clickedElement);
-        setStartPoint({ 
-          x: clickedElement.x + clickedElement.width / 2, 
-          y: clickedElement.y + clickedElement.height / 2 
-        });
-        setCurrentPoint({ 
-          x: clickedElement.x + clickedElement.width / 2, 
-          y: clickedElement.y + clickedElement.height / 2 
-        });
-        setDrawing(true);
+        }
+
+        onElementSelect(clickedElement);
         return;
       } else if (isMultiPointConnecting) {
         setConnectionPoints([...connectionPoints, { x, y }]);
@@ -230,119 +156,12 @@ const Blueprint = ({
     const x = (e.clientX - rect.left - position.x) / scale;
     const y = (e.clientY - rect.top - position.y) / scale;
 
-    // Update cursor based on what's under it
-    if (selectedTool === 'select') {
-      const clickedElement = findElementAtPosition(x, y);
-      if (clickedElement) {
-        const resizeHandle = getResizeHandleAtPosition(x, y, clickedElement);
-        if (resizeHandle) {
-          // Set cursor based on resize direction
-          switch (resizeHandle) {
-            case 'nw': case 'se': containerRef.current.style.cursor = 'nwse-resize'; break;
-            case 'ne': case 'sw': containerRef.current.style.cursor = 'nesw-resize'; break;
-            case 'n': case 's': containerRef.current.style.cursor = 'ns-resize'; break;
-            case 'e': case 'w': containerRef.current.style.cursor = 'ew-resize'; break;
-            default: containerRef.current.style.cursor = 'move';
-          }
-        } else {
-          containerRef.current.style.cursor = 'move';
-        }
-      } else {
-        containerRef.current.style.cursor = 'default';
-      }
-    }
-
     if (isPanning) {
       setPosition({
         x: position.x + (e.clientX - panStart.x),
         y: position.y + (e.clientY - panStart.y),
       });
       setPanStart({ x: e.clientX, y: e.clientY });
-      return;
-    }
-    
-    // Handle element moving
-    if (isMovingElement && movingElement && onElementUpdate) {
-      const newX = x - elementOffset.x;
-      const newY = y - elementOffset.y;
-      
-      const updatedElement = {
-        ...movingElement,
-        x: newX,
-        y: newY
-      };
-      
-      onElementUpdate(updatedElement);
-      setMovingElement(updatedElement);
-      return;
-    }
-    
-    // Handle element resizing
-    if (isResizingElement && movingElement && resizeDirection && onElementUpdate) {
-      let newX = movingElement.x;
-      let newY = movingElement.y;
-      let newWidth = movingElement.width;
-      let newHeight = movingElement.height;
-      
-      // Update dimensions based on resize direction
-      switch (resizeDirection) {
-        case 'nw':
-          newWidth = movingElement.x + movingElement.width - x;
-          newHeight = movingElement.y + movingElement.height - y;
-          newX = x;
-          newY = y;
-          break;
-        case 'n':
-          newHeight = movingElement.y + movingElement.height - y;
-          newY = y;
-          break;
-        case 'ne':
-          newWidth = x - movingElement.x;
-          newHeight = movingElement.y + movingElement.height - y;
-          newY = y;
-          break;
-        case 'e':
-          newWidth = x - movingElement.x;
-          break;
-        case 'se':
-          newWidth = x - movingElement.x;
-          newHeight = y - movingElement.y;
-          break;
-        case 's':
-          newHeight = y - movingElement.y;
-          break;
-        case 'sw':
-          newWidth = movingElement.x + movingElement.width - x;
-          newHeight = y - movingElement.y;
-          newX = x;
-          break;
-        case 'w':
-          newWidth = movingElement.x + movingElement.width - x;
-          newX = x;
-          break;
-      }
-      
-      // Ensure minimum size
-      if (newWidth < 10) {
-        newWidth = 10;
-        if (resizeDirection.includes('w')) newX = movingElement.x + movingElement.width - 10;
-      }
-      
-      if (newHeight < 10) {
-        newHeight = 10;
-        if (resizeDirection.includes('n')) newY = movingElement.y + movingElement.height - 10;
-      }
-      
-      const updatedElement = {
-        ...movingElement,
-        x: newX,
-        y: newY,
-        width: newWidth,
-        height: newHeight
-      };
-      
-      onElementUpdate(updatedElement);
-      setMovingElement(updatedElement);
       return;
     }
 
@@ -359,21 +178,6 @@ const Blueprint = ({
 
     if (isPanning) {
       setIsPanning(false);
-      return;
-    }
-    
-    // Reset element moving state
-    if (isMovingElement) {
-      setIsMovingElement(false);
-      setMovingElement(null);
-      return;
-    }
-    
-    // Reset element resizing state
-    if (isResizingElement) {
-      setIsResizingElement(false);
-      setMovingElement(null);
-      setResizeDirection('');
       return;
     }
 
@@ -465,55 +269,6 @@ const Blueprint = ({
     }
   };
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    // Finish wall drawing on double-click
-    if (isDrawingWall && wallPoints.length > 1) {
-      const wallElements = [];
-      
-      // Convert wall points to wall elements
-      for (let i = 0; i < wallPoints.length - 1; i++) {
-        const start = wallPoints[i];
-        const end = wallPoints[i+1];
-        
-        // Calculate wall dimensions
-        const dx = end.x - start.x;
-        const dy = end.y - start.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-        
-        // Create wall with thickness 1
-        const thickness = 2;
-        
-        // Position the wall at start point
-        const wallElement = {
-          id: generateUniqueId(),
-          type: 'wall',
-          x: start.x,
-          y: start.y - thickness/2,
-          width: length,
-          height: thickness,
-          name: `Wall segment ${i+1}`,
-          floor: currentFloor,
-          tags: ['wall'],
-          custom_attributes: [],
-          rotation: angle * (180 / Math.PI),
-          wallThickness: thickness,
-          label: 'Wall'
-        };
-        
-        wallElements.push(wallElement);
-      }
-      
-      // Add all wall elements
-      wallElements.forEach(wall => onAddElement(wall));
-      
-      // Reset wall drawing
-      setIsDrawingWall(false);
-      setWallPoints([]);
-      toast.success(`Added ${wallElements.length} wall segments`);
-    }
-  };
-
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && isMultiPointConnecting && sourceElement && connectionPoints.length > 1) {
       const lastPoint = connectionPoints[connectionPoints.length - 1];
@@ -557,23 +312,13 @@ const Blueprint = ({
       e.preventDefault();
     }
     
-    if (e.key === 'Escape') {
-      // Cancel multi-point connection
-      if (isMultiPointConnecting) {
-        setIsMultiPointConnecting(false);
-        setConnectingElements(false);
-        setSourceElement(null);
-        setConnectionPoints([]);
-        setDrawing(false);
-        e.preventDefault();
-      }
-      
-      // Cancel wall drawing
-      if (isDrawingWall) {
-        setIsDrawingWall(false);
-        setWallPoints([]);
-        e.preventDefault();
-      }
+    if (e.key === 'Escape' && isMultiPointConnecting) {
+      setIsMultiPointConnecting(false);
+      setConnectingElements(false);
+      setSourceElement(null);
+      setConnectionPoints([]);
+      setDrawing(false);
+      e.preventDefault();
     }
 
     if (e.ctrlKey || e.metaKey) {
@@ -590,7 +335,7 @@ const Blueprint = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isMultiPointConnecting, sourceElement, connectionPoints, isDrawingWall, wallPoints]);
+  }, [isMultiPointConnecting, sourceElement, connectionPoints]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
@@ -668,7 +413,6 @@ const Blueprint = ({
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onClick={handleCanvasClick}
-      onDoubleClick={handleDoubleClick}
     >
       <BlueprintCanvas
         scale={scale}
@@ -687,8 +431,6 @@ const Blueprint = ({
         connectionPoints={connectionPoints}
         isMultiPointConnecting={isMultiPointConnecting}
         trueNorth={trueNorth}
-        wallPoints={wallPoints}
-        isDrawingWall={isDrawingWall}
       />
       <BlueprintControls
         scale={scale}
@@ -699,12 +441,6 @@ const Blueprint = ({
       {isMultiPointConnecting && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white p-2 rounded shadow-md text-xs">
           Click to add bend points. Press Enter to complete the connection or Esc to cancel.
-        </div>
-      )}
-      
-      {isDrawingWall && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white p-2 rounded shadow-md text-xs">
-          Click to add wall points. Double-click to complete the walls or Esc to cancel.
         </div>
       )}
 

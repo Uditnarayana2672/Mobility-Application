@@ -1,172 +1,186 @@
-
-import { Button } from "@/components/ui/button";
 import { 
+  MousePointer, 
   Square, 
-  Map, 
-  Cross, 
-  Compass,
-  MapPin, 
-  Hand, 
-  MoveHorizontal, 
-  FileDown, 
-  FileUp,
+  Columns, 
   Printer, 
+  DoorClosed, 
+  Stars, 
+  Box, 
+  Hexagon, 
+  LineChart, 
+  Move, 
+  BellRing, 
   Sofa,
+  ArrowRight,
+  Link,
   Coffee,
-  Droplet,
   Utensils,
-  Box,
-  DoorClosed,
-  Stars,
-  PlusCircle,
-  Rectangle,
-  Sliders,
-  LineChart,
-  Workflow,
-  ArrowRightFromLine,
-  Route,
-  CornerUpRight,
-  Pipette,
-  GripHorizontal,
-  Move,
-  FlowArrow,
-  Footprints
-} from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Input } from "@/components/ui/input";
-import { useRef, useState } from "react";
+  Droplet,
+  Plus,
+  ChevronsRight,
+  Link2
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface LeftSidebarProps {
   selectedTool: string;
   onToolSelect: (tool: string) => void;
-  onAddCustomPoi: (poiName: string) => void;
+  onAddCustomPoi?: (name: string) => void;
 }
 
-const poiTools = [
-  { id: 'poi-printer', name: 'Printer', icon: <Printer className="h-4 w-4 mr-2" /> },
-  { id: 'poi-bench', name: 'Bench', icon: <Sofa className="h-4 w-4 mr-2" /> },
-  { id: 'poi-coffee', name: 'Coffee', icon: <Coffee className="h-4 w-4 mr-2" /> },
-  { id: 'poi-water', name: 'Water', icon: <Droplet className="h-4 w-4 mr-2" /> },
-  { id: 'poi-food', name: 'Food', icon: <Utensils className="h-4 w-4 mr-2" /> },
-];
+const LeftSidebar = ({ selectedTool, onToolSelect, onAddCustomPoi }: LeftSidebarProps) => {
+  const [newPoiName, setNewPoiName] = useState('');
+  
+  const tools = [
+    { id: 'select', icon: MousePointer, label: 'Select' },
+    { id: 'draw-polygon', icon: Hexagon, label: 'Polygon' },
+    { id: 'draw-line', icon: LineChart, label: 'Line' },
+    { id: 'pan', icon: Move, label: 'Pan' },
+  ];
+  
+  const elements = [
+    { id: 'room', icon: Square, label: 'Room', color: 'bg-blueprint-element-room' },
+    { id: 'hallway', icon: Columns, label: 'Hallway', color: 'bg-blueprint-element-hallway' },
+    { id: 'poi', icon: BellRing, label: 'POI', color: 'bg-blueprint-element-poi' },
+    { id: 'entry', icon: DoorClosed, label: 'Entry/Exit', color: 'bg-blueprint-element-entry' },
+    { id: 'stairs', icon: Stars, label: 'Stairs/Elevator', color: 'bg-blueprint-element-stairs' },
+    { id: 'custom', icon: Box, label: 'Custom Zone', color: 'bg-blueprint-element-custom' },
+  ];
+  
+  const pois = [
+    { id: 'printer', icon: Printer, label: 'Printer' },
+    { id: 'bench', icon: Sofa, label: 'Bench' },
+    { id: 'water', icon: Droplet, label: 'Water Cooler' },
+    { id: 'coffee', icon: Coffee, label: 'Coffee Machine' },
+    { id: 'food', icon: Utensils, label: 'Food Area' },
+  ];
+  
+  const connectors = [
+    { id: 'connect-straight', icon: ArrowRight, label: 'Straight Connector' },
+    { id: 'connect-path', icon: Link, label: 'Path Connector' },
+    { id: 'connect-bent', icon: Link2, label: 'Bent Connector' },
+    { id: 'connect-multi', icon: ChevronsRight, label: 'Multi-Point Path' },
+  ];
 
-const LeftSidebar = ({
-  selectedTool,
-  onToolSelect,
-  onAddCustomPoi
-}: LeftSidebarProps) => {
-  const [showingAddPoi, setShowingAddPoi] = useState(false);
-  const [customPoiName, setCustomPoiName] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleAddPoi = () => {
-    if (customPoiName.trim()) {
-      onAddCustomPoi(customPoiName);
-      setCustomPoiName('');
-      setShowingAddPoi(false);
+  const handleAddCustomPoi = () => {
+    if (newPoiName.trim() && onAddCustomPoi) {
+      onAddCustomPoi(newPoiName.trim());
+      setNewPoiName('');
     }
   };
-
-  const handleToolButtonClick = (toolId: string) => {
-    onToolSelect(toolId);
-  };
-
-  const renderToolButton = (toolId: string, name: string, icon: React.ReactNode) => {
-    return (
-      <Button
-        variant={selectedTool === toolId ? "default" : "outline"}
-        size="sm"
-        className="w-full justify-start mb-1"
-        onClick={() => handleToolButtonClick(toolId)}
-      >
-        {icon} {name}
-      </Button>
-    );
-  };
-
+  
   return (
-    <div className="w-60 bg-sidebar border-r border-gray-200 flex flex-col">
-      <div className="px-4 py-2">
-        <h2 className="text-lg font-semibold">Tools</h2>
+    <div className="w-60 bg-sidebar flex flex-col border-r border-gray-200">
+      <div className="p-3">
+        <h2 className="font-medium text-sm mb-2">Drawing Tools</h2>
+        <div className="grid grid-cols-2 gap-2">
+          {tools.map((tool) => (
+            <Button
+              key={tool.id}
+              variant={selectedTool === tool.id ? "secondary" : "ghost"}
+              size="sm"
+              className="justify-start"
+              onClick={() => onToolSelect(tool.id)}
+            >
+              <tool.icon className="h-4 w-4 mr-2" />
+              {tool.label}
+            </Button>
+          ))}
+        </div>
       </div>
       
-      <ScrollArea className="flex-grow">
-        <div className="p-4">
-          <div className="mb-4">
-            <h3 className="text-sm font-medium mb-2">Selection</h3>
-            {renderToolButton('select', 'Select', <Hand className="h-4 w-4 mr-2" />)}
-            {renderToolButton('pan', 'Pan', <Move className="h-4 w-4 mr-2" />)}
-          </div>
-
-          <Separator className="my-4" />
-
-          <div className="mb-4">
-            <h3 className="text-sm font-medium mb-2">Elements</h3>
-            {renderToolButton('room', 'Room', <Rectangle className="h-4 w-4 mr-2" />)}
-            {renderToolButton('hallway', 'Hallway', <Footprints className="h-4 w-4 mr-2" />)}
-            {renderToolButton('entry', 'Entry/Exit', <DoorClosed className="h-4 w-4 mr-2" />)}
-            {renderToolButton('stairs', 'Stairs/Elevator', <Stars className="h-4 w-4 mr-2" />)}
-            {renderToolButton('wall', 'Wall', <Square className="h-4 w-4 mr-2" />)}
-            {renderToolButton('wall-draw', 'Draw Walls', <Pipette className="h-4 w-4 mr-2" />)}
-            {renderToolButton('custom', 'Custom Zone', <GripHorizontal className="h-4 w-4 mr-2" />)}
-          </div>
-
-          <Separator className="my-4" />
-
-          <div className="mb-4">
-            <h3 className="text-sm font-medium mb-2">Connections</h3>
-            {renderToolButton('connect-straight', 'Straight', <ArrowRightFromLine className="h-4 w-4 mr-2" />)}
-            {renderToolButton('connect-path', 'Path', <Route className="h-4 w-4 mr-2" />)}
-            {renderToolButton('connect-bent', 'Bent', <CornerUpRight className="h-4 w-4 mr-2" />)}
-            {renderToolButton('connect-multi', 'Multi-point', <Workflow className="h-4 w-4 mr-2" />)}
-          </div>
-          
-          <Separator className="my-4" />
-
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium">Points of Interest</h3>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => {
-                  setShowingAddPoi(!showingAddPoi);
-                  setTimeout(() => {
-                    inputRef.current?.focus();
-                  }, 100);
-                }}
+      <Separator />
+      
+      <ScrollArea className="flex-1">
+        <div className="p-3">
+          <h2 className="font-medium text-sm mb-2">Element Types</h2>
+          <div className="space-y-1">
+            {elements.map((element) => (
+              <Button
+                key={element.id}
+                variant={selectedTool === element.id ? "secondary" : "ghost"}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => onToolSelect(element.id)}
               >
-                <PlusCircle className="h-4 w-4" />
+                <div className={`h-3 w-3 rounded-full ${element.color} mr-2`}></div>
+                <element.icon className="h-4 w-4 mr-2" />
+                {element.label}
               </Button>
-            </div>
-
-            {showingAddPoi && (
-              <div className="flex space-x-2 mb-2">
-                <Input 
-                  ref={inputRef}
-                  value={customPoiName}
-                  onChange={(e) => setCustomPoiName(e.target.value)}
-                  placeholder="POI name"
-                  className="h-8"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddPoi();
-                    if (e.key === 'Escape') setShowingAddPoi(false);
-                  }}
-                />
-                <Button size="sm" onClick={handleAddPoi}>Add</Button>
-              </div>
-            )}
-
-            {poiTools.map(tool => renderToolButton(tool.id, tool.name, tool.icon))}
+            ))}
           </div>
+        </div>
+        
+        <Separator />
+        
+        <div className="p-3">
+          <h2 className="font-medium text-sm mb-2">Points of Interest</h2>
+          <div className="space-y-1">
+            {pois.map((poi) => (
+              <Button
+                key={poi.id}
+                variant={selectedTool === `poi-${poi.id}` ? "secondary" : "ghost"}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => onToolSelect(`poi-${poi.id}`)}
+              >
+                <poi.icon className="h-4 w-4 mr-2" />
+                {poi.label}
+              </Button>
+            ))}
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Custom POI
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60">
+                <div className="flex gap-2">
+                  <Input 
+                    value={newPoiName}
+                    onChange={(e) => setNewPoiName(e.target.value)}
+                    placeholder="POI Name"
+                    className="flex-1"
+                  />
+                  <Button size="sm" onClick={handleAddCustomPoi}>Add</Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
 
-          <Separator className="my-4" />
-
-          <div className="mb-4">
-            <h3 className="text-sm font-medium mb-2">Utilities</h3>
-            {renderToolButton('coordinates', 'Coordinates', <MapPin className="h-4 w-4 mr-2" />)}
-            {renderToolButton('true-north', 'True North', <Compass className="h-4 w-4 mr-2" />)}
+        <Separator />
+        
+        <div className="p-3">
+          <h2 className="font-medium text-sm mb-2">Connectors</h2>
+          <div className="space-y-1">
+            {connectors.map((connector) => (
+              <Button
+                key={connector.id}
+                variant={selectedTool === connector.id ? "secondary" : "ghost"}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => onToolSelect(connector.id)}
+              >
+                <connector.icon className="h-4 w-4 mr-2" />
+                {connector.label}
+              </Button>
+            ))}
           </div>
         </div>
       </ScrollArea>

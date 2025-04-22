@@ -27,8 +27,6 @@ const Index = () => {
   const [customPois, setCustomPois] = useState<string[]>([]);
   const [jsonDialogOpen, setJsonDialogOpen] = useState(false);
   const [currentJson, setCurrentJson] = useState('');
-  const [jsonImportDialogOpen, setJsonImportDialogOpen] = useState(false);
-  const [importJsonText, setImportJsonText] = useState('');
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
@@ -167,22 +165,6 @@ const Index = () => {
     toast.success('Blueprint saved successfully!');
   };
   
-  const handleOpenImportDialog = () => {
-    setImportJsonText('');
-    setJsonImportDialogOpen(true);
-  };
-  
-  const handleImportJsonFromText = () => {
-    try {
-      const jsonData = JSON.parse(importJsonText);
-      handleImportJson(jsonData);
-      setJsonImportDialogOpen(false);
-    } catch (error) {
-      toast.error('Invalid JSON format');
-      console.error('Import error:', error);
-    }
-  };
-  
   const handleImportJson = (jsonData: any) => {
     try {
       // Validate required structure
@@ -239,24 +221,6 @@ const Index = () => {
       }
     }
   }, []);
-  
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const jsonData = JSON.parse(content);
-        handleImportJson(jsonData);
-      } catch (error) {
-        toast.error('Failed to parse JSON file');
-        console.error(error);
-      }
-    };
-    reader.readAsText(file);
-  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
@@ -325,65 +289,6 @@ const Index = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* JSON Import Dialog */}
-      <Dialog open={jsonImportDialogOpen} onOpenChange={setJsonImportDialogOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileJson className="h-5 w-5" /> Import Blueprint JSON
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Textarea
-              className="font-mono text-sm h-64 resize-none"
-              placeholder="Paste your JSON here..."
-              value={importJsonText}
-              onChange={(e) => setImportJsonText(e.target.value)}
-            />
-            <div className="flex items-center">
-              <span className="mr-2">Or upload a file:</span>
-              <input type="file" accept=".json" onChange={handleFileUpload} className="text-sm" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleImportJsonFromText} disabled={!importJsonText.trim()}>
-              Import JSON
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* File input for importing JSON hidden in the DOM */}
-      <input 
-        type="file" 
-        id="json-upload" 
-        accept=".json" 
-        className="hidden"
-        onChange={handleFileUpload}
-      />
-      
-      {/* Floating action buttons */}
-      <div className="fixed bottom-6 right-6 flex gap-2">
-        <Button 
-          onClick={handleSave}
-          className="shadow-lg bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          Save
-        </Button>
-        <Button 
-          onClick={handleShowCurrentJson}
-          className="shadow-lg bg-green-600 hover:bg-green-700 text-white"
-        >
-          View JSON
-        </Button>
-        <Button 
-          onClick={handleOpenImportDialog}
-          className="shadow-lg bg-purple-600 hover:bg-purple-700 text-white"
-        >
-          Import JSON
-        </Button>
-      </div>
     </div>
   );
 };

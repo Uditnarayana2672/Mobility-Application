@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -32,8 +31,6 @@ interface BlueprintCanvasProps {
   connectionPoints?: { x: number; y: number }[];
   isMultiPointConnecting?: boolean;
   trueNorth?: number; // True north orientation in degrees
-  isDrawingWall?: boolean;
-  wallPoints?: { x: number; y: number }[];
 }
 
 const BlueprintCanvas = ({
@@ -52,9 +49,7 @@ const BlueprintCanvas = ({
   connectingElements,
   connectionPoints = [],
   isMultiPointConnecting = false,
-  trueNorth = 0,
-  isDrawingWall = false,
-  wallPoints = []
+  trueNorth = 0
 }: BlueprintCanvasProps) => {
   const canvasRef = useRef<HTMLDivElement>(null);
 
@@ -274,42 +269,6 @@ const BlueprintCanvas = ({
   };
 
   const renderDrawingPreview = () => {
-    // Wall drawing preview
-    if (isDrawingWall && wallPoints.length > 0) {
-      let pathPoints = '';
-      wallPoints.forEach((point, index) => {
-        pathPoints += index === 0 ? `M ${point.x} ${point.y} ` : `L ${point.x} ${point.y} `;
-      });
-      pathPoints += `L ${currentPoint.x} ${currentPoint.y}`;
-      
-      return (
-        <g>
-          <path
-            d={pathPoints}
-            stroke="#4B5563"
-            strokeWidth={2}
-            fill="none"
-          />
-          {wallPoints.map((point, index) => (
-            <circle
-              key={`wall-point-${index}`}
-              cx={point.x}
-              cy={point.y}
-              r={3}
-              fill="#4B5563"
-            />
-          ))}
-          <circle
-            cx={currentPoint.x}
-            cy={currentPoint.y}
-            r={3}
-            fill="#4B5563"
-            opacity={0.5}
-          />
-        </g>
-      );
-    }
-  
     if (!drawing) return null;
     
     if (connectingElements || isMultiPointConnecting) {
@@ -450,15 +409,6 @@ const BlueprintCanvas = ({
   };
 
   const renderWall = (element: any) => {
-    // Apply rotation if specified (for wall segments)
-    let transform = '';
-    if (element.rotation) {
-      // Calculate center of the element for rotation
-      const centerX = element.x + element.width / 2;
-      const centerY = element.y + element.height / 2;
-      transform = `transform: rotate(${element.rotation}deg); transform-origin: ${centerX}px ${centerY}px;`;
-    }
-    
     return (
       <div
         key={element.id}
@@ -469,8 +419,6 @@ const BlueprintCanvas = ({
           width: element.width,
           height: element.height,
           opacity: 0.9,
-          transform: element.rotation ? `rotate(${element.rotation}deg)` : '',
-          transformOrigin: element.rotation ? 'left center' : '',
         }}
       >
         {showLabels && element.label && (
@@ -479,35 +427,6 @@ const BlueprintCanvas = ({
           </div>
         )}
       </div>
-    );
-  };
-
-  // Render resize handles for elements
-  const renderResizeHandles = (element: any) => {
-    const handlePositions = [
-      { key: 'nw', x: element.x, y: element.y, cursor: 'nwse-resize' },
-      { key: 'n', x: element.x + element.width / 2, y: element.y, cursor: 'ns-resize' },
-      { key: 'ne', x: element.x + element.width, y: element.y, cursor: 'nesw-resize' },
-      { key: 'e', x: element.x + element.width, y: element.y + element.height / 2, cursor: 'ew-resize' },
-      { key: 'se', x: element.x + element.width, y: element.y + element.height, cursor: 'nwse-resize' },
-      { key: 's', x: element.x + element.width / 2, y: element.y + element.height, cursor: 'ns-resize' },
-      { key: 'sw', x: element.x, y: element.y + element.height, cursor: 'nesw-resize' },
-      { key: 'w', x: element.x, y: element.y + element.height / 2, cursor: 'ew-resize' }
-    ];
-    
-    return (
-      <g>
-        {handlePositions.map(handle => (
-          <circle
-            key={`handle-${element.id}-${handle.key}`}
-            cx={handle.x}
-            cy={handle.y}
-            r={5}
-            className="fill-blue-500 stroke-white stroke-1 opacity-60"
-            style={{ cursor: handle.cursor }}
-          />
-        ))}
-      </g>
     );
   };
 

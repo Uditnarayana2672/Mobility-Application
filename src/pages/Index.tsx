@@ -30,10 +30,12 @@ const Index = () => {
   const [jsonImportDialogOpen, setJsonImportDialogOpen] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
   
+  // New states for undo/redo and coordinate system
   const [history, setHistory] = useState<Array<any>>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
   const [originElement, setOriginElement] = useState<string | null>(null);
 
+  // Create a function to save state to history
   const saveToHistory = useCallback((newState: any) => {
     const newHistory = history.slice(0, currentHistoryIndex + 1);
     newHistory.push(newState);
@@ -55,6 +57,7 @@ const Index = () => {
     }
   }, [currentHistoryIndex, history]);
 
+  // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
@@ -74,6 +77,7 @@ const Index = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleUndo, handleRedo]);
 
+  // Save state to history when blueprint data changes
   useEffect(() => {
     if (blueprintData.elements.length > 0 || blueprintData.connections.length > 0) {
       saveToHistory(blueprintData);
@@ -96,11 +100,13 @@ const Index = () => {
     setShowEdges(!showEdges);
   };
 
+  // Updated element handlers
   const handleElementSelect = (element: any) => {
     setSelectedElement(element);
-    const mouseEvent = window.event as MouseEvent | undefined;
-    if (mouseEvent?.ctrlKey || mouseEvent?.metaKey) {
+    // If Ctrl/Cmd is pressed when selecting, set as origin
+    if (window.event?.ctrlKey || window.event?.metaKey) {
       setOriginElement(element.id);
+      // Update all other elements' coordinates relative to this one
       const originX = element.x;
       const originY = element.y;
       
@@ -170,6 +176,7 @@ const Index = () => {
   };
 
   const handleShowCurrentJson = () => {
+    // Generate current json data
     const jsonData = {
       floors: blueprintData.floors,
       elements: blueprintData.elements,
@@ -193,6 +200,7 @@ const Index = () => {
   };
 
   const handleExport = (format: string) => {
+    // Generate export data based on the format
     const exportData = {
       floors: blueprintData.floors,
       elements: blueprintData.elements,
@@ -205,6 +213,7 @@ const Index = () => {
       }
     };
 
+    // Create a blob and download
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -228,6 +237,7 @@ const Index = () => {
       }
     };
     
+    // Save to localStorage
     localStorage.setItem('blueprintData', JSON.stringify(savedData));
     toast.success('Blueprint saved successfully!');
   };
@@ -250,6 +260,7 @@ const Index = () => {
   
   const handleImportJson = (jsonData: any) => {
     try {
+      // Validate required structure
       if (!jsonData.floors || !Array.isArray(jsonData.floors)) {
         throw new Error('Invalid JSON: missing floors array');
       }
@@ -258,6 +269,7 @@ const Index = () => {
         throw new Error('Invalid JSON: missing elements array');
       }
       
+      // Set the imported data
       setBlueprintData({
         elements: jsonData.elements || [],
         connections: jsonData.connections || [],
@@ -266,6 +278,7 @@ const Index = () => {
         trueNorth: jsonData.trueNorth || 0
       });
       
+      // Set custom POIs if available
       if (jsonData.metadata?.customPois) {
         setCustomPois(jsonData.metadata.customPois);
       }
@@ -277,6 +290,7 @@ const Index = () => {
     }
   };
   
+  // Load saved data on initial render
   useEffect(() => {
     const savedData = localStorage.getItem('blueprintData');
     if (savedData) {
@@ -300,7 +314,7 @@ const Index = () => {
       }
     }
   }, []);
-
+  
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -383,6 +397,7 @@ const Index = () => {
         />
       </div>
 
+      {/* JSON View Dialog */}
       <Dialog open={jsonDialogOpen} onOpenChange={setJsonDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh]">
           <DialogHeader>
@@ -405,6 +420,7 @@ const Index = () => {
         </DialogContent>
       </Dialog>
 
+      {/* JSON Import Dialog */}
       <Dialog open={jsonImportDialogOpen} onOpenChange={setJsonImportDialogOpen}>
         <DialogContent className="max-w-4xl">
           <DialogHeader>
@@ -432,6 +448,7 @@ const Index = () => {
         </DialogContent>
       </Dialog>
       
+      {/* File input for importing JSON hidden in the DOM */}
       <input 
         type="file" 
         id="json-upload" 
@@ -440,6 +457,7 @@ const Index = () => {
         onChange={handleFileUpload}
       />
       
+      {/* Floating action buttons */}
       <div className="fixed bottom-6 right-6 flex gap-2">
         <Button 
           onClick={handleSave}

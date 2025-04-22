@@ -1,4 +1,3 @@
-
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -23,3 +22,21 @@ export function formatDate(date: Date): string {
     minute: 'numeric',
   }).format(date);
 }
+
+export const findElementAtPosition = (elements: any[], x: number, y: number) => {
+  return elements.find(element => {
+    if (element.type === 'poi') {
+      const centerX = element.x;
+      const centerY = element.y;
+      const radius = element.width / 2;
+      return Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)) <= radius;
+    } else {
+      return (
+        x >= element.x &&
+        x <= element.x + element.width &&
+        y >= element.y &&
+        y <= element.y + element.height
+      );
+    }
+  });
+};

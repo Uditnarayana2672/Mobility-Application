@@ -1,8 +1,7 @@
-
 import { useRef, useState, useEffect } from 'react';
 import BlueprintCanvas from './BlueprintCanvas';
 import BlueprintControls from './BlueprintControls';
-import { generateUniqueId } from '@/lib/utils';
+import { generateUniqueId, findElementAtPosition } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider"; 
 import { Compass } from "lucide-react";
+import { useDrawing } from '@/hooks/useDrawing';
+import { useConnections } from '@/hooks/useConnections';
+import { useOrigin } from '@/hooks/useOrigin';
+import { useElementDragging } from '@/hooks/useElementDragging';
 
 interface BlueprintProps {
   selectedTool: string;
@@ -29,7 +32,7 @@ interface BlueprintProps {
   onMoveElement?: (elementId: string, deltaX: number, deltaY: number) => void;
 }
 
-const Blueprint = ({
+const Blueprint: React.FC<BlueprintProps> = ({
   selectedTool,
   showGrid,
   showLabels,
@@ -44,52 +47,26 @@ const Blueprint = ({
   onDeleteElement,
   onDeleteConnection,
   onMoveElement
-}: BlueprintProps) => {
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [drawing, setDrawing] = useState(false);
-  const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
-  const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [connectingElements, setConnectingElements] = useState(false);
-  const [sourceElement, setSourceElement] = useState<any>(null);
-  const [connectionPoints, setConnectionPoints] = useState<{x: number, y: number}[]>([]);
-  const [isMultiPointConnecting, setIsMultiPointConnecting] = useState(false);
-  const [customPois, setCustomPois] = useState<string[]>([]);
+  const [trueNorth, setTrueNorth] = useState(0);
+  const [trueNorthDialogOpen, setTrueNorthDialogOpen] = useState(false);
   const [selectedCoordinatesElement, setSelectedCoordinatesElement] = useState<any>(null);
   const [coordinatesDialogOpen, setCoordinatesDialogOpen] = useState(false);
   const [coordinates, setCoordinates] = useState({ latitude: '', longitude: '', position: 'center' });
-  const [trueNorthDialogOpen, setTrueNorthDialogOpen] = useState(false);
-  const [trueNorth, setTrueNorth] = useState(0); // Degrees, 0 = North up
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedElement, setDraggedElement] = useState<any>(null);
-  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
-  const [originSet, setOriginSet] = useState(false);
-  const [originPoint, setOriginPoint] = useState({ x: 0, y: 0 });
+
+  const { drawing, startPoint, currentPoint, startDrawing, updateDrawing, finishDrawing } = useDrawing(currentFloor, onAddElement);
+  const { connectingElements, sourceElement, connectionPoints, isMultiPointConnecting, startConnection, addConnectionPoint, finishConnection, resetConnection } = useConnections(currentFloor, onAddConnection);
+  const { originPoint, originSet, setOrigin } = useOrigin();
+  const { isDragging, draggedElement, startDragging, updateDragging, stopDragging } = useElementDragging(onMoveElement);
 
   const handleZoom = (delta: number) => {
     const newScale = Math.max(0.1, Math.min(5, scale + delta * 0.1));
     setScale(newScale);
-  };
-
-  const findElementAtPosition = (x: number, y: number) => {
-    return elements.find(element => {
-      if (element.type === 'poi') {
-        const centerX = element.x;
-        const centerY = element.y;
-        const radius = element.width / 2;
-        return Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)) <= radius;
-      } else {
-        return (
-          x >= element.x &&
-          x <= element.x + element.width &&
-          y >= element.y &&
-          y <= element.y + element.height
-        );
-      }
-    });
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -101,9 +78,7 @@ const Blueprint = ({
 
     // Set origin point if Ctrl/Cmd key is pressed
     if ((e.ctrlKey || e.metaKey) && selectedTool === 'select') {
-      setOriginPoint({ x, y });
-      setOriginSet(true);
-      toast.success(`Origin set at (${Math.round(x)}, ${Math.round(y)})`);
+      setOrigin(x, y);
       return;
     }
 
@@ -119,59 +94,35 @@ const Blueprint = ({
     }
 
     if (selectedTool === 'select' || selectedTool.startsWith('connect-')) {
-      const clickedElement = findElementAtPosition(x, y);
+      const clickedElement = findElementAtPosition(elements, x, y);
 
       if (clickedElement) {
         if (selectedTool === 'select') {
-          // Start dragging the element
-          setIsDragging(true);
-          setDraggedElement(clickedElement);
-          setDragStartPos({ x, y });
+          startDragging(clickedElement, x, y);
         }
         
         if (selectedTool.startsWith('connect-')) {
           if (selectedTool === 'connect-multi') {
             if (!isMultiPointConnecting) {
-              setIsMultiPointConnecting(true);
-              setSourceElement(clickedElement);
-              const startPos = { 
-                x: clickedElement.x + clickedElement.width / 2, 
-                y: clickedElement.y + clickedElement.height / 2 
-              };
-              setConnectionPoints([startPos]);
-              setStartPoint(startPos);
-              setCurrentPoint(startPos);
-              setDrawing(true);
+              startConnection(clickedElement, x, y, true);
             }
             return;
           } 
           
-          setConnectingElements(true);
-          setSourceElement(clickedElement);
-          setStartPoint({ 
-            x: clickedElement.x + clickedElement.width / 2, 
-            y: clickedElement.y + clickedElement.height / 2 
-          });
-          setCurrentPoint({ 
-            x: clickedElement.x + clickedElement.width / 2, 
-            y: clickedElement.y + clickedElement.height / 2 
-          });
-          setDrawing(true);
+          startConnection(clickedElement, x, y);
           return;
         }
 
         onElementSelect(clickedElement);
         return;
       } else if (isMultiPointConnecting) {
-        setConnectionPoints([...connectionPoints, { x, y }]);
+        addConnectionPoint(x, y);
         return;
       }
     }
 
     if (['room', 'hallway', 'custom', 'entry', 'stairs', 'wall'].includes(selectedTool)) {
-      setDrawing(true);
-      setStartPoint({ x, y });
-      setCurrentPoint({ x, y });
+      startDrawing(x, y);
     }
   };
 
@@ -192,18 +143,12 @@ const Blueprint = ({
     }
 
     if (isDragging && draggedElement && onMoveElement) {
-      const deltaX = x - dragStartPos.x;
-      const deltaY = y - dragStartPos.y;
-      
-      if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-        onMoveElement(draggedElement.id, deltaX, deltaY);
-        setDragStartPos({ x, y });
-      }
+      updateDragging(x, y);
       return;
     }
 
     if (drawing) {
-      setCurrentPoint({ x, y });
+      updateDrawing(x, y);
     }
   };
 
@@ -219,108 +164,23 @@ const Blueprint = ({
     }
 
     if (isDragging) {
-      setIsDragging(false);
-      setDraggedElement(null);
+      stopDragging();
       return;
     }
 
     if (drawing && !isMultiPointConnecting) {
-      setDrawing(false);
+      finishDrawing(selectedTool);
 
       if (connectingElements && sourceElement) {
-        const targetElement = findElementAtPosition(x, y);
+        const targetElement = findElementAtPosition(elements, x, y);
         
         if (targetElement && targetElement.id !== sourceElement.id) {
           const connectionType = selectedTool.replace('connect-', '');
-          let points = [];
-          
-          if (connectionType === 'bent') {
-            const midX = (sourceElement.x + targetElement.x + targetElement.width) / 2;
-            const midY = (sourceElement.y + targetElement.y + targetElement.height) / 2;
-            points = [
-              { 
-                x: sourceElement.x + sourceElement.width/2, 
-                y: sourceElement.y + sourceElement.height/2 
-              },
-              { x: midX, y: midY },
-              { 
-                x: targetElement.x + targetElement.width/2, 
-                y: targetElement.y + targetElement.height/2 
-              }
-            ];
-          } else if (connectionType === 'path') {
-            // For path type, just have start and end points for bidirectional
-            points = [
-              { 
-                x: sourceElement.x + sourceElement.width/2, 
-                y: sourceElement.y + sourceElement.height/2 
-              },
-              { 
-                x: targetElement.x + targetElement.width/2, 
-                y: targetElement.y + targetElement.height/2 
-              }
-            ];
-          }
-          
-          const connection = {
-            id: generateUniqueId(),
-            source: sourceElement.id,
-            target: targetElement.id,
-            type: connectionType,
-            floor: currentFloor,
-            directed: connectionType !== 'path', // Path connectors are bidirectional
-            bidirectional: connectionType === 'path', // Add this explicitly for path
-            label: '',
-            distance: 0,
-            travel_time: 0,
-            points: points,
-            width: 1,
-            capacity: 1,
-            wheelchair_accessible: true,
-            allow_vehicles: false,
-            custom_attributes: []
-          };
-          
-          onAddConnection(connection);
-          toast.success('Created new connection');
+          finishConnection(targetElement, connectionType);
         }
         
-        setConnectingElements(false);
-        setSourceElement(null);
+        resetConnection();
         return;
-      }
-
-      if (['room', 'hallway', 'custom', 'entry', 'stairs', 'wall'].includes(selectedTool)) {
-        const width = Math.abs(currentPoint.x - startPoint.x);
-        const height = Math.abs(currentPoint.y - startPoint.y);
-        
-        if (width > 5 && height > 5) {
-          const defaultProps = {
-            id: generateUniqueId(),
-            type: selectedTool,
-            x: Math.min(startPoint.x, currentPoint.x),
-            y: Math.min(startPoint.y, currentPoint.y),
-            width,
-            height,
-            name: `New ${selectedTool}`,
-            floor: currentFloor,
-            tags: [],
-            custom_attributes: [],
-            capacity: 0
-          };
-          
-          // Add wall-specific properties if it's a wall
-          const element = selectedTool === 'wall' 
-            ? { 
-                ...defaultProps, 
-                wallThickness: 1,
-                label: 'Wall'
-              } 
-            : defaultProps;
-          
-          onAddElement(element);
-          toast.success(`Added new ${selectedTool}`);
-        }
       }
     }
   };
@@ -328,53 +188,20 @@ const Blueprint = ({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && isMultiPointConnecting && sourceElement && connectionPoints.length > 1) {
       const lastPoint = connectionPoints[connectionPoints.length - 1];
-      const targetElement = findElementAtPosition(lastPoint.x, lastPoint.y);
+      const targetElement = findElementAtPosition(elements, lastPoint.x, lastPoint.y);
 
       if (targetElement && targetElement.id !== sourceElement.id) {
-        const finalPoints = [...connectionPoints, {
-          x: targetElement.x + targetElement.width / 2,
-          y: targetElement.y + targetElement.height / 2
-        }];
-
-        const connection = {
-          id: generateUniqueId(),
-          source: sourceElement.id,
-          target: targetElement.id,
-          type: 'multi',
-          floor: currentFloor,
-          directed: true,
-          bidirectional: false,
-          label: '',
-          distance: 0,
-          travel_time: 0,
-          points: finalPoints,
-          width: 1,
-          capacity: 1,
-          wheelchair_accessible: true,
-          allow_vehicles: false,
-          custom_attributes: []
-        };
-        
-        onAddConnection(connection);
-        toast.success('Created multi-point connection');
+        finishConnection(targetElement, 'multi');
       } else {
         toast.error('No target element found for connection');
       }
       
-      setIsMultiPointConnecting(false);
-      setConnectingElements(false);
-      setSourceElement(null);
-      setConnectionPoints([]);
-      setDrawing(false);
+      resetConnection();
       e.preventDefault();
     }
     
     if (e.key === 'Escape' && isMultiPointConnecting) {
-      setIsMultiPointConnecting(false);
-      setConnectingElements(false);
-      setSourceElement(null);
-      setConnectionPoints([]);
-      setDrawing(false);
+      resetConnection();
       e.preventDefault();
     }
 
@@ -431,7 +258,7 @@ const Blueprint = ({
       onAddElement(element);
       toast.success(`Added new POI: ${poiType}`);
     } else if (selectedTool === 'coordinates') {
-      const clickedElement = findElementAtPosition(x, y);
+      const clickedElement = findElementAtPosition(elements, x, y);
       if (clickedElement) {
         setSelectedCoordinatesElement(clickedElement);
         setCoordinates({

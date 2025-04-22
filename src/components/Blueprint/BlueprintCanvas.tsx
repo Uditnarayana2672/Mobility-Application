@@ -12,6 +12,8 @@ import {
   Compass
 } from 'lucide-react';
 
+
+
 interface BlueprintCanvasProps {
   scale: number;
   position: { x: number; y: number };

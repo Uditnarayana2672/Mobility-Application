@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { 
   Printer, 
@@ -31,6 +32,8 @@ interface BlueprintCanvasProps {
   connectionPoints?: { x: number; y: number }[];
   isMultiPointConnecting?: boolean;
   trueNorth?: number; // True north orientation in degrees
+  originPoint?: { x: number; y: number }; // Added missing property
+  originSet?: boolean; // Added missing property
 }
 
 const BlueprintCanvas = ({

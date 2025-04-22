@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
@@ -97,6 +96,11 @@ const RightSidebar = ({
       // It's an element
       onDeleteElement(selectedElement.id);
     }
+  };
+
+  // Add this new handler for coordinate position
+  const handleCoordinatePositionChange = (value: string) => {
+    handlePropertyChange('coordinatePosition', value);
   };
 
   if (!selectedElement) {
@@ -202,18 +206,70 @@ const RightSidebar = ({
                       </div>
                     </div>
                     
-                    {selectedElement.type === 'wall' && (
+                    {(selectedElement.type === 'entry' || selectedElement.type === 'room' || selectedElement.type === 'hallway') && (
                       <div className="space-y-2">
-                        <Label htmlFor="wall-thickness">Wall Thickness</Label>
+                        <Label htmlFor="element-imageUrl">Image URL</Label>
                         <Input
-                          id="wall-thickness"
-                          type="number"
-                          value={selectedElement.wallThickness || 1}
-                          onChange={e => handlePropertyChange('wallThickness', Number(e.target.value))}
+                          id="element-imageUrl"
+                          value={selectedElement.imageUrl || ''}
+                          onChange={e => handlePropertyChange('imageUrl', e.target.value)}
+                          placeholder="Enter image URL"
                         />
                       </div>
                     )}
-                    
+
+                    {selectedElement.type === 'wall' && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="wall-thickness">Wall Thickness (m)</Label>
+                          <Input
+                            id="wall-thickness"
+                            type="number"
+                            value={selectedElement.wallThickness || 1}
+                            onChange={e => handlePropertyChange('wallThickness', Number(e.target.value))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Wall Material</Label>
+                          <Select
+                            value={selectedElement.material || 'concrete'}
+                            onValueChange={value => handlePropertyChange('material', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select material" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="concrete">Concrete</SelectItem>
+                              <SelectItem value="brick">Brick</SelectItem>
+                              <SelectItem value="glass">Glass</SelectItem>
+                              <SelectItem value="wood">Wood</SelectItem>
+                              <SelectItem value="metal">Metal</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+
+                    {selectedElement.type === 'stairs' && (
+                      <div className="space-y-2">
+                        <Label>Stairs Type</Label>
+                        <Select
+                          value={selectedElement.stairsType || 'normal'}
+                          onValueChange={value => handlePropertyChange('stairsType', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select stairs type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Normal</SelectItem>
+                            <SelectItem value="spiral">Spiral</SelectItem>
+                            <SelectItem value="escalator">Escalator</SelectItem>
+                            <SelectItem value="elevator">Elevator</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
                     <div className="space-y-2">
                       <Label htmlFor="element-capacity">Capacity</Label>
                       <Input
@@ -223,27 +279,64 @@ const RightSidebar = ({
                         onChange={e => handlePropertyChange('capacity', Number(e.target.value))}
                       />
                     </div>
-                    
-                    {(selectedElement.latitude !== undefined || selectedElement.longitude !== undefined) && (
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="element-lat">Latitude</Label>
-                          <Input
-                            id="element-lat"
-                            type="text"
-                            value={selectedElement.latitude || ''}
-                            onChange={e => handlePropertyChange('latitude', Number(e.target.value))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="element-lng">Longitude</Label>
-                          <Input
-                            id="element-lng"
-                            type="text"
-                            value={selectedElement.longitude || ''}
-                            onChange={e => handlePropertyChange('longitude', Number(e.target.value))}
-                          />
-                        </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="element-dimension">Dimension Unit</Label>
+                      <Select
+                        value={selectedElement.dimension || 'm'}
+                        onValueChange={value => handlePropertyChange('dimension', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select dimension unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="m">Meters</SelectItem>
+                          <SelectItem value="ft">Feet</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="element-lat">Latitude</Label>
+                        <Input
+                          id="element-lat"
+                          type="text"
+                          value={selectedElement.latitude || ''}
+                          onChange={e => handlePropertyChange('latitude', Number(e.target.value))}
+                          placeholder="Optional"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="element-lng">Longitude</Label>
+                        <Input
+                          id="element-lng"
+                          type="text"
+                          value={selectedElement.longitude || ''}
+                          onChange={e => handlePropertyChange('longitude', Number(e.target.value))}
+                          placeholder="Optional"
+                        />
+                      </div>
+                    </div>
+
+                    {(selectedElement.latitude || selectedElement.longitude) && (
+                      <div className="space-y-2">
+                        <Label>Coordinate Position</Label>
+                        <Select
+                          value={selectedElement.coordinatePosition || 'center'}
+                          onValueChange={handleCoordinatePositionChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select position" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="center">Center</SelectItem>
+                            <SelectItem value="top-left">Top Left</SelectItem>
+                            <SelectItem value="top-right">Top Right</SelectItem>
+                            <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                            <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                   </>
@@ -299,58 +392,93 @@ const RightSidebar = ({
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="connection-directed">Directed</Label>
-                        <Switch
-                          id="connection-directed"
-                          checked={!!selectedElement.directed}
-                          onCheckedChange={checked => handlePropertyChange('directed', checked)}
-                        />
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="connection-bidirectional">Bidirectional</Label>
-                        <Switch
-                          id="connection-bidirectional"
-                          checked={!!selectedElement.bidirectional}
-                          onCheckedChange={checked => handlePropertyChange('bidirectional', checked)}
-                        />
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="connection-wheelchair">Wheelchair</Label>
-                        <Switch
-                          id="connection-wheelchair"
-                          checked={selectedElement.wheelchair_accessible !== false}
-                          onCheckedChange={checked => handlePropertyChange('wheelchair_accessible', checked)}
-                        />
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Label htmlFor="connection-vehicles">Vehicles</Label>
-                        <Switch
-                          id="connection-vehicles"
-                          checked={!!selectedElement.allow_vehicles}
-                          onCheckedChange={checked => handlePropertyChange('allow_vehicles', checked)}
-                        />
-                      </div>
-                    </div>
-                    
                     <div className="space-y-2">
                       <Label>Connection Type</Label>
                       <Select
-                        value={selectedElement.type}
+                        value={selectedElement.type || 'straight'}
                         onValueChange={value => handlePropertyChange('type', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select connection type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="straight">Straight</SelectItem>
-                          <SelectItem value="bent">Bent</SelectItem>
-                          <SelectItem value="path">Path (Bidirectional)</SelectItem>
-                          <SelectItem value="multi">Multi-Point</SelectItem>
+                          <SelectItem value="straight">Straight Line</SelectItem>
+                          <SelectItem value="bent">Multi-Point (Bent)</SelectItem>
+                          <SelectItem value="path">Bidirectional Path</SelectItem>
+                          <SelectItem value="multi">Multi-Point Path</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="connection-directed"
+                          checked={!!selectedElement.directed}
+                          onCheckedChange={checked => handlePropertyChange('directed', checked)}
+                        />
+                        <Label htmlFor="connection-directed">Directed</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="connection-bidirectional"
+                          checked={!!selectedElement.bidirectional}
+                          onCheckedChange={checked => handlePropertyChange('bidirectional', checked)}
+                        />
+                        <Label htmlFor="connection-bidirectional">Bidirectional</Label>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="connection-wheelchair"
+                          checked={selectedElement.wheelchair_accessible !== false}
+                          onCheckedChange={checked => handlePropertyChange('wheelchair_accessible', checked)}
+                        />
+                        <Label htmlFor="connection-wheelchair">Wheelchair Accessible</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          id="connection-vehicles"
+                          checked={!!selectedElement.allow_vehicles}
+                          onCheckedChange={checked => handlePropertyChange('allow_vehicles', checked)}
+                        />
+                        <Label htmlFor="connection-vehicles">Allow Vehicles</Label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="connection-path-type">Path Type</Label>
+                      <Select
+                        value={selectedElement.pathType || 'walkway'}
+                        onValueChange={value => handlePropertyChange('pathType', value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select path type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="walkway">Walkway</SelectItem>
+                          <SelectItem value="corridor">Corridor</SelectItem>
+                          <SelectItem value="road">Road</SelectItem>
+                          <SelectItem value="bridge">Bridge</SelectItem>
+                          <SelectItem value="tunnel">Tunnel</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedElement.type === 'path' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="path-weight">Path Weight</Label>
+                        <Input
+                          id="path-weight"
+                          type="number"
+                          value={selectedElement.weight || 1}
+                          onChange={e => handlePropertyChange('weight', Number(e.target.value))}
+                          min="1"
+                        />
+                      </div>
+                    )}
                   </>
                 )}
                 

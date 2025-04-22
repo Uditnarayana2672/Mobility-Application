@@ -1,3 +1,4 @@
+
 import { useRef, useState, useEffect } from 'react';
 import BlueprintCanvas from './BlueprintCanvas';
 import BlueprintControls from './BlueprintControls';
@@ -57,6 +58,7 @@ const Blueprint = ({
   const [trueNorthDialogOpen, setTrueNorthDialogOpen] = useState(false);
   const [trueNorth, setTrueNorth] = useState(0);
   
+  // New states for element manipulation
   const [isMovingElement, setIsMovingElement] = useState(false);
   const [movingElement, setMovingElement] = useState<any>(null);
   const [elementOffset, setElementOffset] = useState({ x: 0, y: 0 });
@@ -71,6 +73,7 @@ const Blueprint = ({
   };
 
   const findElementAtPosition = (x: number, y: number) => {
+    // Sort elements by size (smallest first) to prioritize selection of smaller elements
     const sortedElements = [...elements].sort((a, b) => {
       const areaA = a.width * a.height;
       const areaB = b.width * b.height;
@@ -94,8 +97,9 @@ const Blueprint = ({
     });
   };
 
+  // Check if point is near element edge or corner for resizing
   const getResizeHandleAtPosition = (x: number, y: number, element: any) => {
-    const handleSize = 10 / scale;
+    const handleSize = 10 / scale; // Adjust handle size based on zoom
     const edges = {
       'nw': { x: element.x, y: element.y },
       'n': { x: element.x + element.width / 2, y: element.y },
@@ -123,16 +127,19 @@ const Blueprint = ({
     const x = (e.clientX - rect.left - position.x) / scale;
     const y = (e.clientY - rect.top - position.y) / scale;
 
+    // True North tool handling
     if (selectedTool === 'true-north') {
       setTrueNorthDialogOpen(true);
       return;
     }
     
+    // Wall drawing tool
     if (selectedTool === 'wall-draw') {
       if (!isDrawingWall) {
         setIsDrawingWall(true);
         setWallPoints([{ x, y }]);
       } else {
+        // Add point to wall
         setWallPoints([...wallPoints, { x, y }]);
       }
       return;
@@ -148,6 +155,7 @@ const Blueprint = ({
       const clickedElement = findElementAtPosition(x, y);
       
       if (clickedElement) {
+        // Check if clicking on a resize handle
         const resizeHandle = getResizeHandleAtPosition(x, y, clickedElement);
         
         if (resizeHandle) {
@@ -158,6 +166,7 @@ const Blueprint = ({
           return;
         }
         
+        // If not on resize handle, start moving the element
         setIsMovingElement(true);
         setMovingElement(clickedElement);
         setElementOffset({ 
@@ -221,11 +230,13 @@ const Blueprint = ({
     const x = (e.clientX - rect.left - position.x) / scale;
     const y = (e.clientY - rect.top - position.y) / scale;
 
+    // Update cursor based on what's under it
     if (selectedTool === 'select') {
       const clickedElement = findElementAtPosition(x, y);
       if (clickedElement) {
         const resizeHandle = getResizeHandleAtPosition(x, y, clickedElement);
         if (resizeHandle) {
+          // Set cursor based on resize direction
           switch (resizeHandle) {
             case 'nw': case 'se': containerRef.current.style.cursor = 'nwse-resize'; break;
             case 'ne': case 'sw': containerRef.current.style.cursor = 'nesw-resize'; break;
@@ -250,6 +261,7 @@ const Blueprint = ({
       return;
     }
     
+    // Handle element moving
     if (isMovingElement && movingElement && onElementUpdate) {
       const newX = x - elementOffset.x;
       const newY = y - elementOffset.y;
@@ -265,12 +277,14 @@ const Blueprint = ({
       return;
     }
     
+    // Handle element resizing
     if (isResizingElement && movingElement && resizeDirection && onElementUpdate) {
       let newX = movingElement.x;
       let newY = movingElement.y;
       let newWidth = movingElement.width;
       let newHeight = movingElement.height;
       
+      // Update dimensions based on resize direction
       switch (resizeDirection) {
         case 'nw':
           newWidth = movingElement.x + movingElement.width - x;
@@ -308,6 +322,7 @@ const Blueprint = ({
           break;
       }
       
+      // Ensure minimum size
       if (newWidth < 10) {
         newWidth = 10;
         if (resizeDirection.includes('w')) newX = movingElement.x + movingElement.width - 10;
@@ -347,12 +362,14 @@ const Blueprint = ({
       return;
     }
     
+    // Reset element moving state
     if (isMovingElement) {
       setIsMovingElement(false);
       setMovingElement(null);
       return;
     }
     
+    // Reset element resizing state
     if (isResizingElement) {
       setIsResizingElement(false);
       setMovingElement(null);
@@ -432,6 +449,7 @@ const Blueprint = ({
             capacity: 0
           };
           
+          // Add wall-specific properties if it's a wall
           const element = selectedTool === 'wall' 
             ? { 
                 ...defaultProps, 
@@ -448,20 +466,25 @@ const Blueprint = ({
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
+    // Finish wall drawing on double-click
     if (isDrawingWall && wallPoints.length > 1) {
       const wallElements = [];
       
+      // Convert wall points to wall elements
       for (let i = 0; i < wallPoints.length - 1; i++) {
         const start = wallPoints[i];
         const end = wallPoints[i+1];
         
+        // Calculate wall dimensions
         const dx = end.x - start.x;
         const dy = end.y - start.y;
         const length = Math.sqrt(dx * dx + dy * dy);
         const angle = Math.atan2(dy, dx);
         
+        // Create wall with thickness 1
         const thickness = 2;
         
+        // Position the wall at start point
         const wallElement = {
           id: generateUniqueId(),
           type: 'wall',
@@ -481,8 +504,10 @@ const Blueprint = ({
         wallElements.push(wallElement);
       }
       
+      // Add all wall elements
       wallElements.forEach(wall => onAddElement(wall));
       
+      // Reset wall drawing
       setIsDrawingWall(false);
       setWallPoints([]);
       toast.success(`Added ${wallElements.length} wall segments`);
@@ -533,6 +558,7 @@ const Blueprint = ({
     }
     
     if (e.key === 'Escape') {
+      // Cancel multi-point connection
       if (isMultiPointConnecting) {
         setIsMultiPointConnecting(false);
         setConnectingElements(false);
@@ -542,6 +568,7 @@ const Blueprint = ({
         e.preventDefault();
       }
       
+      // Cancel wall drawing
       if (isDrawingWall) {
         setIsDrawingWall(false);
         setWallPoints([]);
@@ -630,14 +657,7 @@ const Blueprint = ({
 
   const saveTrueNorth = () => {
     setTrueNorthDialogOpen(false);
-    if (onElementUpdate) {
-      const updatedElement = {
-        ...selectedElement,
-        trueNorth: trueNorth
-      };
-      onElementUpdate(updatedElement);
-    }
-    toast.success(`True north azimuth set to ${trueNorth}°`);
+    toast.success(`True north orientation set to ${trueNorth}°`);
   };
 
   return (

@@ -3,6 +3,7 @@ import React from 'react';
 import { Compass } from 'lucide-react';
 import BlueprintElements from './BlueprintElements';
 import BlueprintConnections from './BlueprintConnections';
+import { AIRPORT_AREA_MAP, DRAWABLE_TYPES } from '@/lib/elementTypes';
 
 interface BlueprintCanvasProps {
   scale: number;
@@ -136,7 +137,7 @@ const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
       );
     }
     
-    if (['room', 'hallway', 'custom', 'entry', 'stairs', 'wall'].includes(selectedTool)) {
+    if (DRAWABLE_TYPES.includes(selectedTool)) {
       const x = Math.min(startPoint.x, currentPoint.x);
       const y = Math.min(startPoint.y, currentPoint.y);
       const width = Math.abs(currentPoint.x - startPoint.x);
@@ -152,6 +153,7 @@ const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         case 'custom': color = 'stroke-blueprint-element-custom fill-blueprint-element-custom/20'; break;
         default: color = 'stroke-gray-400 fill-gray-200/20';
       }
+      const areaColor = AIRPORT_AREA_MAP[selectedTool]?.color;
       
       return (
         <rect
@@ -160,6 +162,7 @@ const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
           width={width}
           height={height}
           className={`${color} stroke-2 stroke-dashed`}
+          style={areaColor ? { stroke: areaColor, fill: `${areaColor}33` } : undefined}
         />
       );
     }
@@ -182,7 +185,7 @@ const BlueprintCanvas: React.FC<BlueprintCanvasProps> = ({
         transformOrigin: '0 0'
       }}
     >
-      <svg width="100%" height="100%" className="absolute inset-0">
+      <svg width="100%" height="100%" className="absolute inset-0" style={{ overflow: 'visible' }}>
         {renderGrid()}
         <BlueprintConnections
           connections={connections}

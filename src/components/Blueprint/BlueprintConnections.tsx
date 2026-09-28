@@ -85,6 +85,8 @@ const BlueprintConnections: React.FC<BlueprintConnectionsProps> = ({
         const target = elements.find(e => e.id === connection.target);
         
         if (!source || !target) return null;
+        // Vertical (cross-floor) links stay in the graph but have no 2D line to draw
+        if (source.floor !== currentFloor || target.floor !== currentFloor) return null;
         
         const sourceX = source.x + (source.width / 2);
         const sourceY = source.y + (source.height / 2);

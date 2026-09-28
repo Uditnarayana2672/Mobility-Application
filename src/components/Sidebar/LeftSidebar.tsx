@@ -30,6 +30,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { AIRPORT_AREA_TYPES, AIRPORT_POIS } from '@/lib/elementTypes';
 
 interface LeftSidebarProps {
   selectedTool: string;
@@ -62,6 +63,7 @@ const LeftSidebar = ({ selectedTool, onToolSelect, onAddCustomPoi }: LeftSidebar
     { id: 'water', icon: Droplet, label: 'Water Cooler' },
     { id: 'coffee', icon: Coffee, label: 'Coffee Machine' },
     { id: 'food', icon: Utensils, label: 'Food Area' },
+    ...AIRPORT_POIS,
   ];
   
   const connectors = [
@@ -115,6 +117,27 @@ const LeftSidebar = ({ selectedTool, onToolSelect, onAddCustomPoi }: LeftSidebar
                 <div className={`h-3 w-3 rounded-full ${element.color} mr-2`}></div>
                 <element.icon className="h-4 w-4 mr-2" />
                 {element.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+        
+        <Separator />
+
+        <div className="p-3">
+          <h2 className="font-medium text-sm mb-2">Airport Areas</h2>
+          <div className="space-y-1">
+            {AIRPORT_AREA_TYPES.map((area) => (
+              <Button
+                key={area.id}
+                variant={selectedTool === area.id ? "secondary" : "ghost"}
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => onToolSelect(area.id)}
+              >
+                <div className="h-3 w-3 rounded-full mr-2" style={{ backgroundColor: area.color }}></div>
+                <area.icon className="h-4 w-4 mr-2" />
+                {area.label}
               </Button>
             ))}
           </div>

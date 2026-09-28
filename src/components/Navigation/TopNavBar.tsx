@@ -126,6 +126,16 @@ const TopNavBar = ({
     }
   };
 
+  const handleLoadSample = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.BASE_URL}maps/blr-kia-t2.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      onImportJson(await res.json());
+    } catch (error) {
+      toast.error('Failed to load sample map');
+    }
+  };
+
   return (
     <div className="flex justify-between items-center px-4 py-2 bg-blueprint-secondary text-white">
       <div className="flex items-center space-x-2">
@@ -217,6 +227,9 @@ const TopNavBar = ({
                     className="h-32"
                   />
                   <Button onClick={handleJsonImport} className="w-full">Import from Text</Button>
+                  <Button onClick={handleLoadSample} variant="secondary" className="w-full">
+                    Load Sample: Bengaluru KIA Terminal 2
+                  </Button>
                 </div>
               </div>
               <div className="border-t pt-4">

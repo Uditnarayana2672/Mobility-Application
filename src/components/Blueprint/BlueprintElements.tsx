@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Printer, DoorClosed, Stars, Sofa, Box, Coffee, Utensils, Droplet } from 'lucide-react';
+import { AIRPORT_AREA_MAP, AIRPORT_POIS } from '@/lib/elementTypes';
 
 interface BlueprintElementsProps {
   elements: any[];
@@ -28,7 +29,11 @@ const getPoiIcon = (poiType: string) => {
     case 'water': return <Droplet className="h-5 w-5 text-blueprint-element-poi" />;
     case 'coffee': return <Coffee className="h-5 w-5 text-blueprint-element-poi" />;
     case 'food': return <Utensils className="h-5 w-5 text-blueprint-element-poi" />;
-    default: return <Box className="h-5 w-5 text-blueprint-element-poi" />;
+    default: {
+      const airportPoi = AIRPORT_POIS.find(p => p.id === poiType);
+      const Icon = airportPoi ? airportPoi.icon : Box;
+      return <Icon className="h-4 w-4 text-blueprint-element-poi" />;
+    }
   }
 };
 
@@ -68,6 +73,47 @@ const BlueprintElements: React.FC<BlueprintElementsProps> = ({
             return renderWall(element);
           }
           
+          const areaType = AIRPORT_AREA_MAP[element.type];
+          if (areaType) {
+            const Icon = areaType.icon;
+            const isSmall = element.width < 60 || element.height < 40;
+            const text = element.label || element.name;
+            const background = element.type === 'restricted'
+              ? `repeating-linear-gradient(45deg, ${areaType.color}22 0 6px, ${areaType.color}44 6px 12px)`
+              : `${areaType.color}26`;
+            return (
+              <div
+                key={element.id}
+                className="absolute border overflow-hidden"
+                title={element.name}
+                style={{
+                  left: element.x,
+                  top: element.y,
+                  width: element.width,
+                  height: element.height,
+                  borderColor: areaType.color,
+                  background,
+                }}
+              >
+                {!isSmall && (
+                  <Icon
+                    className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-60"
+                    style={{ color: areaType.color }}
+                  />
+                )}
+                {showLabels && (isSmall ? (
+                  <div className="absolute inset-0 flex items-center justify-center text-[9px] leading-none font-medium text-center">
+                    {text}
+                  </div>
+                ) : (
+                  <div className="absolute top-1 left-1 right-1 text-[10px] leading-tight bg-white/70 px-1 rounded">
+                    {text}
+                  </div>
+                ))}
+              </div>
+            );
+          }
+
           const classes = getElementColor(element.type);
           
           if (element.type === 'poi') {

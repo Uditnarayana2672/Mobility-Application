@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { COMMON_AIRPORT_FIELDS, TYPE_FIELDS, AttributeField } from '@/lib/elementTypes';
 
 interface RightSidebarProps {
   selectedElement: any;
@@ -48,23 +49,90 @@ const RightSidebar = ({
   onDeleteElement,
   onDeleteConnection
 }: RightSidebarProps) => {
-  const [elementProperties, setElementProperties] = useState<any>({});
+  const [newAttrKey, setNewAttrKey] = useState('');
+  const [newAttrValue, setNewAttrValue] = useState('');
 
   const handlePropertyChange = (property: string, value: any) => {
-    if (!selectedElement) return;
-    
-    const updatedProperties = {
-      ...elementProperties,
+    if (!selectedElement || !onElementUpdate) return;
+    onElementUpdate({
+      ...selectedElement,
       [property]: value
-    };
-    
-    setElementProperties(updatedProperties);
-    
-    if (onElementUpdate) {
-      onElementUpdate({
-        ...selectedElement,
-        ...updatedProperties
-      });
+    });
+  };
+
+  const customAttributes: { key: string; value: string }[] = Array.isArray(selectedElement?.custom_attributes)
+    ? selectedElement.custom_attributes
+    : [];
+
+  const handleCustomAttrAdd = () => {
+    if (!newAttrKey.trim()) return;
+    const others = customAttributes.filter(a => a.key !== newAttrKey.trim());
+    handlePropertyChange('custom_attributes', [...others, { key: newAttrKey.trim(), value: newAttrValue }]);
+    setNewAttrKey('');
+    setNewAttrValue('');
+  };
+
+  const handleCustomAttrRemove = (key: string) => {
+    handlePropertyChange('custom_attributes', customAttributes.filter(a => a.key !== key));
+  };
+
+  const renderAttributeField = (field: AttributeField) => {
+    const value = selectedElement[field.key];
+    const id = `attr-${field.key}`;
+    switch (field.kind) {
+      case 'boolean':
+        return (
+          <div key={field.key} className="flex items-center space-x-2">
+            <Switch id={id} checked={!!value} onCheckedChange={checked => handlePropertyChange(field.key, checked)} />
+            <Label htmlFor={id}>{field.label}</Label>
+          </div>
+        );
+      case 'select':
+        return (
+          <div key={field.key} className="space-y-2">
+            <Label>{field.label}</Label>
+            <Select value={value || ''} onValueChange={v => handlePropertyChange(field.key, v)}>
+              <SelectTrigger>
+                <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.options!.map(opt => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      case 'list':
+        return (
+          <div key={field.key} className="space-y-2">
+            <Label htmlFor={id}>{field.label} (comma separated)</Label>
+            <Input
+              id={id}
+              value={Array.isArray(value) ? value.join(', ') : value || ''}
+              onChange={e => handlePropertyChange(field.key, e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+            />
+          </div>
+        );
+      case 'number':
+        return (
+          <div key={field.key} className="space-y-2">
+            <Label htmlFor={id}>{field.label}</Label>
+            <Input
+              id={id}
+              type="number"
+              value={value ?? ''}
+              onChange={e => handlePropertyChange(field.key, e.target.value === '' ? undefined : Number(e.target.value))}
+            />
+          </div>
+        );
+      default:
+        return (
+          <div key={field.key} className="space-y-2">
+            <Label htmlFor={id}>{field.label}</Label>
+            <Input id={id} value={value || ''} onChange={e => handlePropertyChange(field.key, e.target.value)} />
+          </div>
+        );
     }
   };
   
@@ -167,6 +235,16 @@ const RightSidebar = ({
                       />
                     </div>
                     
+                    <div className="space-y-2">
+                      <Label htmlFor="element-label">Short Label</Label>
+                      <Input
+                        id="element-label"
+                        value={selectedElement.label || ''}
+                        onChange={e => handlePropertyChange('label', e.target.value)}
+                        placeholder="Shown on canvas instead of name"
+                      />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-2">
                         <Label htmlFor="element-x">X</Label>
@@ -279,6 +357,12 @@ const RightSidebar = ({
                         onChange={e => handlePropertyChange('capacity', Number(e.target.value))}
                       />
                     </div>
+
+                    <Separator />
+                    <h3 className="text-sm font-medium">Attributes</h3>
+                    {(TYPE_FIELDS[selectedElement.type] || []).map(renderAttributeField)}
+                    {COMMON_AIRPORT_FIELDS.map(renderAttributeField)}
+                    <Separator />
 
                     <div className="space-y-2">
                       <Label htmlFor="element-dimension">Dimension Unit</Label>
@@ -520,6 +604,22 @@ const RightSidebar = ({
                     >
                       Add
                     </Button>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Custom Attributes</Label>
+                  {customAttributes.map(attr => (
+                    <div key={attr.key} className="flex items-center gap-2 text-xs">
+                      <span className="font-medium">{attr.key}:</span>
+                      <span className="flex-1 truncate">{String(attr.value)}</span>
+                      <button onClick={() => handleCustomAttrRemove(attr.key)} className="text-gray-500 hover:text-gray-700">×</button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Input placeholder="Key" value={newAttrKey} onChange={e => setNewAttrKey(e.target.value)} />
+                    <Input placeholder="Value" value={newAttrValue} onChange={e => setNewAttrValue(e.target.value)} />
+                    <Button variant="outline" onClick={handleCustomAttrAdd}>Add</Button>
                   </div>
                 </div>
                 

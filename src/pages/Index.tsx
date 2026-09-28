@@ -79,16 +79,22 @@ const Index = () => {
   }, [history, historyIndex, isUndoRedoAction]);
 
   const handleElementUpdate = (updatedElement: any) => {
-    const updatedElements = blueprintData.elements.map(el => 
+    const isConnection = 'source' in updatedElement && 'target' in updatedElement;
+    const updatedElements = isConnection ? blueprintData.elements : blueprintData.elements.map(el => 
       el.id === updatedElement.id ? updatedElement : el
     );
+    const updatedConnections = isConnection ? blueprintData.connections.map(conn =>
+      conn.id === updatedElement.id ? updatedElement : conn
+    ) : blueprintData.connections;
     
     setBlueprintData({
       ...blueprintData,
-      elements: updatedElements
+      elements: updatedElements,
+      connections: updatedConnections
     });
+    setSelectedElement(updatedElement);
     
-    addToHistory(updatedElements, blueprintData.connections);
+    addToHistory(updatedElements, updatedConnections);
   };
 
   const handleAddElement = (element: any) => {
@@ -316,6 +322,7 @@ const Index = () => {
         currentFloor: jsonData.currentFloor || jsonData.floors[0],
         trueNorth: jsonData.trueNorth || 0
       });
+      setSelectedElement(null);
       
       // Set custom POIs if available
       if (jsonData.metadata?.customPois) {

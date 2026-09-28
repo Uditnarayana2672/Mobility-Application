@@ -23,8 +23,9 @@ export function formatDate(date: Date): string {
   }).format(date);
 }
 
+// Searches from the end so the topmost (last drawn) element wins
 export const findElementAtPosition = (elements: any[], x: number, y: number) => {
-  return elements.find(element => {
+  return [...elements].reverse().find(element => {
     if (element.type === 'poi') {
       const centerX = element.x;
       const centerY = element.y;

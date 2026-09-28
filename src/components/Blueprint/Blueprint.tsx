@@ -14,6 +14,7 @@ import { useDrawing } from '@/hooks/useDrawing';
 import { useConnections } from '@/hooks/useConnections';
 import { useOrigin } from '@/hooks/useOrigin';
 import { useElementDragging } from '@/hooks/useElementDragging';
+import { DRAWABLE_TYPES } from '@/lib/elementTypes';
 
 interface BlueprintProps {
   selectedTool: string;
@@ -48,6 +49,7 @@ const Blueprint: React.FC<BlueprintProps> = ({
   onDeleteConnection,
   onMoveElement
 }) => {
+  const floorElements = elements.filter(el => el.floor === currentFloor);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -94,7 +96,7 @@ const Blueprint: React.FC<BlueprintProps> = ({
     }
 
     if (selectedTool === 'select' || selectedTool.startsWith('connect-')) {
-      const clickedElement = findElementAtPosition(elements, x, y);
+      const clickedElement = findElementAtPosition(floorElements, x, y);
 
       if (clickedElement) {
         if (selectedTool === 'select') {
@@ -121,7 +123,7 @@ const Blueprint: React.FC<BlueprintProps> = ({
       }
     }
 
-    if (['room', 'hallway', 'custom', 'entry', 'stairs', 'wall'].includes(selectedTool)) {
+    if (DRAWABLE_TYPES.includes(selectedTool)) {
       startDrawing(x, y);
     }
   };
@@ -172,7 +174,7 @@ const Blueprint: React.FC<BlueprintProps> = ({
       finishDrawing(selectedTool);
 
       if (connectingElements && sourceElement) {
-        const targetElement = findElementAtPosition(elements, x, y);
+        const targetElement = findElementAtPosition(floorElements, x, y);
         
         if (targetElement && targetElement.id !== sourceElement.id) {
           const connectionType = selectedTool.replace('connect-', '');
@@ -188,7 +190,7 @@ const Blueprint: React.FC<BlueprintProps> = ({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && isMultiPointConnecting && sourceElement && connectionPoints.length > 1) {
       const lastPoint = connectionPoints[connectionPoints.length - 1];
-      const targetElement = findElementAtPosition(elements, lastPoint.x, lastPoint.y);
+      const targetElement = findElementAtPosition(floorElements, lastPoint.x, lastPoint.y);
 
       if (targetElement && targetElement.id !== sourceElement.id) {
         finishConnection(targetElement, 'multi');
@@ -239,7 +241,7 @@ const Blueprint: React.FC<BlueprintProps> = ({
     const y = (e.clientY - rect.top - position.y) / scale;
 
     if (selectedTool.startsWith('poi-')) {
-      const poiType = selectedTool.split('-')[1];
+      const poiType = selectedTool.slice('poi-'.length);
       const element = {
         id: generateUniqueId(),
         type: 'poi',
@@ -258,7 +260,7 @@ const Blueprint: React.FC<BlueprintProps> = ({
       onAddElement(element);
       toast.success(`Added new POI: ${poiType}`);
     } else if (selectedTool === 'coordinates') {
-      const clickedElement = findElementAtPosition(elements, x, y);
+      const clickedElement = findElementAtPosition(floorElements, x, y);
       if (clickedElement) {
         setSelectedCoordinatesElement(clickedElement);
         setCoordinates({

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Hub from "./shared/Hub";
+import Placeholder from "./shared/Placeholder";
+
+const SpikesIndex = lazy(() => import("./spikes/SpikesIndex"));
+const S1 = lazy(() => import("./spikes/S1Page"));
+const S2 = lazy(() => import("./spikes/S2Page"));
+const S2Markers = lazy(() => import("./spikes/S2Markers"));
+const S3 = lazy(() => import("./spikes/S3Page"));
+const S4 = lazy(() => import("./spikes/S4Page"));
+const S5 = lazy(() => import("./spikes/S5Page"));
 
 const queryClient = new QueryClient();
 
@@ -14,11 +25,26 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <Suspense fallback={<div className="p-6 text-neutral-400">Loading…</div>}>
+          <Routes>
+            <Route path="/" element={<Hub />} />
+            <Route path="/legacy-editor" element={<Index />} />
+            <Route path="/editor" element={<Placeholder title="Editor" note="Built from the mock editor in Phase 1." />} />
+            <Route path="/nav" element={<Placeholder title="Visitor app" note="Phase 2: 2D map, search, navigation." />} />
+            <Route path="/dashboard" element={<Placeholder title="Dashboard" note="Phase 3: live view of the phone." />} />
+            <Route path="/markers" element={<Placeholder title="Markers" note="Phase 1: printable marker sheets for the real venue. For the spike markers see /spikes/s2/markers." />} />
+            <Route path="/ads" element={<Placeholder title="Ads" note="Phase 4: advertiser portal." />} />
+            <Route path="/spikes" element={<SpikesIndex />} />
+            <Route path="/spikes/s1" element={<S1 />} />
+            <Route path="/spikes/s2" element={<S2 />} />
+            <Route path="/spikes/s2/markers" element={<S2Markers />} />
+            <Route path="/spikes/s3" element={<S3 />} />
+            <Route path="/spikes/s4" element={<S4 />} />
+            <Route path="/spikes/s5" element={<S5 />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

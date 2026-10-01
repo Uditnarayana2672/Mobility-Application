@@ -273,14 +273,6 @@ const Blueprint: React.FC<BlueprintProps> = ({
     }
   };
 
-  const handleAddCustomPoi = (poiName: string) => {
-    const poiId = poiName.toLowerCase().replace(/\s+/g, '-');
-    if (!customPois.includes(poiId)) {
-      setCustomPois([...customPois, poiId]);
-      toast.success(`Added new POI type: ${poiName}`);
-    }
-  };
-
   const saveCoordinates = () => {
     if (selectedCoordinatesElement && onElementUpdate) {
       const updatedElement = {

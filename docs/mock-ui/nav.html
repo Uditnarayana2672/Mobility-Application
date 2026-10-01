@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Indore Spaces — Visitor app (mock)</title>
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/phone.css">
+</head>
+<body class="navpage">
+<div id="topbar-slot"></div>
+
+<div class="stage">
+  <!-- ============ demo control panel (laptop only) ============ -->
+  <aside class="demo-panel" id="demoPanel">
+    <h3>🎬 Demo controls</h3>
+    <p class="muted small">This panel exists only on the laptop. On a real Android phone the app fills the screen and position comes from marker scans + sensors, not from this simulator.</p>
+    <div class="row wrap">
+      <button class="btn small primary" id="dPlay">⏸ Pause</button>
+      <div class="seg" id="dSpeed"><button data-m="1">1×</button><button data-m="2" class="on">2×</button><button data-m="4">4×</button></div>
+    </div>
+    <div class="row wrap" style="margin-top:8px">
+      <button class="btn small" id="dNext">⏭ Next turn</button>
+      <button class="btn small" id="dWrong">↩ Take wrong turn</button>
+      <button class="btn small" id="dLose">📡 Lose tracking</button>
+    </div>
+    <label class="f">Language (spoken + shown)</label>
+    <div class="seg" id="dLang"><button data-l="en" class="on">English</button><button data-l="hi">Hinglish</button><button data-l="te">తెలుగు</button></div>
+    <div class="row" style="margin-top:10px"><label class="switch"><input type="checkbox" id="dAuto" checked><i></i></label><span>Auto-confirm floor via lobby marker</span></div>
+    <div class="row" style="margin-top:6px"><label class="switch"><input type="checkbox" id="dMute"><i></i></label><span>Mute spoken voice (captions stay)</span></div>
+    <h3>📍 Simulate a marker scan</h3>
+    <div class="row"><select id="dMarker"></select><button class="btn small" id="dScan">Scan</button></div>
+    <h3>📊 What the phone knows</h3>
+    <div class="kv" id="dKV"></div>
+    <h3>🔗 Linked views</h3>
+    <button class="btn small" id="dOpenDash">Open live dashboard ↗</button>
+    <a class="btn small" href="editor.html">Map editor</a>
+    <a class="btn small" href="ads.html">Ads portal</a>
+    <button class="btn small danger" id="dReset">Reset demo</button>
+    <p class="muted small" style="margin-top:10px">Tip: edit a room name in the Map editor and press <b>Publish</b> — reload this page and the search + routes use the new map. Pause an ad campaign in the Ads portal and it vanishes from the AR view.</p>
+  </aside>
+
+  <!-- ============ phone ============ -->
+  <div class="phone-wrap" id="phoneWrap">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="screen" id="screen">
+        <div class="statusbar" id="statusbar"><span>9:41</span><span>5G ▂▄▆ 🔋</span></div>
+
+        <!-- CITY -->
+        <section class="scr on" id="s-city">
+          <svg viewBox="0 0 380 780" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" id="cityMap" style="position:absolute;inset:0">
+            <rect width="380" height="780" fill="#eaefe3"/>
+            <path d="M-10,610 C70,560 120,520 170,500 S300,430 400,400 L400,430 C310,460 220,520 180,540 S60,640 -10,660Z" fill="#a9d3ee"/>
+            <ellipse cx="90" cy="300" rx="70" ry="48" fill="#cfe5c3"/><ellipse cx="320" cy="560" rx="60" ry="46" fill="#cfe5c3"/><ellipse cx="230" cy="170" rx="48" ry="34" fill="#cfe5c3"/>
+            <g stroke="#fff" stroke-linecap="round" fill="none">
+              <path d="M-10,430 L400,400" stroke-width="12"/><path d="M190,-10 L200,790" stroke-width="12"/><path d="M-10,250 L400,210" stroke-width="8"/>
+              <path d="M30,-10 L110,790" stroke-width="7"/><path d="M290,-10 L330,790" stroke-width="7"/><path d="M-10,610 L400,640" stroke-width="7"/><path d="M110,330 L380,300" stroke-width="5"/>
+              <path d="M130,470 L270,455" stroke-width="5"/>
+            </g>
+            <g font-family="Segoe UI,Roboto,sans-serif" font-size="11" fill="#6b7686" font-weight="600" text-anchor="middle">
+              <text x="190" y="468">Rajwada</text><text x="262" y="448">Palasia</text><text x="318" y="190">Vijay Nagar</text><text x="62" y="520">Airport side</text><text x="150" y="470">Indore Jn</text><text x="166" y="388">Sarwate</text>
+            </g>
+            <text x="190" y="760" text-anchor="middle" font-size="10" fill="#8a94a6" font-family="Segoe UI,sans-serif">Illustrative city map — not to scale</text>
+            <!-- pins -->
+            <g id="pinOffice" style="cursor:pointer"><circle cx="300" cy="222" r="22" fill="rgba(47,91,234,.2)"><animate attributeName="r" values="14;28;14" dur="2s" repeatCount="indefinite"/></circle><path d="M300,238 C288,222 288,206 300,206 C312,206 312,222 300,238Z" fill="#2f5bea" stroke="#fff" stroke-width="2"/><circle cx="300" cy="219" r="4" fill="#fff"/></g>
+            <g opacity=".8"><circle cx="240" cy="340" r="8" fill="#9aa3b2" stroke="#fff" stroke-width="2"/><circle cx="62" cy="488" r="8" fill="#9aa3b2" stroke="#fff" stroke-width="2"/><circle cx="150" cy="450" r="8" fill="#9aa3b2" stroke="#fff" stroke-width="2"/><circle cx="168" cy="400" r="8" fill="#9aa3b2" stroke="#fff" stroke-width="2"/></g>
+          </svg>
+          <div class="top"><div class="searchpill" id="cityPill"><span>🔍</span><b>Search places in Indore</b><button class="mic" aria-label="voice">🎤</button></div></div>
+          <div class="sheet" id="citySheet">
+            <div class="handle"></div>
+            <div style="font-weight:800;font-size:16px;margin-bottom:2px">Indoor maps in Indore</div>
+            <div class="muted small" style="margin-bottom:6px">Malls, airports, stations, bus stands and offices — navigate inside them.</div>
+            <div id="venueList"></div>
+          </div>
+        </section>
+
+        <!-- LOCATE (scan marker) -->
+        <section class="scr" id="s-locate">
+          <div class="viewfinder">
+            <svg class="vf-corridor" viewBox="0 0 340 340" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="2"><path d="M20,330 L120,120 L220,120 L320,330"/><path d="M120,120 L120,60 L220,60 L220,120"/><path d="M60,330 L140,150 M280,330 L200,150"/></svg>
+            <div class="scanbox"><i></i><i></i><i></i><i></i><div class="scanline"></div>
+              <svg viewBox="0 0 100 100" style="position:absolute;inset:34px;width:calc(100% - 68px);height:calc(100% - 68px);opacity:.9" id="vfQR"></svg>
+            </div>
+          </div>
+          <div class="abs" style="top:60px;left:0;right:0;text-align:center;z-index:5"><div style="font-size:20px;font-weight:800">Where are you?</div><div style="opacity:.8;font-size:13.5px;margin-top:4px">Point the camera at any marker sticker on a wall</div></div>
+          <div class="locate-bottom">
+            <div class="small" style="opacity:.75;margin-bottom:4px">DEMO · tap a marker to simulate scanning it</div>
+            <div class="chipscroll" id="markerChips"></div>
+            <div class="row" style="margin-top:10px;gap:10px"><button class="pbtn block" id="manualLoc" style="background:rgba(255,255,255,.14);color:#fff">📍 I can’t find a marker — choose manually</button></div>
+            <div class="small" style="opacity:.6;text-align:center;margin-top:8px">The scan gives your exact spot, floor and direction — no GPS needed.</div>
+          </div>
+        </section>
+
+        <!-- MAP (explore / place / preview / nav) -->
+        <section class="scr" id="s-map" data-mode="explore">
+          <div id="mapbox"></div>
+          <div class="map-top" data-show="explore place preview">
+            <div class="searchpill" id="mapPill"><span>🔍</span><b id="mapPillText">Search rooms, food, washrooms…</b><button class="mic" id="mapMic" aria-label="voice">🎤</button></div>
+            <div class="chips" data-show="explore place" id="qchips"></div>
+          </div>
+          <div class="floors" id="floorsCtl" data-show="explore place preview nav"></div>
+
+          <!-- explore sheet -->
+          <div class="sheet" data-show="explore" id="shExplore">
+            <div class="handle"></div>
+            <div class="row" style="margin-bottom:4px"><div style="font-weight:800;font-size:16px" id="whereTxt">You are here</div><span class="spacer"></span><span class="conf good" id="confChip">±0.3 m</span></div>
+            <div class="muted small" id="whereSub" style="margin-bottom:6px"></div>
+            <div class="qlist" id="quickList"></div>
+          </div>
+          <!-- place sheet -->
+          <div class="sheet" data-show="place" id="shPlace">
+            <div class="handle"></div>
+            <div class="row"><div style="font-size:30px" id="plIcon"></div><div style="flex:1"><div style="font-weight:800;font-size:18px" id="plName"></div><div class="muted small" id="plSub"></div></div><button class="fab" style="position:static;width:36px;height:36px;font-size:16px;box-shadow:none;background:#eef1f6" id="plClose">✕</button></div>
+            <div class="row wrap" style="margin:10px 0" id="plTags"></div>
+            <div class="row"><button class="pbtn primary" style="flex:1" id="plDirections">➜ Directions</button><button class="pbtn" id="plSave">☆ Save</button></div>
+          </div>
+          <!-- preview sheet -->
+          <div class="sheet" data-show="preview" id="shPreview">
+            <div class="handle"></div>
+            <div class="row" style="margin-bottom:8px"><div style="flex:1"><div class="muted small">Route to</div><div style="font-weight:800;font-size:17px" id="pvName"></div></div><button class="pbtn sm" id="pvClose">✕</button></div>
+            <div id="pvOpts"></div>
+            <div class="row small" style="margin:2px 0 6px"><label class="switch"><input type="checkbox" id="pvAvoid"><i></i></label><span>Avoid stairs (wheelchair / stroller)</span></div>
+            <details style="margin-bottom:8px"><summary style="cursor:pointer;font-weight:700;font-size:13px">Step-by-step</summary><div class="steps" id="pvSteps"></div></details>
+            <button class="pbtn green block" id="pvStart">▶ Start navigation</button>
+          </div>
+
+          <!-- nav -->
+          <div class="banner" data-show="nav" id="banner">
+            <div class="row1"><div class="ico" id="bnIco">↱</div><div style="flex:1"><div class="dist" id="bnDist">20 m</div><div class="act" id="bnAct">Turn right</div></div></div>
+            <div class="then" id="bnThen"></div>
+          </div>
+          <div class="sideb" style="top:372px" data-show="nav">
+            <button class="fab primary" id="navAR" aria-label="AR">📷</button>
+            <button class="fab" id="navMic" aria-label="voice">🎤</button>
+            <button class="fab" id="navMute" aria-label="mute">🔊</button>
+            <button class="fab" id="navRecenter" aria-label="recentre">◎</button>
+          </div>
+          <div class="navbar" data-show="nav" id="navbar">
+            <div style="flex:1"><div class="eta" id="nbEta">1 min</div><div class="meta" id="nbMeta">54 m · arrive 9:42</div></div>
+            <span class="conf good" id="navConf">±0.3 m</span>
+            <button class="pbtn red" id="navEnd">End</button>
+          </div>
+          <!-- explore FABs -->
+          <div class="sideb" style="bottom:300px" data-show="explore place">
+            <button class="fab primary" id="expAR" aria-label="AR">📷</button>
+            <button class="fab" id="expLocate" aria-label="locate">◎</button>
+          </div>
+          <button class="fab wide" id="scanBtn" style="left:12px;bottom:96px;display:none">📍 Fix position</button>
+        </section>
+
+        <!-- AR -->
+        <section class="scr" id="s-ar">
+          <canvas id="arcv"></canvas>
+          <div class="ar-top">
+            <div class="ar-pill" id="arPill"><div class="ico" id="arIco">↱</div><div><div class="d" id="arDist">20 m</div><div class="a" id="arAct">Turn right</div></div></div>
+            <div class="trk" id="arTrk"><i></i><span id="arTrkT">Tracking good · ±0.3 m</span></div>
+          </div>
+          <div class="lookup" id="lookup">👀 Eyes up — walk safely</div>
+          <div class="ar-tag">Simulated camera feed · real build = WebXR over live camera</div>
+          <div class="ar-bottom">
+            <div class="minimap" id="miniWrap"><div id="minimap" style="position:absolute;inset:0"></div></div>
+            <div class="ar-actions">
+              <button class="fab wide" id="arScan">📍 Scan marker</button>
+              <button class="fab" id="arMic">🎤</button>
+              <button class="fab wide primary" id="arBack">🗺 Map</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ARRIVED -->
+        <section class="scr" id="s-arrived">
+          <div class="check-big">✓</div>
+          <div style="font-size:24px;font-weight:800" id="arrTitle">You have arrived</div>
+          <div class="muted" id="arrSub" style="margin:4px 0 14px"></div>
+          <div class="row" style="justify-content:center;gap:8px;margin-bottom:16px" id="arrStats"></div>
+          <div class="adcard" id="arrAd" style="background:linear-gradient(135deg,#f7971e,#ffd200);color:#3a2a00;text-align:left"><div class="small" style="font-weight:800;opacity:.8">SPONSORED · PLACEHOLDER</div><div style="font-size:18px;font-weight:800;margin:4px 0">Lunch combo ₹99</div><div class="small">SnackHub · Thali + chaas, 12–3 PM</div></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><button class="pbtn primary block" id="arrAgain">Navigate somewhere else</button><button class="pbtn block" id="arrDone">Done</button></div>
+        </section>
+
+        <!-- overlays -->
+        <div class="ov" id="searchOv">
+          <div class="sbar"><button class="pbtn sm" id="seBack">←</button><input id="seInput" placeholder="Search — try ‘canteen’, ‘khana’, ‘టాయిలెట్’" autocomplete="off"><button class="mic" id="seMic" style="width:40px;height:40px;border-radius:50%;border:0;background:#eef1f6;font-size:18px;cursor:pointer">🎤</button></div>
+          <div class="results" id="seResults"></div>
+        </div>
+        <div class="ov" id="voiceOv"><div class="dim" id="voDim"></div>
+          <div class="sheet" style="padding-bottom:22px">
+            <div class="handle"></div>
+            <div class="row" style="margin-bottom:8px"><div style="font-weight:800;font-size:16px">Ask Indore Spaces</div><span class="spacer"></span><div class="seg2" id="voLang"><button data-l="en">EN</button><button data-l="hi">Hinglish</button><button data-l="te">తెలుగు</button></div></div>
+            <div id="voChat" style="max-height:200px;overflow:auto"></div>
+            <div style="text-align:center;margin:12px 0 6px"><button class="mic-big" id="voMic">🎤</button><div class="muted small" id="voState" style="margin-top:8px">Tap to speak</div></div>
+            <div class="row" style="margin-bottom:8px"><input type="text" id="voInput" placeholder="…or type here" style="border-radius:20px"><button class="pbtn primary sm" id="voSend">Send</button></div>
+            <div class="chipscroll" id="voEx"></div>
+            <div class="small muted" style="margin-top:4px">Understood by rules first (deterministic). An AI model is only used for free-form questions — provider to be decided.</div>
+          </div>
+        </div>
+        <div class="ov" id="adOv"><div class="dim" id="adDim"></div>
+          <div class="sheet" style="padding-bottom:22px">
+            <div class="handle"></div>
+            <div class="adcard" id="adCard"></div>
+            <div class="row"><button class="pbtn primary" style="flex:1" id="adCta">Route there</button><button class="pbtn" id="adClose">Close</button></div>
+            <div class="muted small" style="margin-top:8px">Ads appear only on venue-approved blank walls. Never over exits, signs or stairs.</div>
+          </div>
+        </div>
+        <div class="ov" id="transOv">
+          <div class="stairs-anim"><span id="trIco">🪜</span></div>
+          <div style="font-size:22px;font-weight:800" id="trTitle">Taking the stairs…</div>
+          <div style="opacity:.8;margin-top:6px" id="trSub">Floor 1 → Floor 2</div>
+          <div class="progbar"><i id="trBar"></i></div>
+          <div class="small" style="opacity:.7">AR tracking pauses between floors. A marker in the lobby will confirm where you are.</div>
+        </div>
+        <div class="ov" id="floorOv"><div class="dim"></div>
+          <div class="fpr">
+            <div style="font-size:34px">🏢</div>
+            <div style="font-size:19px;font-weight:800;margin:4px 0" id="fpTitle">Are you on Floor 2 now?</div>
+            <div class="muted small" style="margin-bottom:14px" id="fpSub">Scan the marker by the stair door to confirm — or just tap Yes.</div>
+            <div class="row" style="justify-content:center"><button class="pbtn green" id="fpYes">Yes, Floor 2</button><button class="pbtn" id="fpScan">📍 Scan marker</button></div>
+            <div class="small muted" style="margin-top:10px" id="fpAuto"></div>
+          </div>
+        </div>
+        <div class="caption" id="caption"></div>
+        <div class="ptoast" id="ptoast"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/mapview.js"></script>
+<script src="js/ar.js"></script>
+<script src="js/nav.js"></script>
+<script>
+  // shared top bar
+  document.getElementById('topbar-slot').outerHTML = IS.topbar('nav');
+</script>
+</body>
+</html>

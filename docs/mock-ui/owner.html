@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indore Spaces — Owner portal (mock)</title>
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .space { display: grid; grid-template-columns: 64px 1fr auto; gap: 14px; align-items: center; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; margin-bottom: 12px; }
+  .space .ic { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font-size: 28px; background: var(--brand-soft); }
+  .prog { height: 7px; border-radius: 5px; background: #e6eaf2; overflow: hidden; margin-top: 6px; width: 220px; }
+  .prog i { display: block; height: 100%; background: var(--teal); }
+  .dropzone { border: 2px dashed #b9c4da; border-radius: 14px; padding: 26px; text-align: center; background: #f8faff; cursor: pointer; }
+  .dropzone:hover { background: #eef3ff; }
+  .planbox { background: #fbf7ec; border: 1px solid #d7ccae; border-radius: 12px; touch-action: none; }
+  .handle { cursor: grab; }
+  .wrow { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #eef1f6; }
+</style>
+</head>
+<body>
+<div id="topbar-slot"></div>
+<div class="page">
+  <div class="row" style="margin-bottom:16px">
+    <div><h1 style="margin:0">Owner portal</h1><p class="muted" style="margin:4px 0 0">Venue owners and facilities teams add a closed space, map it, and publish it for visitors.</p></div>
+    <span class="spacer"></span><span class="badge info">Signed in as: facilities@demo-office (mock)</span><button class="btn primary" id="addSpace">＋ Add a new space</button>
+  </div>
+  <div class="grid g4" id="kpis" style="margin-bottom:18px"></div>
+  <div class="grid" style="grid-template-columns:1.6fr 1fr;align-items:start">
+    <div><h3>Your spaces</h3><div id="spaces"></div></div>
+    <div>
+      <div class="card" style="margin-bottom:16px"><h3>Publish status · <span id="pvName"></span></h3><div id="pubStatus"></div></div>
+      <div class="card"><h3>Version history</h3><div id="versions"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- wizard -->
+<div class="modal-bg" id="wiz"><div class="modal">
+  <header><h3 style="margin:0">Add a new space</h3><span class="spacer"></span><button class="btn small ghost" id="wClose">✕</button></header>
+  <div class="body"><div class="stepper" id="stepper"></div><div id="wBody"></div></div>
+  <footer><button class="btn" id="wBack">Back</button><button class="btn primary" id="wNext">Next</button></footer>
+</div></div>
+
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script>
+  document.getElementById('topbar-slot').outerHTML = IS.topbar('owner');
+  const $ = id => document.getElementById(id);
+  const V = IS.store.getPublished(), D = IS.store.getDraft();
+  const TYPES = [['🏢', 'Office / Tech park'], ['🛍️', 'Shopping mall'], ['✈️', 'Airport'], ['🚆', 'Railway station'], ['🚌', 'Bus station'], ['🏥', 'Hospital'], ['🎓', 'Campus']];
+  let spaces; try { spaces = JSON.parse(localStorage.getItem('is.spaces')); } catch (e) { spaces = null; }
+  if (!spaces) spaces = [{ id: 'office-hq', icon: '🏢', name: V.name, type: V.type, floors: V.floors.length, progress: 100, status: 'published' }, { id: 'mall-1', icon: '🛍️', name: 'Shopping mall (sample draft)', type: 'Shopping mall', floors: 3, progress: 35, status: 'draft' }];
+  const saveSpaces = () => { try { localStorage.setItem('is.spaces', JSON.stringify(spaces)); } catch (e) {} };
+
+  function render() {
+    const imp = IS.store.getCampaigns().reduce((s, c) => s + c.stats.impressions, 0);
+    $('kpis').innerHTML = [[412, 'visitors this week'], [286, 'routes started'], ['±0.4 m', 'avg. marker accuracy'], [imp, 'ad impressions']].map(k => `<div class="card kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
+    $('spaces').innerHTML = spaces.map(s => `<div class="space"><div class="ic">${s.icon}</div><div><b style="font-size:16px">${s.name}</b> <span class="badge ${s.status === 'published' ? 'ok' : 'warn'}">${s.status}</span><div class="muted small">${s.type} · ${s.floors} floor(s)</div><div class="prog"><i style="width:${s.progress}%"></i></div><div class="small muted">${s.progress}% mapped</div></div><div class="row">${s.id === 'office-hq' ? '<a class="btn primary" href="editor.html">Open in editor</a><a class="btn" href="nav.html">View as visitor</a>' : '<button class="btn" data-demo="1">Continue mapping</button>'}</div></div>`).join('');
+    document.querySelectorAll('[data-demo]').forEach(b => b.onclick = () => IS.toast('Demo: only the sample office has a full map. Real product opens this space in the editor.'));
+    const res = IS.validate(D), f = res.filter(r => r.level === 'fail').length, w = res.filter(r => r.level === 'warn').length, hasDraft = IS.store.hasDraft();
+    $('pvName').textContent = V.name;
+    $('pubStatus').innerHTML = `<div class="row wrap" style="margin-bottom:8px"><span class="badge ok">Live v${V.version}</span>${hasDraft ? '<span class="badge warn">unpublished changes</span>' : ''}${f ? `<span class="badge fail">${f} blocking</span>` : '<span class="badge ok">checks pass</span>'}${w ? `<span class="badge warn">${w} warning(s)</span>` : ''}</div>` + res.slice(0, 6).map(r => `<div class="check"><div class="dot ${r.level}">${r.level === 'pass' ? '✓' : r.level === 'warn' ? '!' : '✕'}</div><div><b>${r.title}</b></div></div>`).join('') + '<div class="row" style="margin-top:12px"><a class="btn" href="editor.html?tab=check">Full checklist</a><a class="btn primary" href="editor.html">Edit &amp; publish</a></div>';
+    const pubAt = V.publishedAt ? new Date(V.publishedAt).toLocaleString() : 'Sample data';
+    const vs = []; for (let v = V.version; v >= 1; v--) vs.push([v, v === V.version ? pubAt : 'earlier', v === V.version ? 'live' : '']);
+    $('versions').innerHTML = vs.map(v => `<div class="wrow"><b>v${v[0]}</b><span class="muted small" style="flex:1">${v[1]}</span>${v[2] ? '<span class="badge ok">live</span>' : '<button class="btn small" disabled>Roll back</button>'}</div>`).join('') + '<p class="small muted" style="margin-top:8px">Visitors only ever see a published version — never a half-finished draft. Markers keep their IDs across versions.</p>';
+  }
+
+  /* ---------- wizard ---------- */
+  let step = 0; const data = { name: '', type: TYPES[1][1], icon: TYPES[1][0], city: 'Indore', addr: '', floors: 3, plan: null, metres: 60 };
+  let hA = { x: 60, y: 150 }, hB = { x: 540, y: 150 };
+  const titles = ['Basics', 'Floor plan', 'Scale', 'Markers & finish'];
+  function wiz() {
+    $('stepper').innerHTML = titles.map((t, i) => `<b class="${i <= step ? 'on' : ''}" title="${t}"></b>`).join('');
+    $('wBack').style.visibility = step ? 'visible' : 'hidden'; $('wNext').textContent = step === 3 ? 'Create space' : 'Next';
+    const b = $('wBody');
+    if (step === 0) {
+      b.innerHTML = `<h3>1 · Tell us about the space</h3><label class="f">Space name</label><input type="text" id="w-name" placeholder="e.g. Phoenix-style Mall, Tech Park Tower B" value="${data.name}">
+        <label class="f">Type</label><div class="row wrap">${TYPES.map(t => `<button class="chip click ${data.type === t[1] ? 'on' : ''}" data-t="${t[1]}" data-i="${t[0]}">${t[0]} ${t[1]}</button>`).join('')}</div>
+        <div class="grid g2" style="gap:10px"><div><label class="f">City</label><input type="text" id="w-city" value="${data.city}"></div><div><label class="f">Number of floors to map</label><input type="number" id="w-floors" min="1" max="12" value="${data.floors}"></div></div>
+        <label class="f">Address</label><input type="text" id="w-addr" value="${data.addr}" placeholder="Street, locality">
+        <p class="small muted" style="margin-top:10px">Type decides which area presets you get: malls get shops &amp; food courts, airports get gates &amp; security, stations get platforms, offices get meeting rooms &amp; cafeterias.</p>`;
+      b.querySelectorAll('.chip').forEach(c => c.onclick = () => { data.type = c.dataset.t; data.icon = c.dataset.i; b.querySelectorAll('.chip').forEach(x => x.classList.toggle('on', x === c)); });
+    } else if (step === 1) {
+      b.innerHTML = `<h3>2 · Floor plan photo or CAD</h3><p class="muted">Every floor has a <b>fire-evacuation plan</b> near the lifts — photograph it straight-on. Facilities usually also have a CAD/PDF. We trace over it.</p>
+        <div class="dropzone" id="drop"><div style="font-size:34px">📤</div><b>Drop a plan image / PDF here</b><div class="small muted">or click to choose a file</div><input type="file" id="w-file" accept="image/*,.pdf" style="display:none"></div>
+        <div class="row" style="margin:10px 0"><span class="muted small">No file handy?</span><button class="btn small" id="useSample">Use the sample evacuation plan</button></div>
+        <div id="planInfo" class="small">${data.plan ? '✅ Plan attached: <b>' + data.plan + '</b>' : ''}</div>`;
+      $('drop').onclick = () => $('w-file').click(); $('w-file').onchange = e => { if (e.target.files[0]) { data.plan = e.target.files[0].name; $('planInfo').innerHTML = '✅ Plan attached: <b>' + data.plan + '</b>'; } };
+      $('useSample').onclick = () => { data.plan = 'sample-evacuation-plan.png'; $('planInfo').innerHTML = '✅ Plan attached: <b>sample-evacuation-plan.png</b>'; };
+    } else if (step === 2) {
+      b.innerHTML = `<h3>3 · Set the scale</h3><p class="muted">Drag the two red ends onto something you measured with a tape or laser meter (the longest corridor works best), then enter its real length.</p>
+        <svg class="planbox" id="plan" viewBox="0 0 600 300" width="100%"><rect x="20" y="20" width="560" height="260" fill="none" stroke="#6b6350" stroke-width="2"/><rect x="20" y="120" width="560" height="60" fill="#fff" opacity=".6"/>
+        ${[0, 1, 2, 3, 4].map(i => `<rect x="${20 + i * 112}" y="20" width="112" height="100" fill="none" stroke="#6b6350"/><rect x="${20 + i * 112}" y="180" width="112" height="100" fill="none" stroke="#6b6350"/>`).join('')}
+        <text x="30" y="14" font-size="12" fill="#a0392b" font-weight="700">FIRE EVACUATION PLAN (sample)</text>
+        <line id="mline" stroke="#d93a3a" stroke-width="3"/><circle id="hA" class="handle" r="9" fill="#d93a3a" stroke="#fff" stroke-width="3"/><circle id="hB" class="handle" r="9" fill="#d93a3a" stroke="#fff" stroke-width="3"/></svg>
+        <div class="row" style="margin-top:10px"><label class="f" style="margin:0">Real length of that line (m)</label><input type="number" id="w-m" value="${data.metres}" style="width:110px"><span class="chip" id="ratio"></span></div>`;
+      const svg = $('plan'), upd = () => { $('hA').setAttribute('cx', hA.x); $('hA').setAttribute('cy', hA.y); $('hB').setAttribute('cx', hB.x); $('hB').setAttribute('cy', hB.y); const l = $('mline'); l.setAttribute('x1', hA.x); l.setAttribute('y1', hA.y); l.setAttribute('x2', hB.x); l.setAttribute('y2', hB.y); const px = Math.hypot(hB.x - hA.x, hB.y - hA.y); $('ratio').textContent = `1 m = ${(px / data.metres).toFixed(1)} px · plan ≈ ${(560 / (px / data.metres)).toFixed(0)} m wide`; };
+      let d = null; const pt = e => { const r = svg.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * 600, y: ((e.clientY - r.top) / r.height) * 300 }; };
+      ['hA', 'hB'].forEach(id => { $(id).onpointerdown = e => { d = id; $(id).setPointerCapture(e.pointerId); }; });
+      svg.onpointermove = e => { if (!d) return; const p = pt(e); (d === 'hA' ? hA : hB).x = Math.max(10, Math.min(590, p.x)); (d === 'hA' ? hA : hB).y = Math.max(10, Math.min(290, p.y)); upd(); }; svg.onpointerup = () => (d = null);
+      $('w-m').oninput = e => { data.metres = +e.target.value || 1; upd(); }; upd();
+    } else {
+      b.innerHTML = `<h3>4 · What happens next</h3><div class="card flat"><b>${data.icon} ${data.name || 'New space'}</b><div class="muted small">${data.type} · ${data.floors} floor(s) · plan: ${data.plan || 'none yet'} · scale set (${data.metres} m reference)</div></div>
+        <div style="margin-top:12px">${[['🖍', 'Trace rooms, walls and doors in the editor'], ['〰️', 'Draw the walkable path and link lifts / stairs between floors'], ['▣', 'Place marker stickers — start with every lift lobby and stair door'], ['🖼️', 'Survey 2–3 blank walls as ad slots (optional)'], ['🚶', 'Walk every route with a phone, fix anything off by > 1 m'], ['🚀', 'Validate &amp; publish']].map((s, i) => `<div class="wrow"><b style="width:26px">${s[0]}</b><span>${s[1]}</span></div>`).join('')}</div>`;
+    }
+  }
+  function openWiz() { step = 0; Object.assign(data, { name: '', plan: null }); $('wiz').classList.add('open'); wiz(); }
+  $('addSpace').onclick = openWiz; $('wClose').onclick = () => $('wiz').classList.remove('open');
+  $('wBack').onclick = () => { if (step) { step--; wiz(); } };
+  $('wNext').onclick = () => {
+    if (step === 0) { data.name = ($('w-name').value || '').trim(); data.city = $('w-city').value; data.addr = $('w-addr').value; data.floors = +$('w-floors').value || 1; if (!data.name) return IS.toast('Give the space a name'); }
+    if (step === 1 && !data.plan) return IS.toast('Attach a plan (or use the sample) to continue');
+    if (step < 3) { step++; return wiz(); }
+    spaces.push({ id: 'sp-' + Date.now(), icon: data.icon, name: data.name, type: data.type, floors: data.floors, progress: 10, status: 'draft' }); saveSpaces(); $('wiz').classList.remove('open'); render();
+    IS.toast('Space created as a draft. (Demo: the editor opens the sample office; the real one opens your blank plan.)', 5200);
+  };
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indore Spaces — Ads portal (mock)</title>
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .layout { display: grid; grid-template-columns: 380px 1fr; gap: 18px; align-items: start; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+  .camp { border: 2px solid var(--line); border-radius: 14px; padding: 12px; cursor: pointer; display: flex; gap: 12px; align-items: center; background: #fff; margin-bottom: 10px; }
+  .camp.on { border-color: var(--brand); background: #f5f8ff; }
+  .camp .thumb { width: 72px; height: 44px; border-radius: 8px; flex: none; position: relative; overflow: hidden; }
+  .camp .nums { font-size: 11.5px; color: var(--muted); }
+  .adprev { aspect-ratio: 16/9; border-radius: 14px; color: #fff; padding: 22px 24px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; box-shadow: var(--shadow); }
+  .adprev .brand { font-weight: 800; letter-spacing: .06em; font-size: 13px; opacity: .9; }
+  .adprev .head { font-size: 34px; font-weight: 800; line-height: 1.08; margin: 6px 0; max-width: 85%; }
+  .adprev .tag { position: absolute; left: 14px; bottom: 12px; font-size: 10px; opacity: .85; font-weight: 700; letter-spacing: .05em; }
+  .adprev .vid { position: absolute; top: 12px; left: 14px; background: rgba(0,0,0,.45); padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 800; }
+  .adprev .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: rgba(0,0,0,.35); }
+  .adprev .bar i { display: block; height: 100%; background: #fff; animation: prog 6s linear infinite; }
+  @keyframes prog { from { width: 0 } to { width: 100% } }
+  .bubble-a, .bubble-b { position: absolute; border-radius: 50%; background: rgba(255,255,255,.14); animation: float 5s ease-in-out infinite alternate; }
+  .bubble-a { width: 160px; height: 160px; right: -30px; top: -30px; } .bubble-b { width: 110px; height: 110px; left: 40%; bottom: -40px; animation-delay: -2s; }
+  @keyframes float { to { transform: translate(-22px, 16px) scale(1.12); } }
+  .slot { border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; display: flex; gap: 10px; align-items: center; margin-bottom: 8px; background: #fff; }
+  .slot input { accent-color: var(--brand); width: 18px; height: 18px; }
+  .bars .fill { display: block; height: 9px; border-radius: 5px; background: var(--brand); }
+</style>
+</head>
+<body>
+<div id="topbar-slot"></div>
+<div class="page">
+  <div class="row" style="margin-bottom:14px">
+    <div><h1 style="margin:0">Ads portal</h1><p class="muted" style="margin:4px 0 0">Advertisers pick approved blank-wall slots. Changes here show up in the visitor app’s AR view immediately (same browser).</p></div>
+    <span class="spacer"></span><button class="btn" id="resetAds">Reset sample ads</button><button class="btn primary" id="newCamp">＋ New campaign</button>
+  </div>
+  <div class="grid g4" style="margin-bottom:16px" id="kpis"></div>
+  <div class="layout">
+    <div><h3>Campaigns</h3><div id="list"></div></div>
+    <div id="detail"></div>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script>
+  document.getElementById('topbar-slot').outerHTML = IS.topbar('ads');
+  const V = IS.store.getPublished(); let C = IS.store.getCampaigns(); let selId = C[0] && C[0].id;
+  const fl = id => (V.floors.find(f => f.id === id) || {}).name || id;
+  const save = () => IS.store.saveCampaigns(C);
+  const $ = id => document.getElementById(id);
+  const THEMES = { Sunset: ['#ff7a18', '#af002d'], Ocean: ['#4facfe', '#00c6a7'], Sunrise: ['#f7971e', '#ffd200'], Grape: ['#7f53ac', '#647dee'], Forest: ['#11998e', '#38ef7d'] };
+  function ctr(c) { return c.stats.impressions ? ((c.stats.taps / c.stats.impressions) * 100).toFixed(1) : '0.0'; }
+  function kpis() {
+    const imp = C.reduce((s, c) => s + c.stats.impressions, 0), taps = C.reduce((s, c) => s + c.stats.taps, 0);
+    $('kpis').innerHTML = [[C.filter(c => c.status === 'active').length, 'active campaigns'], [imp.toLocaleString(), 'AR impressions'], [taps, 'taps'], [imp ? ((taps / imp) * 100).toFixed(1) + '%' : '—', 'tap-through rate']].map(k => `<div class="card kpi"><b>${k[0]}</b><span>${k[1]}</span></div>`).join('');
+  }
+  function list() {
+    $('list').innerHTML = C.map(c => `<div class="camp ${c.id === selId ? 'on' : ''}" data-id="${c.id}"><div class="thumb" style="background:linear-gradient(135deg,${c.theme[0]},${c.theme[1]})"><span style="position:absolute;left:6px;bottom:3px;font-size:9px;color:#fff;font-weight:800">${c.type === 'video' ? '▶ VIDEO' : 'IMAGE'}</span></div><div style="flex:1"><b>${c.brand}</b><div class="nums">${c.name}</div><div class="nums">${c.stats.impressions} imp · ${c.stats.taps} taps · CTR ${ctr(c)}%</div></div><label class="switch" onclick="event.stopPropagation()"><input type="checkbox" data-t="${c.id}" ${c.status === 'active' ? 'checked' : ''}><i></i></label></div>`).join('') || '<p class="muted">No campaigns yet.</p>';
+    $('list').querySelectorAll('.camp').forEach(el => el.onclick = () => { selId = el.dataset.id; list(); detail(); });
+    $('list').querySelectorAll('input[data-t]').forEach(i => i.onchange = () => { const c = C.find(x => x.id === i.dataset.t); c.status = i.checked ? 'active' : 'paused'; save(); IS.toast(`${c.brand}: ${c.status}${c.status === 'paused' ? ' — hidden from AR' : ' — live in AR'}`); kpis(); list(); detail(); });
+  }
+  function detail() {
+    const c = C.find(x => x.id === selId); if (!c) { $('detail').innerHTML = '<div class="card"><p class="muted">Select or create a campaign.</p></div>'; return; }
+    const targets = V.rooms.filter(r => r.access !== 'staff');
+    $('detail').innerHTML = `
+      <div class="grid g2" style="grid-template-columns:1.15fr 1fr">
+        <div>
+          <div class="adprev" style="background:linear-gradient(135deg,${c.theme[0]},${c.theme[1]})">
+            <span class="bubble-a"></span><span class="bubble-b"></span>
+            ${c.type === 'video' ? '<span class="vid">▶ VIDEO · 6s loop</span>' : ''}
+            <div class="brand">${c.brand.toUpperCase()}</div><div class="head">${c.headline}</div><div style="font-size:14px;max-width:80%;opacity:.95">${c.offer}</div>
+            <div class="tag">SPONSORED · PLACEHOLDER BRAND</div>${c.type === 'video' ? '<div class="bar"><i></i></div>' : ''}
+          </div>
+          <div class="card flat" style="margin-top:14px"><h4>Performance</h4>
+            <div class="bars">${[['Impressions', c.stats.impressions, 600], ['Taps', c.stats.taps * 8, 600], ['Avg dwell (s)', c.stats.dwell * 60, 600]].map(r => `<div class="row small" style="margin:6px 0"><span style="width:110px">${r[0]}</span><div style="flex:1;background:#eef1f6;border-radius:5px"><span class="fill" style="width:${Math.min(100, (r[1] / r[2]) * 100)}%"></span></div><b style="width:60px;text-align:right">${r[0] === 'Taps' ? c.stats.taps : r[0].startsWith('Avg') ? c.stats.dwell : c.stats.impressions}</b></div>`).join('')}</div>
+            <p class="small muted">Impression = ad within 10 m, in view for ≥ 1 s. Counted live from the visitor app while you demo AR.</p></div>
+        </div>
+        <div class="card">
+          <h3>Campaign details</h3>
+          <label class="f">Campaign name</label><input type="text" id="e-name" value="${c.name}">
+          <div class="grid g2" style="gap:10px"><div><label class="f">Brand (placeholder)</label><input type="text" id="e-brand" value="${c.brand}"></div>
+          <div><label class="f">Creative type</label><select id="e-type"><option value="image" ${c.type === 'image' ? 'selected' : ''}>🖼 Image</option><option value="video" ${c.type === 'video' ? 'selected' : ''}>🎬 Video</option></select></div></div>
+          <label class="f">Headline</label><input type="text" id="e-head" value="${c.headline}">
+          <label class="f">Offer text (shown when tapped)</label><textarea id="e-offer" rows="2">${c.offer}</textarea>
+          <div class="grid g2" style="gap:10px"><div><label class="f">Colour theme</label><select id="e-theme">${Object.entries(THEMES).map(([k, v]) => `<option value="${k}" ${v[0] === c.theme[0] ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+          <div><label class="f">Upload creative</label><input type="file" id="e-file" accept="image/*,video/*" style="padding:5px"></div></div>
+          <label class="f">Tap action</label><select id="e-target"><option value="">Save offer to wallet</option>${targets.map(r => `<option value="${r.id}" ${c.target === r.id ? 'selected' : ''}>Route to ${r.name} (${fl(r.floor)})</option>`).join('')}</select>
+          <div class="grid g2" style="gap:10px"><div><label class="f">Start</label><input type="date" id="e-start" value="${c.start}"></div><div><label class="f">End</label><input type="date" id="e-end" value="${c.end}"></div></div>
+          <div class="grid g2" style="gap:10px"><div><label class="f">Show during</label><input type="text" id="e-hours" value="${c.hours}"></div><div><label class="f">Budget (₹)</label><input type="number" id="e-budget" value="${c.budget}"></div></div>
+          <h4 style="margin-top:14px">Wall slots</h4>
+          ${V.walls.map(w => { const taken = C.find(x => x.id !== c.id && x.status === 'active' && x.walls.includes(w.id)); return `<div class="slot"><input type="checkbox" data-w="${w.id}" ${c.walls.includes(w.id) ? 'checked' : ''} ${w.approved ? '' : 'disabled'}><div style="flex:1"><b>${w.id}</b> · ${w.label}<div class="small muted">${fl(w.floor)} · ${Math.hypot(w.x2 - w.x1, w.y2 - w.y1).toFixed(1)} × ${w.height} m ${taken ? ` · ⚠ shared with ${taken.brand}` : ''}</div></div>${w.approved ? '<span class="badge ok">approved</span>' : '<span class="badge warn">awaiting owner</span>'}<a class="btn small" href="editor.html?sel=wall:${w.id}">on map</a></div>`; }).join('')}
+          <div class="row" style="margin-top:14px"><button class="btn primary" id="saveC">Save campaign</button><button class="btn danger" id="delC">Delete</button><span class="small muted" id="savedMsg"></span></div>
+        </div>
+      </div>`;
+    const g = id => $(id).value;
+    $('saveC').onclick = () => { Object.assign(c, { name: g('e-name'), brand: g('e-brand'), type: g('e-type'), headline: g('e-head'), offer: g('e-offer'), theme: THEMES[g('e-theme')], target: g('e-target') || null, start: g('e-start'), end: g('e-end'), hours: g('e-hours'), budget: +g('e-budget') || 0, walls: [...document.querySelectorAll('input[data-w]:checked')].map(i => i.dataset.w), cta: g('e-target') ? 'Route to ' + (V.rooms.find(r => r.id === g('e-target')) || {}).name : 'Save offer' }); save(); IS.toast('Campaign saved — open the visitor app → AR to see it'); kpis(); list(); detail(); };
+    $('delC').onclick = () => { if (confirm('Delete this campaign?')) { C = C.filter(x => x.id !== c.id); save(); selId = C[0] && C[0].id; kpis(); list(); detail(); } };
+    $('e-file').onchange = e => { if (e.target.files[0]) IS.toast(`“${e.target.files[0].name}” attached (mock: real build renders your file on the wall)`); };
+  }
+  $('newCamp').onclick = () => { const id = 'C' + (Date.now() % 100000); C.push({ id, name: 'New campaign', brand: 'Your Brand', type: 'image', theme: THEMES.Grape, headline: 'Your headline here', offer: 'Describe the offer.', cta: 'Save offer', target: null, walls: [], status: 'paused', start: '2026-10-01', end: '2026-12-31', hours: '09:00–19:00', budget: 5000, stats: { impressions: 0, taps: 0, dwell: 0 } }); save(); selId = id; kpis(); list(); detail(); };
+  $('resetAds').onclick = () => { C = IS.defaultCampaigns(); save(); selId = C[0].id; kpis(); list(); detail(); IS.toast('Sample ads restored'); };
+  kpis(); list(); detail();
+</script>
+</body>
+</html>

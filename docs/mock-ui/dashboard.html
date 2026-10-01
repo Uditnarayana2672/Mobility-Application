@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indore Spaces — Live dashboard (mock)</title>
+<link rel="stylesheet" href="css/app.css">
+<style>
+  body { overflow: hidden; }
+  .dash { display: grid; grid-template-columns: 1fr 380px; height: calc(100vh - 54px); }
+  .mapcol { position: relative; background: #e9edf3; }
+  .panel { background: #fff; border-left: 1px solid var(--line); overflow: auto; padding: 14px; }
+  .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 6px 12px; border-radius: 20px; background: #fff; box-shadow: var(--shadow); }
+  .status i { width: 10px; height: 10px; border-radius: 50%; background: #aab3c4; display: inline-block; }
+  .status.live i { background: #2b9348; animation: blink 1.4s infinite; } .status.stale i { background: var(--amber); }
+  @keyframes blink { 50% { opacity: .35; } }
+  .topleft { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; z-index: 5; }
+  .bigfloor { font-size: 15px; font-weight: 800; background: #fff; padding: 6px 12px; border-radius: 12px; box-shadow: var(--shadow); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat { background: #f5f7fb; border-radius: 12px; padding: 10px 12px; }
+  .stat b { display: block; font-size: 20px; line-height: 1.15; } .stat span { color: var(--muted); font-size: 11.5px; }
+  .pbar { height: 10px; border-radius: 6px; background: #e6eaf2; overflow: hidden; margin: 8px 0 4px; } .pbar i { display: block; height: 100%; background: var(--teal); width: 0; transition: width .25s; }
+  .ev { padding: 5px 0; border-bottom: 1px dashed #eef1f6; font-size: 12.5px; display: flex; gap: 8px; } .ev time { color: var(--muted); font-family: ui-monospace, Consolas, monospace; flex: none; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; background: #eef1f6; color: #5b6678; flex: none; height: 16px; }
+  .tag.scan { background: var(--brand-soft); color: var(--brand); } .tag.floor { background: #efe7ff; color: var(--purple); } .tag.ad { background: var(--amber-soft); color: var(--amber); } .tag.offroute, .tag.reroute, .tag.tracking { background: var(--red-soft); color: var(--red); } .tag.arrive { background: var(--green-soft); color: var(--green); }
+</style>
+</head>
+<body>
+<div id="topbar-slot"></div>
+<div class="dash">
+  <div class="mapcol">
+    <div id="map" style="position:absolute;inset:0"></div>
+    <div class="topleft">
+      <span class="status" id="conn"><i></i><span id="connT">Waiting for a phone…</span></span>
+      <div class="seg" id="floorSeg"></div>
+      <label class="status" style="font-weight:600"><input type="checkbox" id="follow" checked style="accent-color:var(--brand)"> Follow phone</label>
+      <label class="status" style="font-weight:600"><input type="checkbox" id="trailChk" checked style="accent-color:var(--brand)"> Trail</label>
+      <label class="status" style="font-weight:600"><input type="checkbox" id="mkChk" checked style="accent-color:var(--brand)"> Markers</label>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="row" style="margin-bottom:10px"><h3 style="margin:0">Live tracking</h3><span class="spacer"></span><button class="btn small primary" id="openPhone">📱 Open phone view ↗</button></div>
+    <div class="card flat" id="noPhone" style="margin-bottom:12px;background:#fff8e6;border-color:#f6d98a"><b>No phone connected</b><p class="small" style="margin:4px 0 8px">Open the visitor app in another tab/window (same browser) and walk a route — this screen mirrors it live. In the real demo the phone streams over WebSocket to the laptop.</p><button class="btn small" id="demoFeed">▶ Start built-in demo feed</button></div>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="stat"><b id="sFloor">—</b><span>Floor</span></div><div class="stat"><b id="sPos">—</b><span>Position (m)</span></div>
+      <div class="stat"><b id="sAcc">—</b><span>Accuracy</span></div><div class="stat"><b id="sHead">—</b><span>Heading</span></div>
+      <div class="stat"><b id="sMode">—</b><span>Phone mode</span></div><div class="stat"><b id="sMarker">—</b><span>Last anchor</span></div>
+    </div>
+    <div class="card flat" style="margin-bottom:12px"><h4>Route</h4><div id="rDest" style="font-weight:800;font-size:16px">No active route</div><div class="pbar"><i id="rBar"></i></div><div class="row small"><span id="rProg" class="muted">—</span><span class="spacer"></span><span id="rEta" style="font-weight:700">—</span></div><div class="small" style="margin-top:6px" id="rNext"></div></div>
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="stat"><b id="kWalk">0 m</b><span>walked this session</span></div><div class="stat"><b id="kScan">0</b><span>marker scans</span></div>
+      <div class="stat"><b id="kAd">0</b><span>ad impressions</span></div><div class="stat"><b id="kLang">EN</b><span>voice language</span></div>
+    </div>
+    <h4>Event log</h4><div id="log"></div>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/mapview.js"></script>
+<script>
+  document.getElementById('topbar-slot').outerHTML = IS.topbar('dashboard');
+  const V = IS.store.getPublished(), $ = id => document.getElementById(id);
+  const fl = id => (V.floors.find(f => f.id === id) || {}).name || id;
+  const mv = new IS.MapView($('map'), V, { floor: V.floors[0].id, minScale: 3, maxScale: 30, layers: { markers: true, pois: true }, onSelect: () => {} });
+  mv.fit(40);
+  let routeKey = null, route = null, last = 0, trail = [], trailEl = null, lastPose = null, demoTimer = null, demoMode = false;
+  const evLog = [];
+
+  function floors() { $('floorSeg').innerHTML = V.floors.map(f => `<button data-f="${f.id}" class="${mv.floor === f.id ? 'on' : ''}">${f.name}</button>`).join(''); $('floorSeg').querySelectorAll('button').forEach(b => b.onclick = () => { $('follow').checked = false; mv.setFloor(b.dataset.f); mv.fit(40); drawTrail(); floors(); }); }
+  floors();
+
+  function setRoute(msg) {
+    if (!msg) { route = null; routeKey = null; mv.setRoute(null, 0); $('rDest').textContent = 'No active route'; $('rBar').style.width = '0%'; return; }
+    const key = JSON.stringify([msg.from, msg.target, msg.via]); if (key === routeKey) return; routeKey = key;
+    const prefs = msg.via === 'lift' ? { avoidStairs: true } : msg.via === 'stairs' ? { avoidLifts: true } : {};
+    const r = IS.route(V, msg.from, msg.target, prefs); // same deterministic engine as the phone → identical route
+    if (r && !r.error) { route = r; mv.setRoute(r, 0); $('rDest').textContent = `→ ${r.destName}  (${r.via ? 'via ' + r.via : 'same floor'})`; trail = []; }
+  }
+  function drawTrail() {
+    if (trailEl) { trailEl.remove(); trailEl = null; } if (!$('trailChk').checked) return;
+    const pts = trail.filter(p => p.floor === mv.floor); if (pts.length < 2) return;
+    trailEl = document.createElementNS('http://www.w3.org/2000/svg', 'path'); trailEl.setAttribute('d', pts.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' '));
+    Object.entries({ fill: 'none', stroke: '#e8453c', 'stroke-width': 3, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round', 'vector-effect': 'non-scaling-stroke' }).forEach(([k, v]) => trailEl.setAttribute(k, v));
+    mv.gRoute.appendChild(trailEl);
+  }
+  function onPose(p) {
+    last = performance.now(); lastPose = p; const u = p.user; if (!u) return;
+    const age = Date.now() - p.t; const live = age < 2500;
+    $('conn').className = 'status ' + (live ? 'live' : 'stale'); $('connT').textContent = live ? (demoMode ? 'Live — built-in demo feed' : 'Live — phone connected') : 'Phone offline (last seen ' + Math.round(age / 1000) + ' s ago)';
+    $('noPhone').style.display = live ? 'none' : '';
+    if ($('follow').checked && mv.floor !== u.floor) { mv.setFloor(u.floor); mv.fit(40); floors(); }
+    mv.setUser(u); if (route) mv.setProgress(p.s || 0);
+    const t = trail[trail.length - 1]; if (!t || Math.hypot(t.x - u.x, t.y - u.y) > 0.6 || t.floor !== u.floor) { trail.push({ floor: u.floor, x: u.x, y: u.y }); if (trail.length > 400) trail.shift(); drawTrail(); }
+    $('sFloor').textContent = fl(u.floor); $('sPos').textContent = `${u.x.toFixed(1)}, ${u.y.toFixed(1)}`; $('sAcc').textContent = u.stale ? 'lost' : `±${u.acc.toFixed(1)} m`; $('sHead').textContent = Math.round(u.heading) + '°';
+    $('sMode').textContent = p.ar ? 'AR camera' : p.mode === 'nav' ? '2D map (nav)' : p.screen; $('sMarker').textContent = u.markerId || '—';
+    $('kWalk').textContent = Math.round(p.walked || 0) + ' m'; $('kScan').textContent = p.scans || 0; $('kAd').textContent = p.impressions || 0; $('kLang').textContent = { en: 'EN', hi: 'Hinglish', te: 'తెలుగు' }[p.lang] || p.lang;
+    if (p.total) { $('rBar').style.width = Math.min(100, (p.s / p.total) * 100) + '%'; $('rProg').textContent = `${Math.round(p.s)} / ${Math.round(p.total)} m${p.trans ? ' · on ' + p.trans : ''}`; $('rEta').textContent = p.eta != null ? 'ETA ' + IS.fmtTime(p.eta) : ''; $('rNext').innerHTML = p.next ? `Next: <b>${p.next}</b>${p.nextDist != null ? ' in ' + p.nextDist + ' m' : ''}` : ''; } else { $('rBar').style.width = '0%'; $('rProg').textContent = '—'; $('rEta').textContent = ''; $('rNext').textContent = ''; }
+  }
+  function onEvent(e) {
+    const d = new Date(e.at || Date.now()); evLog.unshift(`<div class="ev"><time>${d.toLocaleTimeString()}</time><span class="tag ${e.kind}">${e.kind}</span><span>${e.text}</span></div>`); if (evLog.length > 60) evLog.pop(); $('log').innerHTML = evLog.join('');
+  }
+  IS.bus.on('pose', onPose); IS.bus.on('route', setRoute); IS.bus.on('event', onEvent);
+  // hydrate from last known state
+  try { const lr = JSON.parse(localStorage.getItem('is.live.route')); if (lr) setRoute(lr.payload); const lp = JSON.parse(localStorage.getItem('is.live.pose')); if (lp) onPose(lp.payload); } catch (e) {}
+  setInterval(() => { if (lastPose && !demoMode) { const age = Date.now() - lastPose.t; if (age > 2500) { $('conn').className = 'status stale'; $('connT').textContent = 'Phone offline (last seen ' + Math.round(age / 1000) + ' s ago)'; $('noPhone').style.display = ''; } } }, 1000);
+  $('trailChk').onchange = drawTrail; $('mkChk').onchange = e => { mv.setLayer('markers', e.target.checked); if (route) mv.setRoute(route, lastPose ? lastPose.s : 0); drawTrail(); };
+  $('openPhone').onclick = () => window.open('nav.html', 'is-phone', 'width=1000,height=900');
+
+  /* built-in demo feed: replays the same route with the same engine so the dashboard can be shown without a phone */
+  $('demoFeed').onclick = () => {
+    if (demoTimer) return; demoMode = true; const m = V.markers[0], pose = IS.poseFromMarker(m);
+    const target = { room: 'F2-cafeteria' }, from = { floor: pose.floor, x: pose.x, y: pose.y, heading: pose.heading };
+    const r = IS.route(V, from, target, { avoidLifts: true }); setRoute({ from, target, via: r.via }); onEvent({ kind: 'scan', text: `Marker ${m.id} scanned — ${m.name}`, at: Date.now() }); onEvent({ kind: 'nav', text: `Navigation started → ${r.destName}`, at: Date.now() });
+    let s = 0, scans = 1; const u = Object.assign({}, from, { acc: 0.3, stale: false, markerId: m.id }); let lastT = performance.now(), hold = 0, prevFloor = from.floor;
+    demoTimer = setInterval(() => {
+      const now = performance.now(), dt = (now - lastT) / 1000; lastT = now;
+      if (hold > 0) { hold -= dt; } else { s = Math.min(r.total, s + 1.3 * 3 * dt); }
+      const pa = IS.pointAt(r, s); if (pa.vertical) { hold = 0; s = Math.min(r.total, s + 0.4); }
+      u.x = pa.x; u.y = pa.y; u.floor = pa.floor; u.heading = pa.bearing; u.acc = Math.min(2.8, 0.3 + 0.05 * (s % 20));
+      if (pa.floor !== prevFloor) { onEvent({ kind: 'floor', text: `${fl(pa.floor)} confirmed (lobby marker)`, at: Date.now() }); prevFloor = pa.floor; scans++; u.markerId = 'M05'; }
+      const nx = IS.nextStep(r, s);
+      onPose({ t: Date.now(), screen: 'map', mode: 'nav', ar: false, user: Object.assign({}, u), s, total: r.total, next: IS.stepAction(nx.step, 'en'), nextDist: Math.round(nx.remaining), eta: IS.remainingSec(r, s), dest: r.destName, lang: 'en', scans, impressions: 0, walked: s, trans: pa.vertical ? pa.vertical.via : null });
+      if (s >= r.total - 0.05) { onEvent({ kind: 'arrive', text: `Arrived at ${r.destName}`, at: Date.now() }); clearInterval(demoTimer); demoTimer = null; setTimeout(() => { demoMode = false; $('connT').textContent = 'Demo feed finished'; }, 800); }
+    }, 60);
+  };
+</script>
+</body>
+</html>

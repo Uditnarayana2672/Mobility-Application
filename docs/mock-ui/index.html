@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indore Spaces — Demo UI (mock)</title>
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .flow { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; }
+  .flow .box { flex: 1; min-width: 170px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .flow .arrow { align-self: center; font-size: 22px; color: var(--muted); }
+  .flow b { display: block; margin-bottom: 4px; }
+  table.map td:first-child { font-weight: 700; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="topbar-slot"></div>
+<div class="hero"><div class="in">
+  <span class="badge" style="background:rgba(255,255,255,.18);color:#fff">CLICKABLE MOCK · every page below works</span>
+  <h1 style="margin-top:12px">Indore Spaces — maps and AR wayfinding for indoor places</h1>
+  <p>Google-Maps-style navigation inside offices, malls, airports, stations and bus stands — with turn-by-turn on a 2D map, an AR mode with floor arrows, and ads on blank walls. Routing, instructions and AR are computed from the map data — no AI guessing. AI is used only for free-form voice questions.</p>
+  <div class="row wrap"><a class="btn primary" href="nav.html" style="font-size:15px;padding:11px 20px">▶ Start the visitor demo</a><a class="btn" href="dashboard.html" style="font-size:15px;padding:11px 20px">Live dashboard</a></div>
+</div></div>
+
+<div class="page">
+  <h2>Pick a role</h2>
+  <div class="grid g3" style="margin-bottom:28px">
+    <a class="card role-card" href="nav.html"><div class="ico" style="background:#e8eefe">📱</div><h3>Visitor app</h3><p class="muted">Scan a marker, search, get directions, walk with a heading-up map, switch to AR, ask by voice in English / Hinglish / తెలుగు. Phone frame on laptop, full-screen on Android.</p><span class="badge info">/nav</span></a>
+    <a class="card role-card" href="owner.html"><div class="ico" style="background:#dff3e5">🏢</div><h3>Owner portal</h3><p class="muted">Venue owners add a closed space: name, floor-plan photo, scale calibration. See publish status, versions and checks.</p><span class="badge ok">/owner</span></a>
+    <a class="card role-card" href="editor.html"><div class="ico" style="background:#fff1d6">🗺️</div><h3>Map editor</h3><p class="muted">Draw rooms, lay the walk path, place marker stickers and ad slots, validate, publish. Edit a room name and see it in the visitor app.</p><span class="badge warn">/editor</span></a>
+    <a class="card role-card" href="ads.html"><div class="ico" style="background:#fde4e4">📣</div><h3>Ads portal</h3><p class="muted">Advertisers build image / video campaigns, pick approved blank walls, schedule. Pause one and it disappears from AR.</p><span class="badge fail">/ads</span></a>
+    <a class="card role-card" href="markers.html"><div class="ico" style="background:#efe7ff">▣</div><h3>Marker sheet</h3><p class="muted">Print-ready QR/ArUco stickers with floor, location and install height. These are the “you are here” anchors.</p><span class="badge gray">/markers</span></a>
+    <a class="card role-card" href="dashboard.html"><div class="ico" style="background:#dcf4ef">🖥️</div><h3>Live dashboard</h3><p class="muted">Laptop control-room: watch the phone’s dot, route, accuracy ring, floor and events in real time while someone walks.</p><span class="badge ok">/dashboard</span></a>
+  </div>
+
+  <div class="grid g2" style="align-items:start;margin-bottom:28px">
+    <div class="card">
+      <h2>2-minute demo script</h2>
+      <ol class="steps-list">
+        <li><div><b>Print or open markers</b><div class="muted small">Open the <a href="markers.html">Marker sheet</a> — these are the stickers placed around the office.</div></div></li>
+        <li><div><b>Open the live dashboard</b> on the big screen<div class="muted small"><a href="dashboard.html">Dashboard</a> (or click “Open live dashboard” inside the visitor app).</div></div></li>
+        <li><div><b>Scan marker M01</b> in the <a href="nav.html">Visitor app</a><div class="muted small">Blue dot appears with a heading cone. Floor + position come from the marker.</div></div></li>
+        <li><div><b>Say / type “Cafeteria kahan hai?”</b> (🎤)<div class="muted small">Switch language to Hinglish or తెలుగు first. Then tap Directions.</div></div></li>
+        <li><div><b>Compare stairs vs lift</b>, tap Start<div class="muted small">Fastest = stairs (1 min). Toggle “Avoid stairs” for the accessible route.</div></div></li>
+        <li><div><b>Tap 📷 for AR</b><div class="muted small">Floor chevrons, a yellow turn arrow, door signs and a video ad on a blank wall. Tap the ad.</div></div></li>
+        <li><div><b>Watch the floor change</b><div class="muted small">“Taking the stairs…” → lobby marker confirms Floor 2 → arrival.</div></div></li>
+        <li><div><b>Show the owner side</b><div class="muted small">In the <a href="editor.html">Map editor</a> rename a room → Publish → reload the visitor app. In <a href="ads.html">Ads</a> pause a campaign → ad vanishes in AR.</div></div></li>
+      </ol>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <h2>How the pages are connected</h2>
+        <div class="flow">
+          <div class="box"><b>🗺️ Map editor</b><span class="small muted">Owner draws &amp; validates</span></div><div class="arrow">➜</div>
+          <div class="box"><b>📦 Venue package</b><span class="small muted">Rooms · walk graph · markers · ad slots</span></div><div class="arrow">➜</div>
+          <div class="box"><b>📱 Visitor app</b><span class="small muted">Search · route · 2D · AR · voice</span></div>
+        </div>
+        <div class="flow" style="margin-top:10px">
+          <div class="box"><b>📣 Ads portal</b><span class="small muted">Campaigns → wall slots</span></div><div class="arrow">➜</div>
+          <div class="box"><b>📱 AR view</b><span class="small muted">Draws ads, counts impressions</span></div><div class="arrow">➜</div>
+          <div class="box"><b>🖥️ Dashboard</b><span class="small muted">Live pose &amp; events</span></div>
+        </div>
+        <p class="small muted" style="margin-top:12px">In this mock the pages share data through the browser’s local storage and a broadcast channel (open them in tabs of the same browser). The real build uses static venue JSON + a small Node WebSocket relay on the laptop.</p>
+      </div>
+      <div class="card"><h2>What is real vs simulated here</h2>
+        <table class="t"><tr><th>Real (deterministic code)</th><th>Simulated for the laptop</th></tr>
+        <tr><td>A* routing with time costs (stairs vs lift)<br>Turn instructions in 3 languages<br>Fuzzy search + voice intents<br>Map validation &amp; publish checks<br>AR scene from the map geometry</td><td>Walking (a 1.3 m/s virtual walker)<br>Camera feed (drawn corridor)<br>Marker scan (button instead of camera)<br>Phone sensors / drift<br>Speech recognition may need Chrome</td></tr></table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Mock → real implementation</h2>
+    <table class="t map">
+      <tr><th>Mock page</th><th>Becomes (React route)</th><th>Real data source</th><th>Build phase</th></tr>
+      <tr><td>nav.html (2D)</td><td>/nav — PWA, full-screen on Android</td><td>Venue package JSON; marker scan via camera</td><td>2–3</td></tr>
+      <tr><td>nav.html (AR)</td><td>/nav → AR view (three.js + WebXR)</td><td>Phone pose + marker anchors; same route/step objects</td><td>4</td></tr>
+      <tr><td>editor.html</td><td>/editor — extends the existing Blueprint editor</td><td>Fixes + polygons, scale, walk network, markers, ad slots</td><td>1</td></tr>
+      <tr><td>owner.html</td><td>/owner — venue list &amp; publish</td><td>Supabase later; JSON files for the demo</td><td>1 (UI) / later (backend)</td></tr>
+      <tr><td>ads.html</td><td>/ads</td><td>Campaign JSON → wall slots</td><td>4</td></tr>
+      <tr><td>markers.html</td><td>/markers — PDF export</td><td>Real ArUco images generated from IDs</td><td>1</td></tr>
+      <tr><td>dashboard.html</td><td>/dashboard + <code>server/</code> WebSocket relay</td><td>Phone streams pose over HTTPS/WebSocket</td><td>3</td></tr>
+    </table>
+    <p class="small muted" style="margin-top:10px">All venue data in this mock (rooms, names, ad brands) is placeholder. Replace with the real office once the plan, scale and marker spots are surveyed.</p>
+  </div>
+</div>
+<script src="js/data.js"></script>
+<script>document.getElementById('topbar-slot').outerHTML = IS.topbar('home');</script>
+</body>
+</html>

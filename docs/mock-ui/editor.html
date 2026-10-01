@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indore Spaces — Map editor (mock)</title>
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .sub-bar .name { font-weight: 800; font-size: 15px; }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); margin: -14px -14px 12px; }
+  .tabs button { flex: 1; border: 0; background: transparent; padding: 11px 6px; font: inherit; font-weight: 700; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tabs button.on { color: var(--brand); border-color: var(--brand); }
+  .tabs .cnt { background: var(--red); color: #fff; border-radius: 9px; padding: 0 6px; font-size: 10px; margin-left: 4px; }
+  textarea.json { height: 460px; font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; }
+  .tool.sep { margin-top: 8px; border-top: 1px solid var(--line); border-radius: 0; padding-top: 10px; }
+  .pill-sw { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; cursor: pointer; padding: 3px 6px; border-radius: 8px; }
+  .pill-sw input { accent-color: var(--brand); }
+  .kvs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="topbar-slot"></div>
+<div class="shell editor">
+  <div class="sub-bar">
+    <span class="name" id="venueName">Demo Office · Tower A</span>
+    <span class="badge info" id="verBadge">draft</span>
+    <div class="seg" id="floorSeg"></div>
+    <button class="btn small ghost" id="addFloor" title="Add a floor">＋ Floor</button>
+    <span class="spacer"></span>
+    <span class="muted small" id="saveState">All changes saved to draft</span>
+    <button class="btn small" id="undo">↶ Undo</button>
+    <button class="btn small" id="redo">↷ Redo</button>
+    <button class="btn small" id="resetBtn">Reset to sample</button>
+    <button class="btn small" id="checkBtn">✔ Validate</button>
+    <button class="btn small primary" id="publishBtn">🚀 Publish</button>
+  </div>
+
+  <div class="tools" id="tools"></div>
+
+  <div class="canvas-wrap">
+    <div id="canvas" style="position:absolute;inset:0"></div>
+    <div class="floatbar" id="layerBar"></div>
+    <div class="hint" id="hint"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="side">
+    <div class="tabs"><button data-t="props" class="on">Properties</button><button data-t="check">Checklist <span class="cnt" id="failCnt" style="display:none"></span></button><button data-t="json">Venue JSON</button></div>
+    <div id="tab-props"></div>
+    <div id="tab-check" style="display:none"></div>
+    <div id="tab-json" style="display:none"><div class="row" style="margin-bottom:8px"><button class="btn small" id="dlJson">⬇ Download</button><span class="muted small">This is the “venue package” the visitor app loads.</span></div><textarea class="json" id="jsonBox" readonly></textarea></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="scaleModal"><div class="modal" style="width:420px"><header><h3 style="margin:0">Calibrate scale</h3></header><div class="body"><p class="muted">You drew a line of <b id="scUnits">0</b> map units. How long is it in real life?</p><label class="f">Real length (metres)</label><input type="number" id="scMetres" value="60" step="0.1"><p class="small muted" style="margin-top:8px">Tip: use a laser distance meter on a long corridor — the longer the reference, the smaller the error.</p></div><footer><button class="btn" id="scCancel">Cancel</button><button class="btn primary" id="scOk">Apply scale</button></footer></div></div>
+
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/mapview.js"></script>
+<script src="js/editor.js"></script>
+<script>document.getElementById('topbar-slot').outerHTML = IS.topbar('editor');</script>
+</body>
+</html>

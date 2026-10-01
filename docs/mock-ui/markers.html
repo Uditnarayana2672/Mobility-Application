@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Indore Spaces — Marker sheet (mock)</title>
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .sheet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+  .marker-card { background: #fff; border: 1px dashed #98a3b8; border-radius: 12px; padding: 14px; text-align: center; position: relative; }
+  .marker-card.hl { outline: 3px solid var(--brand); }
+  .marker-card svg { width: 168px; height: 168px; display: block; margin: 0 auto 8px; }
+  .marker-card .id { font-size: 26px; font-weight: 800; letter-spacing: .04em; }
+  .marker-card .loc { font-weight: 700; margin-top: 2px; }
+  .marker-card .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .marker-card .up { position: absolute; top: 8px; left: 10px; font-size: 11px; font-weight: 800; color: #555; }
+  .marker-card .cut { position: absolute; bottom: 6px; right: 10px; font-size: 10px; color: #98a3b8; }
+  .sizeA5 .marker-card svg { width: 210px; height: 210px; } .sizeA4 .marker-card svg { width: 280px; height: 280px; }
+  .sizeA4 .sheet-grid { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+</style>
+</head>
+<body>
+<div id="topbar-slot"></div>
+<div class="page" id="page">
+  <div class="row noprint" style="margin-bottom:14px">
+    <div><h1 style="margin:0">Marker sheet</h1><p class="muted" style="margin:4px 0 0">Print, cut and stick at the surveyed spots. Each code carries its venue, floor and ID — the app looks up the exact position, height and facing from the published map.</p></div>
+    <span class="spacer"></span><button class="btn primary" onclick="window.print()">🖨 Print sheet</button>
+  </div>
+  <div class="card noprint" style="margin-bottom:16px">
+    <div class="row wrap">
+      <b>Floor</b><div class="seg" id="floorSeg"></div>
+      <b style="margin-left:14px">Size</b><div class="seg" id="sizeSeg"><button data-s="A6" class="on">A6 (small)</button><button data-s="A5">A5 (recommended)</button><button data-s="A4">A4</button></div>
+      <span class="spacer"></span><span class="muted small" id="count"></span>
+    </div>
+    <div class="row wrap small" style="margin-top:10px;gap:18px">
+      <span>📏 Stick at <b>1.4 m</b> (eye level), flat, no glare</span><span>🧭 Arrow under the code points <b>up</b></span><span>🚫 Not on glass, doors or behind plants</span><span>📍 Note the exact spot in the editor</span>
+    </div>
+  </div>
+  <div class="sheet-grid" id="grid"></div>
+  <p class="muted small noprint" style="margin-top:18px">Mock: the pattern shown is an ArUco-style 6×6 code generated from the marker ID. In the real build we generate genuine ArUco/QR images and verify detection on the target phone during Phase 0.</p>
+</div>
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script>
+  document.getElementById('topbar-slot').outerHTML = IS.topbar('markers');
+  const V = IS.store.getPublished(), q = new URLSearchParams(location.search), only = q.get('id');
+  let floorSel = 'all', size = 'A6';
+  const fl = id => (V.floors.find(f => f.id === id) || {}).name || id;
+  const dir = d => ({ 0: 'North', 90: 'East', 180: 'South', 270: 'West' }[d] || d + '°');
+  function pattern(id) {
+    let seed = 0; for (const c of id) seed = (seed * 131 + c.charCodeAt(0)) >>> 0;
+    const N = 6, cell = 100 / (N + 2); let svg = `<svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#fff"/><rect x="${cell * .5}" y="${cell * .5}" width="${100 - cell}" height="${100 - cell}" fill="#111"/>`;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      seed = (seed * 1664525 + 1013904223) >>> 0; let on = (seed >>> 16) & 1;
+      if (x === 0 && y === 0) on = 0; if (x === N - 1 && y === 0) on = 1; if (x === 0 && y === N - 1) on = 1; if (x === N - 1 && y === N - 1) on = 1;
+      if (on) svg += `<rect x="${cell * (x + 1)}" y="${cell * (y + 1)}" width="${cell + .2}" height="${cell + .2}" fill="#fff"/>`;
+    }
+    return svg + '</svg>';
+  }
+  function render() {
+    const list = V.markers.filter(m => (floorSel === 'all' || m.floor === floorSel) && (!only || true));
+    document.getElementById('page').className = 'page size' + size;
+    document.getElementById('grid').innerHTML = list.map(m => `<div class="marker-card ${only === m.id ? 'hl' : ''}"><span class="up">▲ UP</span>${pattern(V.id + m.id)}<div class="id">${m.id}</div><div class="loc">${m.name}</div><div class="meta">${V.name} · ${fl(m.floor)}<br>Height ${m.z} m · faces ${dir(m.normal)} · (${m.x}, ${m.y})</div><div class="meta">${m.note || ''}</div><span class="cut">✂ cut here</span></div>`).join('');
+    document.getElementById('count').textContent = `${list.length} marker(s)`;
+  }
+  document.getElementById('floorSeg').innerHTML = '<button data-f="all" class="on">All floors</button>' + V.floors.map(f => `<button data-f="${f.id}">${f.name}</button>`).join('');
+  document.querySelectorAll('#floorSeg button').forEach(b => b.onclick = () => { floorSel = b.dataset.f; document.querySelectorAll('#floorSeg button').forEach(x => x.classList.toggle('on', x === b)); render(); });
+  document.querySelectorAll('#sizeSeg button').forEach(b => b.onclick = () => { size = b.dataset.s; document.querySelectorAll('#sizeSeg button').forEach(x => x.classList.toggle('on', x === b)); render(); });
+  render();
+</script>
+</body>
+</html>

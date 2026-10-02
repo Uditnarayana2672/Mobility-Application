@@ -74,6 +74,7 @@ export interface NavState {
   toast: { id: number; text: string } | null;
   arrived: ArrivedInfo | null;
   scans: number;
+  impressions: number;
   walked: number;
 }
 
@@ -115,6 +116,7 @@ export class NavController {
   private timers: { at: number; fn: () => void }[] = [];
   private navStartedAt = 0;
   private unsubs: (() => void)[] = [];
+  private readonly arOpenListeners = new Set<() => void>();
 
   constructor(deps: NavDeps) {
     this.v = deps.venue;
@@ -153,6 +155,7 @@ export class NavController {
       toast: null,
       arrived: null,
       scans: 0,
+      impressions: 0,
       walked: 0,
     };
     this.unsubs.push(this.sim.subscribe((p) => this.onPose(p)));
@@ -175,6 +178,7 @@ export class NavController {
     this.unsubs = [];
     this.sim.stop();
     this.speech.cancel();
+    this.arOpenListeners.clear();
     this.listeners.clear();
   }
 
@@ -303,6 +307,7 @@ export class NavController {
     }
     const prev = this.lastPose;
     if (this.live && p.stale && !(prev?.stale ?? false)) {
+      if (this.st.screen === "ar") this.patch({ screen: "map" });
       this.toast("📡 Tracking lost — scan a marker to fix your position");
       this.ev("tracking", "Tracking lost");
     } else if (this.live && !p.stale && prev?.stale) {
@@ -449,11 +454,33 @@ export class NavController {
   }
 
   showAr(): void {
-    this.ev("ar", "AR view requested (arrives in Phase 4)");
+    for (const fn of this.arOpenListeners) fn();
+    this.ev("ar", "AR guidance opened");
     this.patch({ screen: "ar" });
+  }
+  /** Called synchronously inside the AR-enter gesture (muted videos use this to satisfy autoplay policies). */
+  onArOpen(fn: () => void): () => void {
+    this.arOpenListeners.add(fn);
+    return () => this.arOpenListeners.delete(fn);
   }
   leaveAr(): void {
     this.patch({ screen: this.st.arrived ? "arrived" : "map" });
+  }
+
+  recordAdImpression(campaignId: string, brand: string): void {
+    this.patch({ impressions: this.st.impressions + 1 });
+    this.ev("ad", `Ad impression: ${brand} (${campaignId})`);
+    this.publishPose(true);
+  }
+
+  recordAdTap(campaignId: string, brand: string): void {
+    this.ev("ad", `Ad tapped: ${brand} (${campaignId})`);
+  }
+
+  routeToRoom(room: string): void {
+    this.leaveAr();
+    this.showPlace({ room });
+    this.preview();
   }
 
   /* ------------------------------------------------------------------ place + preview */
@@ -702,9 +729,16 @@ export class NavController {
     });
   }
 
+  /** Push-to-talk barge-in: voice input always wins over queued/current TTS. */
+  cancelSpeech(): void {
+    this.speech.cancel();
+  }
+
   private applyIntent(res: Intent, located: boolean): string {
     const lang = this.st.lang;
     switch (res.type) {
+      case "answer":
+        return res.text;
       case "goto": {
         const from = this.fromPose();
         if (!from) return MSG.needLocation[lang]();
@@ -751,6 +785,23 @@ export class NavController {
         this.patch({ prefs: { avoidStairs: true } });
         if (this.st.mode === "preview") this.preview();
         return MSG.pref[lang]();
+      case "switch":
+        if (res.view === "ar") {
+          this.later(250, () => {
+            this.closeOverlay();
+            this.showAr();
+          });
+          return MSG.ar[lang]();
+        }
+        this.later(250, () => {
+          this.closeOverlay();
+          this.leaveAr();
+        });
+        return MSG.map[lang]();
+      case "howlong": {
+        const eta = this.st.snap?.etaSec;
+        return eta == null ? MSG.noEta[lang]() : MSG.eta[lang](fmtTime(eta));
+      }
       default:
         return MSG.unknown[lang]();
     }
@@ -810,7 +861,7 @@ export class NavController {
       t: Date.now(),
       screen: this.st.screen,
       mode: this.st.mode,
-      ar: this.sim.kind === "xr",
+      ar: this.st.screen === "ar",
       user: { floor: u.floor, x: u.x, y: u.y, heading: u.heading, acc: u.acc, stale: u.stale, markerId: u.markerId, source: u.source, anchorAgoSec: this.lastAnchorAt === null ? null : Math.max(0, (Date.now() - this.lastAnchorAt) / 1000) },
       s: final ? final.s : navigating ? snap.s : 0,
       total: final ? final.total : R ? R.total : 0,
@@ -820,7 +871,7 @@ export class NavController {
       dest: final ? final.dest : R ? R.destName : null,
       lang: this.st.lang,
       scans: this.st.scans,
-      impressions: 0,
+      impressions: this.st.impressions,
       walked: this.st.walked,
       playing: this.st.sim.playing,
       trans: this.st.sim.trans ? this.st.sim.trans.via : null,
@@ -829,9 +880,22 @@ export class NavController {
     this.bus.send("pose", payload);
   }
 
-  /** Demo reset: forget the live state, tell the dashboard the route is gone. */
+  /** Demo reset: return the visitor state to a clean launch and tell the dashboard the route is gone. */
   resetDemo(): void {
     this.pubRoute(null);
     this.speech.cancel();
+    this.sim.pause();
+    this.session = null;
+    this.routeFrom = null;
+    this.timers = [];
+    this.lastPose = null;
+    this.located = false;
+    this.lastAnchorAt = null;
+    this.patch({
+      screen: "city", mode: "explore", overlay: "none", located: false, user: null, follow: false, place: null,
+      options: [], optIdx: 0, route: null, snap: null, scanning: false, floorPrompt: null, chat: [], caption: null,
+      toast: { id: ++this.uid, text: "Demo reset" }, arrived: null, scans: 0, impressions: 0, walked: 0,
+      prefs: { avoidStairs: false }, sim: this.sim.getStatus(),
+    });
   }
 }

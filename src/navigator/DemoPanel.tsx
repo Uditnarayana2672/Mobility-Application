@@ -80,7 +80,8 @@ export default function DemoPanel({ rt, s, open, onClose }: { rt: NavRuntime; s:
   const reset = () => {
     ctl.resetDemo();
     rt.bc?.clearSnapshot();
-    window.location.href = window.location.pathname + window.location.search;
+    void fetch(`/api/demo/reset/${encodeURIComponent(s.venue.id)}`, { method: "POST" }).catch(() => undefined);
+    window.location.hash = "";
   };
   return (
     <aside className={`demo-panel ${open ? "open" : ""}`} data-testid="demo-panel">

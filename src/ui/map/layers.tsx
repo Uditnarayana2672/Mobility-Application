@@ -2,6 +2,7 @@ import { memo } from "react";
 import { catOf } from "@/core/cats";
 import { routeRuns } from "@/core/playback";
 import type { Route } from "@/core/route";
+import { CORRIDOR_W } from "@/core/geo";
 import type { Floor, Room, Venue } from "@/core/schema";
 import type { MapItem, MapLayers } from "./types";
 
@@ -61,6 +62,15 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
             <line x1={c.x} y1={c.y + c.h / 2} x2={c.x + c.w} y2={c.y + c.h / 2} stroke="#eef1f5" strokeWidth={1} strokeDasharray="6 6" {...NS} />
           </g>
         ))}
+      {/* Corridors drawn as walk lines (the editor's way): a floor-coloured strip of the line's width, under the rooms. */}
+      <g style={{ pointerEvents: "none" }}>
+        {venue.edges.map((e, i) => {
+          const a = nodes.get(e.a);
+          const b = nodes.get(e.b);
+          if (!a || !b || e.type !== "walk" || a.floor !== floor.id || b.floor !== floor.id || a.kind !== "corridor" || b.kind !== "corridor") return null;
+          return <line key={`cw${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fff" strokeOpacity={layers.underlay && floor.background ? 0.5 : 1} strokeWidth={e.width ?? CORRIDOR_W} strokeLinecap="round" />;
+        })}
+      </g>
       <g>
         {venue.rooms
           .filter((r) => r.floor === floor.id)
@@ -96,7 +106,13 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
             const a = nodes.get(e.a);
             const b = nodes.get(e.b);
             if (!a || !b || e.type !== "walk" || a.floor !== floor.id || b.floor !== floor.id) return null;
-            return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#0f9d8a" strokeWidth={2.5} opacity={0.9} {...NS} />;
+            const sel = selected?.type === "edge" && selected.id === `${e.a}|${e.b}`;
+            return (
+              <g key={i}>
+                <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={sel ? "#2f5bea" : "#0f9d8a"} strokeWidth={sel ? 4 : 2.5} opacity={0.9} {...NS} style={{ pointerEvents: "none" }} />
+                {a.kind === "corridor" && b.kind === "corridor" && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={12} data-type="edge" data-id={`${e.a}|${e.b}`} style={{ cursor: "pointer" }} {...NS} />}
+              </g>
+            );
           })}
         </g>
       )}

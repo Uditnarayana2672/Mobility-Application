@@ -72,6 +72,15 @@ export class XrPoseCore {
     return this.al !== null;
   }
 
+  /** Venue/map point (x east, y south, z up) -> the current WebXR local frame. */
+  mapPointToXr(p: { x: number; y: number; z: number }): V3 | null {
+    if (!this.al) return null;
+    const world: V3 = [p.x, -p.y, p.z];
+    const q = mulV(rotZ(-this.al.theta), sub(world, this.al.tau));
+    // inverse of S(xr) = (xr.x, -xr.z, xr.y)
+    return [q[0], q[2], -q[1]];
+  }
+
   /** One XR frame: `viewToRef` is the view's camera-to-local matrix (column-major 4x4); null when the pose is unavailable. */
   frame(tSec: number, tracking: XrTracking, viewToRef: ArrayLike<number> | null): void {
     this.t = tSec;

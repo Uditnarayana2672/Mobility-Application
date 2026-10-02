@@ -7,13 +7,14 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Hub from "./shared/Hub";
-import Placeholder from "./shared/Placeholder";
 
 const OwnerPage = lazy(() => import("./owner/OwnerPage"));
 const MarkersPage = lazy(() => import("./markers/MarkersPage"));
 const EditorPage = lazy(() => import("./editor/EditorPage"));
 const NavPage = lazy(() => import("./navigator/NavPage"));
 const DashboardPage = lazy(() => import("./dashboard/DashboardPage"));
+const AdsPage = lazy(() => import("./ads/AdsPage"));
+const PreflightPage = lazy(() => import("./preflight/PreflightPage"));
 const SpikesIndex = lazy(() => import("./spikes/SpikesIndex"));
 const S1 = lazy(() => import("./spikes/S1Page"));
 const S2 = lazy(() => import("./spikes/S2Page"));
@@ -39,7 +40,8 @@ const App = () => (
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/markers" element={<MarkersPage />} />
             <Route path="/owner" element={<OwnerPage />} />
-            <Route path="/ads" element={<Placeholder title="Ads" note="Phase 4: advertiser portal." />} />
+            <Route path="/ads" element={<AdsPage />} />
+            <Route path="/preflight" element={<PreflightPage />} />
             <Route path="/spikes" element={<SpikesIndex />} />
             <Route path="/spikes/s1" element={<S1 />} />
             <Route path="/spikes/s2" element={<S2 />} />

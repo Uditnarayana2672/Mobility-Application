@@ -1,0 +1,19 @@
+.preflight { min-height: 100vh; background: #f4f6fa; color: #172033; padding: 28px; font-family: Inter, system-ui, sans-serif; }
+.preflight header { max-width: 920px; margin: auto; display: flex; justify-content: space-between; align-items: center; }
+.preflight h1 { font-size: 32px; margin: 8px 0 2px; }
+.preflight p { color: #667085; margin: 0; }
+.preflight .score { width: 82px; height: 82px; border-radius: 50%; display: grid; place-items: center; background: #fff0cc; color: #8b5e00; font-size: 24px; font-weight: 900; }
+.preflight .score.all { background: #dff7e7; color: #08783e; }
+.preflight .checks { max-width: 920px; margin: 24px auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.preflight article { display: flex; gap: 12px; background: white; border: 2px solid #d9dee8; border-radius: 14px; padding: 16px; }
+.preflight article i { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 50%; background: #eef1f6; font-style: normal; font-weight: 900; }
+.preflight article div { display: grid; gap: 4px; }
+.preflight article span { color: #667085; font-size: 13px; }
+.preflight article.pass { border-color: #61c98b; }.preflight article.pass i { background: #dff7e7; color: #08783e; }
+.preflight article.fail { border-color: #ef8585; }.preflight article.fail i { background: #fee5e5; color: #b42318; }
+.preflight .actions { max-width: 920px; margin: auto; display: flex; flex-wrap: wrap; gap: 10px; }
+.preflight button,.preflight .button { border: 1px solid #cbd2df; background: white; color: #172033; border-radius: 9px; padding: 11px 15px; font-weight: 750; text-decoration: none; }
+.preflight button.primary { background: #2f5bea; color: white; border-color: #2f5bea; }
+.preflight .camera { display: block; width: min(920px, 100%); max-height: 360px; object-fit: cover; background: #111827; border-radius: 14px; margin: 18px auto 8px; }
+.preflight .note { max-width: 920px; margin: auto; font-size: 13px; }
+@media (max-width: 560px) { .preflight { padding: 18px; }.preflight h1 { font-size: 25px; }.preflight .score { width: 68px; height: 68px; } }

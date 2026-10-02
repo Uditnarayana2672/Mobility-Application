@@ -4,8 +4,8 @@ import { CATS, POI_KINDS, POI_KIND_IDS, type PoiKind } from "@/core/cats";
 import type { Venue } from "@/core/schema";
 import type { MapLayers, MapView } from "@/ui/map";
 import type { SaveState } from "../useAutosave";
-import type { ToolId } from "../store";
-import { TOOL_LIST, bgHandles, type Overlay } from "../tools";
+import type { Selection, ToolId } from "../store";
+import { TOOL_LIST, bgHandles, selectionHandles, type Overlay } from "../tools";
 import { Badge, Btn } from "./ui";
 
 /* ------------------------------------------------------------------ sub bar */
@@ -136,6 +136,8 @@ const LAYERS: [keyof MapLayers, string][] = [
 ];
 
 export function LayerBar(p: {
+  snapOn: boolean;
+  onSnap(on: boolean): void;
   layers: MapLayers;
   tool: ToolId;
   poiKind: PoiKind;
@@ -146,6 +148,10 @@ export function LayerBar(p: {
 }) {
   return (
     <div className="absolute left-2 top-2 z-10 flex flex-wrap items-center gap-x-2 rounded-lg bg-white/90 px-2 py-1 text-xs shadow">
+      <label className="inline-flex cursor-pointer items-center gap-1 font-bold text-blue-800" title="Key G">
+        <input type="checkbox" checked={p.snapOn} onChange={(e) => p.onSnap(e.target.checked)} data-testid="snap-toggle" />
+        Snap 0.5 m
+      </label>
       {LAYERS.map(([k, label]) => (
         <label key={k} className="inline-flex cursor-pointer items-center gap-1 font-semibold">
           <input type="checkbox" checked={p.layers[k]} onChange={(e) => p.onLayer(k, e.target.checked)} />
@@ -189,7 +195,7 @@ export function Legend() {
 
 export function HintBar({ hint, status, canFinish, onFinish, onCancel }: { hint: string; status: string; canFinish: boolean; onFinish(): void; onCancel(): void }) {
   return (
-    <div className="absolute right-2 top-2 z-10 flex max-w-md items-start gap-2 rounded-lg bg-slate-800/90 p-2 text-xs text-white shadow">
+    <div className="absolute bottom-2 right-2 z-10 flex max-w-md items-start gap-2 rounded-lg bg-slate-800/90 p-2 text-xs text-white shadow">
       <div>
         <div>{hint}</div>
         {status && <div className="mt-1 font-semibold text-amber-300">{status}</div>}
@@ -210,7 +216,7 @@ export function HintBar({ hint, status, canFinish, onFinish, onCancel }: { hint:
 
 /* ------------------------------------------------------------------ overlay drawn in world coordinates */
 
-export function ToolOverlay({ view, overlay, tool, venue, floorId }: { view: MapView; overlay: Overlay; tool: ToolId; venue: Venue; floorId: string }) {
+export function ToolOverlay({ view, overlay, tool, venue, floorId, selected }: { view: MapView; overlay: Overlay; tool: ToolId; venue: Venue; floorId: string; selected: Selection }) {
   const px = 1 / view.scale;
   const els: React.ReactNode[] = [];
   if (overlay?.kind === "rect") {
@@ -222,6 +228,17 @@ export function ToolOverlay({ view, overlay, tool, venue, floorId }: { view: Map
     els.push(<line key="line" x1={overlay.a.x} y1={overlay.a.y} x2={overlay.b.x} y2={overlay.b.y} stroke={overlay.color} strokeWidth={2.5} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />);
   }
   if (overlay?.kind === "dot") els.push(<circle key="dot" cx={overlay.at.x} cy={overlay.at.y} r={4 * px} fill="none" stroke="#0f9d8a" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />);
+  if (tool === "select") {
+    for (const hd of selectionHandles(venue, selected, floorId)) {
+      els.push(
+        hd.kind === "resize" ? (
+          <rect key={`h-${hd.handle}`} x={hd.at.x - 4 * px} y={hd.at.y - 4 * px} width={8 * px} height={8 * px} fill="#fff" stroke="#2f5bea" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        ) : (
+          <circle key="h-bend" cx={hd.at.x} cy={hd.at.y} r={6 * px} fill="#fff" stroke="#2f5bea" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        ),
+      );
+    }
+  }
   if (tool === "background") {
     const hs = bgHandles(venue, floorId);
     if (hs) {

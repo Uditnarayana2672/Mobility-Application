@@ -192,7 +192,7 @@ describe("NavController: Reception -> Cafeteria (F2) end to end", () => {
     expect(events.some((e) => e.kind === "offroute")).toBe(false);
   });
 
-  it("#arturn / #arad / #arf2 land on the AR stub", () => {
+  it("#arturn / #arad / #arf2 land in AR guidance", () => {
     for (const h of ["#arturn", "#arad", "#arf2"]) {
       const { ctl } = setup();
       ctl.applyHash(h);
@@ -280,5 +280,24 @@ describe("NavController: voice intents", () => {
     await t.ctl.askText("stop");
     t.run(2);
     expect(t.ctl.getState().mode).toBe("explore");
+  });
+});
+
+describe("NavController: demo reset", () => {
+  it("returns phone state to launch and ignores poses until a fresh marker scan", () => {
+    const t = setup();
+    t.ctl.scanMarker(1, true);
+    t.ctl.showPlace({ room: "F2-cafeteria" });
+    t.ctl.preview();
+    t.ctl.startNav();
+    t.run(1);
+    expect(t.ctl.getState().user).not.toBeNull();
+    t.ctl.resetDemo();
+    expect(t.ctl.getState()).toMatchObject({ screen: "city", mode: "explore", located: false, user: null, route: null, chat: [], scans: 0, impressions: 0 });
+    expect(t.routes.at(-1)).toBeNull();
+    t.run(1);
+    expect(t.ctl.getState().user).toBeNull();
+    t.ctl.scanMarker(1, true);
+    expect(t.ctl.getState().user?.markerId).toBe(1);
   });
 });

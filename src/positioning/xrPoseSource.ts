@@ -1,14 +1,15 @@
 import type { Venue } from "@/core/schema";
 import type { PoseDebug } from "@/navigator/poseSource";
-import { arSupported, blockXrSelect, startAr, trackingOf, type ArHandle } from "@/spikes/ar";
+import { arSupported, blockXrSelect, startAr, type ArFrameCtx, type ArHandle } from "@/spikes/ar";
 import { detectMarkers } from "@/spikes/aruco/detect";
 import { intrinsicsFromProjection } from "@/spikes/aruco/pose";
 import { CameraReader } from "@/spikes/camera";
 import { LivePoseBase } from "./liveBase";
 import { XrPoseCore } from "./xrCore";
 
-/** Process the camera image every Nth XR frame (readPixels stalls the GPU pipeline). */
-const DETECT_EVERY = 3;
+/** Camera readback is expensive; 250 ms = 4 Hz, inside the Phase 4 target of 3–5 Hz. */
+const DETECT_INTERVAL_MS = 250;
+export type XrSceneFrameListener = (ctx: ArFrameCtx, handle: ArHandle, mapPointToXr: (p: { x: number; y: number; z: number }) => [number, number, number] | null) => void;
 
 /**
  * Primary live source: an immersive-ar session with the nav UI as its DOM overlay. ARCore tracking drives the dot between markers;
@@ -21,6 +22,7 @@ export class XrPoseSource extends LivePoseBase {
   private handle: ArHandle | null = null;
   private reader: CameraReader | null = null;
   private frames = 0;
+  private lastDetectMs = -Infinity;
   private flipY = false;
   private miss = 0;
   private fps = 0;
@@ -28,6 +30,7 @@ export class XrPoseSource extends LivePoseBase {
   private fpsN = 0;
   private lastError: string | null = null;
   private onEnd: (() => void) | null = null;
+  private readonly sceneListeners = new Set<XrSceneFrameListener>();
 
   constructor(
     venue: Venue,
@@ -58,7 +61,7 @@ export class XrPoseSource extends LivePoseBase {
     try {
       this.handle = await startAr({
         overlay: root,
-        optionalFeatures: ["camera-access", "dom-overlay"],
+        optionalFeatures: ["camera-access", "dom-overlay", "plane-detection"],
         onFrame: (ctx, h) => this.onFrame(ctx, h),
         onEnd: () => {
           this.handle = null;
@@ -77,7 +80,13 @@ export class XrPoseSource extends LivePoseBase {
     void this.handle?.stop();
   }
 
-  private onFrame(ctx: { time: number; viewerPose: XRViewerPose | null | undefined; tracking: ReturnType<typeof trackingOf> }, h: ArHandle): void {
+  /** Attach Phase 4 content to this source's existing immersive session. */
+  onSceneFrame(fn: XrSceneFrameListener): () => void {
+    this.sceneListeners.add(fn);
+    return () => this.sceneListeners.delete(fn);
+  }
+
+  private onFrame(ctx: ArFrameCtx, h: ArHandle): void {
     const tSec = ctx.time / 1000;
     this.frames++;
     this.fpsN++;
@@ -89,26 +98,30 @@ export class XrPoseSource extends LivePoseBase {
     const view = ctx.viewerPose?.views[0];
     const tracking = ctx.tracking === "tracking" || ctx.tracking === "limited" ? ctx.tracking : "lost";
     this.core.frame(tSec, tracking, view ? view.transform.matrix : null);
-    if (!view || tracking === "lost" || this.frames % DETECT_EVERY !== 0 || !view.camera) return;
-    try {
-      this.reader ??= new CameraReader(h.renderer.getContext() as WebGL2RenderingContext, h.session);
-      this.reader.flipY = this.flipY;
-      const got = this.reader.read(view);
-      h.renderer.resetState();
-      if (!got) return;
-      const K = intrinsicsFromProjection(view.projectionMatrix, got.image.width, got.image.height);
-      const dets = detectMarkers(got.image);
-      if (dets.length === 0) {
-        // Some UAs deliver the camera texture upside down: while nothing is ever found, alternate the readback orientation.
-        this.miss++;
-        if (this.miss % 90 === 0 && !this.core.aligned) this.flipY = !this.flipY;
-        return;
+    if (view && tracking !== "lost" && ctx.time - this.lastDetectMs >= DETECT_INTERVAL_MS && view.camera) {
+      this.lastDetectMs = ctx.time;
+      try {
+        this.reader ??= new CameraReader(h.renderer.getContext() as WebGL2RenderingContext, h.session);
+        this.reader.flipY = this.flipY;
+        const got = this.reader.read(view);
+        h.renderer.resetState();
+        if (got) {
+          const K = intrinsicsFromProjection(view.projectionMatrix, got.image.width, got.image.height);
+          const dets = detectMarkers(got.image);
+          if (dets.length === 0) {
+            // Some UAs deliver the camera texture upside down: while nothing is ever found, alternate the readback orientation.
+            this.miss++;
+            if (this.miss % 90 === 0 && !this.core.aligned) this.flipY = !this.flipY;
+          } else {
+            this.miss = 0;
+            for (const d of dets) this.core.marker(d, K, view.transform.matrix);
+          }
+        }
+      } catch (e) {
+        this.lastError = e instanceof Error ? e.message : String(e);
       }
-      this.miss = 0;
-      for (const d of dets) this.core.marker(d, K, view.transform.matrix);
-    } catch (e) {
-      this.lastError = e instanceof Error ? e.message : String(e);
     }
+    for (const fn of this.sceneListeners) fn(ctx, h, (p) => this.core.mapPointToXr(p));
   }
 
   tick(dtSec: number): void {

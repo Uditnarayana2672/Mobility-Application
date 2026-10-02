@@ -21,7 +21,7 @@ const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR
 beforeAll(async () => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "indore-api-"));
   fs.cpSync(path.join(process.cwd(), "public", "venues"), path.join(root, "public", "venues"), { recursive: true });
-  const api = createApi({ root });
+  const api = createApi({ root, assistantProvider: { name: "test-offline", available: () => false, answer: async () => "unused" } });
   server = http.createServer((req, res) => void api(req, res, () => ((res.statusCode = 404), res.end("next"))));
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   base = `127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -106,6 +106,20 @@ describe("venues", () => {
   });
 });
 
+describe("assistant endpoint", () => {
+  it("keeps the provider server-side and degrades to local suggestions", async () => {
+    const r = await post("/api/assistant", { venueId: "office-hq", text: "cafeteria maybe", lang: "en", from: { floor: "F1", x: 3, y: 17 }, prefs: {} });
+    expect(r.status).toBe(200);
+    const out = await r.json();
+    expect(out).toMatchObject({ fallback: true, reason: "disabled" });
+    expect(out.suggestions[0].name).toBe("Cafeteria");
+  });
+  it("validates requests", async () => {
+    expect((await post("/api/assistant", { venueId: "office-hq", text: "", lang: "en" })).status).toBe(400);
+    expect((await post("/api/assistant", { venueId: "office-hq", text: "hello", lang: "fr" })).status).toBe(400);
+  });
+});
+
 describe("campaigns", () => {
   const campaigns = () => JSON.parse(fs.readFileSync(path.join(root, "public", "venues", "office-hq", "campaigns.json"), "utf8"));
   it("serves the seed, validates wall ids on publish", async () => {
@@ -126,6 +140,15 @@ describe("campaigns", () => {
     expect((await r.json()).version).toBe(2);
     const live = await (await call("/api/campaigns/office-hq")).json();
     expect(live.campaigns[0].status).toBe("paused");
+  });
+  it("persists impression and tap metrics", async () => {
+    const before = await (await call("/api/campaigns/office-hq")).json();
+    const imp = await post("/api/campaigns/office-hq/events", { campaignId: "C1", kind: "impression", dwellSec: 2 });
+    expect(imp.status).toBe(200);
+    expect((await imp.json()).stats.impressions).toBe(before.campaigns[0].stats.impressions + 1);
+    expect((await post("/api/campaigns/office-hq/events", { campaignId: "C1", kind: "tap" })).status).toBe(200);
+    const after = await (await call("/api/campaigns/office-hq")).json();
+    expect(after.campaigns[0].stats.taps).toBe(before.campaigns[0].stats.taps + 1);
   });
 });
 
@@ -154,5 +177,16 @@ describe("uploads", () => {
     // The server may reset the connection after replying 413; both count as a refusal.
     const r = await up(big, "image/png").catch(() => null);
     if (r) expect(r.status).toBe(413);
+  });
+});
+
+describe("ad media", () => {
+  it("stores campaign creatives under data/media and serves them", async () => {
+    const r = await call("/api/media", { method: "POST", body: PNG, headers: { "content-type": "image/png" } });
+    expect(r.status).toBe(200);
+    const { url } = await r.json();
+    expect(url).toMatch(/^\/media\/[a-f0-9]{32}\.png$/);
+    expect(fs.existsSync(path.join(root, "data", "media", path.basename(url)))).toBe(true);
+    expect((await call(url)).headers.get("content-type")).toBe("image/png");
   });
 });

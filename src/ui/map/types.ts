@@ -12,7 +12,7 @@ export interface MapLayers {
 
 export const DEFAULT_LAYERS: MapLayers = { underlay: false, grid: false, doors: true, labels: true, pois: true, markers: false, walls: false, walknet: false };
 
-export type ItemType = "room" | "marker" | "wall" | "poi" | "node";
+export type ItemType = "room" | "marker" | "wall" | "poi" | "node" | "edge";
 
 export interface MapItem {
   type: ItemType;

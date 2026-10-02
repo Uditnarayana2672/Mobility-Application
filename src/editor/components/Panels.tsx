@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { CAT_IDS, CATS, POI_KINDS, POI_KIND_IDS, type PoiKind } from "@/core/cats";
 import type { Floor, Room, ValidationResult, Venue } from "@/core/schema";
 import { DICT_SIZE } from "@/core/aruco/dict";
+import { CORRIDOR_W } from "@/core/geo";
 import { unreachableRooms, validate } from "@/core/validate";
 import * as ops from "../ops";
 import { uploadImage } from "../api";
@@ -40,6 +41,7 @@ export function PropertiesPanel(p: PanelProps) {
   if (s.type === "marker") return <MarkerProps {...p} id={Number(s.id)} />;
   if (s.type === "wall") return <WallProps {...p} id={s.id} />;
   if (s.type === "poi") return <PoiProps {...p} id={s.id} />;
+  if (s.type === "edge") return <EdgeProps {...p} id={s.id} />;
   return <NodeProps {...p} id={s.id} />;
 }
 
@@ -482,6 +484,46 @@ function PoiProps({ venue: v, id, commit, select }: PanelProps & { id: string })
         }}
       >
         Delete POI
+      </DeleteBtn>
+    </div>
+  );
+}
+
+function EdgeProps({ venue: v, id, commit, select }: PanelProps & { id: string }) {
+  const e = ops.findEdge(v, id);
+  const a = e && ops.findNode(v, e.a);
+  const b = e && ops.findNode(v, e.b);
+  if (!e || !a || !b) return <p className="text-sm text-slate-500">Corridor line not found.</p>;
+  const len = Math.hypot(a.x - b.x, a.y - b.y);
+  return (
+    <div>
+      <h3 className="text-lg font-bold">Corridor line</h3>
+      <p className="text-xs text-slate-500">
+        {floorName(v, a.floor)} · {len.toFixed(1)} m · from ({a.x}, {a.y}) to ({b.x}, {b.y})
+      </p>
+      <Field label="Width (m)" hint={`Drawn on the map and used by step counting. Empty = default ${CORRIDOR_W} m.`}>
+        <CommitInput type="number" step={0.1} min={0.5} value={e.width ?? CORRIDOR_W} onCommit={(x) => commit(ops.setEdgeWidth(v, id, Number(x)))} />
+      </Field>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Btn
+          onClick={() => {
+            const r = ops.insertNodeOnEdge(v, id);
+            if ("error" in r) return;
+            commit(r.venue);
+            select({ type: "node", id: r.nodeId });
+          }}
+        >
+          ➕ Add a bend in the middle
+        </Btn>
+      </div>
+      <p className="mt-2 text-xs text-slate-500">Drag the white dot to bend the line. Alt+drag moves the whole connected corridor.</p>
+      <DeleteBtn
+        onClick={() => {
+          commit(ops.deleteItem(v, { type: "edge", id }));
+          select(null);
+        }}
+      >
+        Delete this line
       </DeleteBtn>
     </div>
   );

@@ -79,6 +79,8 @@ export function selectionExists(v: Venue, s: Selection): boolean {
       return v.pois.some((p) => p.id === s.id);
     case "node":
       return v.nodes.some((n) => n.id === s.id);
+    case "edge":
+      return v.edges.some((e) => `${e.a}|${e.b}` === s.id);
     case "floor":
       return v.floors.some((f) => f.id === s.id);
   }

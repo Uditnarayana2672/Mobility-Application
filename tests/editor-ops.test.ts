@@ -278,3 +278,80 @@ describe("end to end: two floors from scratch, then publish-ready and routable",
     expect(r.destName).toBe("Cafeteria");
   });
 });
+
+
+describe("corridor editing", () => {
+  const line = () => {
+    let v = ops.blankVenue();
+    let chain: string | null = null;
+    for (const p of [{ x: 5, y: 10 }, { x: 15, y: 10 }, { x: 25, y: 10 }]) {
+      const r = ops.walkClick(v, "F1", chain, p);
+      v = r.venue;
+      chain = r.nodeId;
+    }
+    return v;
+  };
+
+  it("insertNodeOnEdge splits a line in two, keeping its width, without mutating the input", () => {
+    const v = ops.setEdgeWidth(line(), ops.edgeKey(line().edges[0]!), 3);
+    const snapshot = JSON.stringify(v);
+    const r = ops.insertNodeOnEdge(v, ops.edgeKey(v.edges[0]!));
+    if ("error" in r) throw new Error(r.error);
+    expect(JSON.stringify(v)).toBe(snapshot);
+    expect(r.venue.edges.filter((e) => e.type === "walk")).toHaveLength(3);
+    expect(r.venue.edges.filter((e) => e.width === 3)).toHaveLength(2);
+    expect(r.venue.nodes.find((n) => n.id === r.nodeId)).toMatchObject({ x: 10, y: 10 });
+    expect("error" in ops.insertNodeOnEdge(v, "nope|nope")).toBe(true);
+  });
+
+  it("deleteEdge removes a line and any corridor node left with no lines", () => {
+    const v = line();
+    const first = ops.edgeKey(v.edges[0]!);
+    const r = ops.deleteEdge(v, first);
+    expect(r.edges).toHaveLength(1);
+    expect(r.nodes).toHaveLength(2); // the first node had only that line
+    expect(ops.deleteItem(v, { type: "edge", id: first }).edges).toHaveLength(1);
+  });
+
+  it("setEdgeWidth sets and clears the width", () => {
+    const v = line();
+    const k = ops.edgeKey(v.edges[0]!);
+    expect(ops.findEdge(ops.setEdgeWidth(v, k, 1.8), k)!.width).toBe(1.8);
+    expect(ops.findEdge(ops.setEdgeWidth(ops.setEdgeWidth(v, k, 1.8), k, null), k)!.width).toBeUndefined();
+  });
+
+  it("moveComponent moves every connected corridor node and re-links a door to the moved corridor", () => {
+    const old = ops.getGrid();
+    ops.setGrid(0);
+    try {
+      let v = ops.blankVenue();
+      let chain: string | null = null;
+      for (const p of [{ x: 2, y: 20 }, { x: 12, y: 20 }, { x: 22, y: 20 }]) {
+        const r = ops.walkClick(v, "F1", chain, p);
+        v = r.venue;
+        chain = r.nodeId;
+      }
+      v = (ops.addRoom(v, "F1", { x: 5, y: 12 }, { x: 10, y: 19 }) as { venue: Venue }).venue;
+      const startId = v.nodes.find((n) => n.kind === "corridor")!.id;
+      const moved = ops.moveComponent(v, startId, 0, -1.5); // corridor moves up by 1.5 m, closer to the room
+      const ys = moved.nodes.filter((n) => n.kind === "corridor").map((n) => n.y);
+      expect(ys.every((y) => Math.abs(y - 18.5) < 0.01)).toBe(true);
+      // the door is still linked to some corridor node
+      const door = moved.nodes.find((n) => n.kind === "door")!;
+      expect(moved.edges.some((e) => e.type === "walk" && (e.a === door.id || e.b === door.id) && moved.nodes.find((n) => n.id === (e.a === door.id ? e.b : e.a))?.kind === "corridor")).toBe(true);
+    } finally {
+      ops.setGrid(old);
+    }
+  });
+
+  it("corridor width widens the walkable area for step counting", async () => {
+    const { walkableFromVenue } = await import("@/positioning/particleFilter");
+    let v = line();
+    const k = ops.edgeKey(v.edges[0]!);
+    const narrow = walkableFromVenue(ops.setEdgeWidth(v, k, 1));
+    const wide = walkableFromVenue(ops.setEdgeWidth(v, k, 6));
+    expect(narrow.contains("F1", 10, 11.2)).toBe(false);
+    expect(wide.contains("F1", 10, 11.2)).toBe(true);
+    v = line();
+  });
+});

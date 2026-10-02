@@ -1,6 +1,6 @@
 import { DICT_SIZE } from "@/core/aruco/dict";
 import { distToSegment } from "@/core/geo";
-import type { Background, Floor, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
+import type { Background, Edge, Floor, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
 import type { PoiKind } from "@/core/cats";
 
 /**
@@ -18,7 +18,21 @@ export interface Pt {
   y: number;
 }
 
-export const snap = (n: number, step = GRID): number => Math.round(Math.round(n / step) * step * 100) / 100;
+/**
+ * Current grid step in metres; 0 = free drawing (coordinates are just rounded to 1 cm). The editor sets it from its Snap toggle;
+ * everything below reads it, so one switch frees every tool. Defaults to the classic 0.5 m grid.
+ */
+let grid = GRID;
+export const setGrid = (step: number): void => {
+  grid = step > 0 ? step : 0;
+};
+export const getGrid = (): number => grid;
+/** Radius within which a click joins an existing walk node (smaller when drawing freely). */
+export const joinRadius = (): number => (grid > 0 ? NODE_SNAP : 0.4);
+/** Smallest room side. */
+export const minRoom = (): number => (grid > 0 ? MIN_ROOM : 0.6);
+
+export const snap = (n: number, step = grid): number => (step > 0 ? Math.round(Math.round(n / step) * step * 100) / 100 : r2(n));
 const r2 = (n: number): number => Math.round(n * 100) / 100;
 const clone = (v: Venue): Venue => structuredClone(v);
 
@@ -227,7 +241,8 @@ export function addRoom(v0: Venue, floor: string, a: Pt, b: Pt): { venue: Venue;
   const y = snap(Math.min(a.y, b.y));
   const w = snap(Math.abs(b.x - a.x));
   const h = snap(Math.abs(b.y - a.y));
-  if (w < MIN_ROOM || h < MIN_ROOM) return { error: `Too small: drag at least ${MIN_ROOM} m × ${MIN_ROOM} m` };
+  const min = minRoom();
+  if (w < min || h < min) return { error: `Too small: drag at least ${min} m × ${min} m` };
   const v = clone(v0);
   const id = roomId(v, floor);
   const base = { id, floor, name: "New room", cat: "workspace" as const, x, y, w, h, aliases: [], hours: "9:00 – 19:00", access: "public" as const, short: null };
@@ -306,7 +321,7 @@ export function moveRoom(v0: Venue, rId: string, dx: number, dy: number): Venue 
  */
 export function walkClick(v0: Venue, floor: string, chain: string | null, p: Pt): { venue: Venue; nodeId: string } {
   const v = clone(v0);
-  let n: VNode | null = nearestNode(v, floor, p, NODE_SNAP, ["corridor", "door"]);
+  let n: VNode | null = nearestNode(v, floor, p, joinRadius(), ["corridor", "door"]);
   if (!n) {
     const edge = nearestWalkEdge(v, floor, p, EDGE_SNAP);
     if (edge && edge.t > 0.02 && edge.t < 0.98) n = splitEdge(v, floor, edge.edgeIndex, edge.pt);
@@ -333,6 +348,120 @@ export function moveNode(v0: Venue, id: string, p: Pt): Venue {
   n.x = snap(p.x);
   n.y = snap(p.y);
   return v;
+}
+
+/* ------------------------------------------------------------------ corridor editing (free layout) */
+
+/** Stable id of a walk edge: "a|b" (node ids never contain "|"). */
+export const edgeKey = (e: Pick<Edge, "a" | "b">): string => `${e.a}|${e.b}`;
+export const findEdge = (v: Venue, key: string): Edge | undefined => v.edges.find((e) => edgeKey(e) === key);
+
+/** Put a new corridor node on a walk edge (at `pt` projected onto it, default its middle) and split the edge in two. */
+export function insertNodeOnEdge(v0: Venue, key: string, pt?: Pt): { venue: Venue; nodeId: string } | { error: string } {
+  const v = clone(v0);
+  const e = findEdge(v, key);
+  const a = e && findNode(v, e.a);
+  const b = e && findNode(v, e.b);
+  if (!e || !a || !b || e.type !== "walk") return { error: "No such walk line" };
+  const at = pt ? projectOnSegment(pt, a, b).pt : { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const n: VNode = { id: nodeId(v, a.floor), floor: a.floor, x: r2(at.x), y: r2(at.y), kind: "corridor" };
+  v.nodes.push(n);
+  const i = v.edges.indexOf(findEdge(v, key)!);
+  const { width } = e;
+  v.edges.splice(i, 1, { a: e.a, b: n.id, type: "walk", ...(width ? { width } : {}) }, { a: n.id, b: e.b, type: "walk", ...(width ? { width } : {}) });
+  return { venue: v, nodeId: n.id };
+}
+
+/** Remove one walk line; corridor nodes left with no line at all are removed too. */
+export function deleteEdge(v0: Venue, key: string): Venue {
+  const v = clone(v0);
+  const e = findEdge(v, key);
+  if (!e) return v;
+  v.edges = v.edges.filter((x) => x !== e);
+  for (const id of [e.a, e.b]) {
+    const n = findNode(v, id);
+    if (n && n.kind === "corridor" && !v.edges.some((x) => x.a === id || x.b === id)) v.nodes = v.nodes.filter((x) => x.id !== id);
+  }
+  return v;
+}
+
+export function setEdgeWidth(v0: Venue, key: string, width: number | null): Venue {
+  const v = clone(v0);
+  const e = findEdge(v, key);
+  if (!e) return v;
+  if (width === null || !(width > 0)) delete e.width;
+  else e.width = r2(width);
+  return v;
+}
+
+/** Ids of the corridor nodes connected to `id` by walk lines (door and room nodes end the search). */
+export function corridorComponent(v: Venue, id: string): Set<string> {
+  const seen = new Set<string>();
+  const start = findNode(v, id);
+  if (!start || start.kind !== "corridor") return seen;
+  const stack = [id];
+  while (stack.length) {
+    const cur = stack.pop()!;
+    if (seen.has(cur)) continue;
+    seen.add(cur);
+    for (const e of v.edges) {
+      if (e.type !== "walk" || (e.a !== cur && e.b !== cur)) continue;
+      const other = findNode(v, e.a === cur ? e.b : e.a);
+      if (other && other.kind === "corridor" && other.floor === start.floor && !seen.has(other.id)) stack.push(other.id);
+    }
+  }
+  return seen;
+}
+
+/**
+ * Move a whole connected corridor by (dx, dy). Rooms stay where they are: a door that was linked to the corridor is re-linked to
+ * wherever the corridor now passes (within the door link radius); if it no longer reaches, the old (longer) link is kept so nothing disconnects silently.
+ */
+export function moveComponent(v0: Venue, id: string, dx: number, dy: number): Venue {
+  const v = clone(v0);
+  const comp = corridorComponent(v, id);
+  if (!comp.size) return v;
+  const sdx = grid > 0 ? snap(dx) : dx;
+  const sdy = grid > 0 ? snap(dy) : dy;
+  for (const n of v.nodes) if (comp.has(n.id)) {
+    n.x = r2(n.x + sdx);
+    n.y = r2(n.y + sdy);
+  }
+  for (const room of v.rooms) {
+    const doorId = `${room.id}:door`;
+    const links = v.edges.filter((e) => e.type === "walk" && ((e.a === doorId && comp.has(e.b)) || (e.b === doorId && comp.has(e.a))));
+    if (!links.length) continue;
+    const before = v.edges.slice();
+    v.edges = v.edges.filter((e) => !links.includes(e));
+    if (!linkDoor(v, room, DOOR_LINK_RADIUS)) v.edges = before;
+  }
+  return v;
+}
+
+export type ResizeHandle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
+export const RESIZE_HANDLES: ResizeHandle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+
+/** Where each resize handle of a rectangle room sits. */
+export function resizeHandlePoint(r: Pick<Room, "x" | "y" | "w" | "h">, h: ResizeHandle): Pt {
+  const x = h.includes("w") ? r.x : h.includes("e") ? r.x + r.w : r.x + r.w / 2;
+  const y = h.includes("n") ? r.y : h.includes("s") ? r.y + r.h : r.y + r.h / 2;
+  return { x, y };
+}
+
+/** Drag one handle of a rectangle room to `pt` (the opposite side stays put). Refuses to go below the minimum size. */
+export function resizeRoom(v0: Venue, rId: string, handle: ResizeHandle, pt: Pt): Venue {
+  const room = v0.rooms.find((r) => r.id === rId);
+  if (!room) return v0;
+  const min = minRoom();
+  let x0 = room.x;
+  let y0 = room.y;
+  let x1 = room.x + room.w;
+  let y1 = room.y + room.h;
+  if (handle.includes("w")) x0 = Math.min(snap(pt.x), x1 - min);
+  if (handle.includes("e")) x1 = Math.max(snap(pt.x), x0 + min);
+  if (handle.includes("n")) y0 = Math.min(snap(pt.y), y1 - min);
+  if (handle.includes("s")) y1 = Math.max(snap(pt.y), y0 + min);
+  return updateRoom(v0, rId, { x: r2(x0), y: r2(y0), w: r2(x1 - x0), h: r2(y1 - y0) });
 }
 
 /* ------------------------------------------------------------------ vertical links */
@@ -460,7 +589,7 @@ export function moveItem(v0: Venue, type: "marker" | "wall" | "poi", id: string,
 
 /* ------------------------------------------------------------------ delete */
 
-export type Deletable = { type: "room" | "marker" | "wall" | "poi" | "node"; id: string };
+export type Deletable = { type: "room" | "marker" | "wall" | "poi" | "node" | "edge"; id: string };
 
 export function deleteItem(v0: Venue, item: Deletable): Venue {
   const v = clone(v0);
@@ -485,6 +614,8 @@ export function deleteItem(v0: Venue, item: Deletable): Venue {
       v.nodes = v.nodes.filter((n) => n.id !== item.id);
       v.edges = v.edges.filter((e) => e.a !== item.id && e.b !== item.id);
       break;
+    case "edge":
+      return deleteEdge(v, item.id);
   }
   return v;
 }

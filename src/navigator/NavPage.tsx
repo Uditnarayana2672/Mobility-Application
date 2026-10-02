@@ -2,11 +2,12 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useVenue, type VenueSource } from "@/shared/useVenue";
 import type { Venue } from "@/core/schema";
+import ArScreen from "@/ar/ArScreen";
 import DemoPanel from "./DemoPanel";
 import { DebugOverlay, LiveHud, ScanSheet } from "./LiveUi";
 import MapScreen from "./MapScreen";
 import { CaptionToast, FloorPromptOverlay, SearchOverlay, TransitionOverlay, VoiceOverlay } from "./Overlays";
-import { ArStubScreen, ArrivedScreen, CityScreen, LocateScreen } from "./screens";
+import { ArrivedScreen, CityScreen, LocateScreen } from "./screens";
 import { useNav } from "./useNav";
 import "./nav.css";
 
@@ -18,7 +19,7 @@ function NavApp({ venue, source }: { venue: Venue; source: VenueSource }) {
   const [panel, setPanel] = useState(false);
   const light = s.screen === "locate" || s.screen === "ar";
   return (
-    <div ref={root} className={`is-nav ${demo ? "demo" : ""}`} data-testid="nav-root" data-pose={rt.kind} data-screen={s.screen} data-mode={s.mode}>
+    <div ref={root} className={`is-nav ${demo ? "demo" : ""} ${rt.kind === "xr" && s.screen === "ar" ? "xr-ar-open" : ""}`} data-testid="nav-root" data-pose={rt.kind} data-screen={s.screen} data-mode={s.mode}>
       <DemoPanel rt={rt} s={s} open={panel} onClose={() => setPanel(false)} />
       <div className="phone-wrap">
         <div className="phone">
@@ -28,7 +29,7 @@ function NavApp({ venue, source }: { venue: Venue; source: VenueSource }) {
             <CityScreen ctl={ctl} s={s} />
             <LocateScreen ctl={ctl} s={s} rt={rt} />
             <MapScreen ctl={ctl} s={s} />
-            <ArStubScreen ctl={ctl} s={s} />
+            <ArScreen rt={rt} ctl={ctl} s={s} />
             <ArrivedScreen ctl={ctl} s={s} />
             {s.overlay === "search" && <SearchOverlay key={`${s.searchSeed}|${s.pickLoc}`} ctl={ctl} s={s} />}
             {s.overlay === "voice" && <VoiceOverlay ctl={ctl} s={s} />}

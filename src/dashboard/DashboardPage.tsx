@@ -69,6 +69,20 @@ function Dash({ venue }: { venue: Venue }) {
   const replayTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const replayingRef = useRef(false);
 
+  const clearDashboard = useCallback(() => {
+    if (demoTimer.current) clearInterval(demoTimer.current);
+    demoTimer.current = null;
+    replayTimers.current.forEach(clearTimeout);
+    replayTimers.current = [];
+    replayingRef.current = false;
+    devices.current.clear();
+    selectedRef.current = null;
+    routeKey.current = null;
+    bc.clearSnapshot();
+    setPose(null); setRoute(null); setEvents([]); setTrail([]); setSelected(null); setDeviceIds([]);
+    setReplay(null); setDemoMode(false); setDemoNote("Demo reset"); setAnchorAt(null);
+  }, [bc]);
+
   const fl = (id: string) => venue.floors.find((f) => f.id === id)?.name ?? id;
 
   const applyRoute = useCallback(
@@ -166,7 +180,7 @@ function Dash({ venue }: { venue: Venue }) {
 
   useEffect(() => {
     const offs: (() => void)[] = [];
-    for (const bus of [bc, ws]) offs.push(bus.on("pose", onBusPose), bus.on("route", onBusRoute), bus.on("event", onBusEvent), bus.on("venue", (n) => setNotice(n)));
+    for (const bus of [bc, ws]) offs.push(bus.on("pose", onBusPose), bus.on("route", onBusRoute), bus.on("event", onBusEvent), bus.on("venue", (n) => setNotice(n)), bus.on("reset", (n) => { if (n.venue === venue.id) clearDashboard(); }));
     offs.push(ws.onStatus(setWsStatus));
     setWsStatus(ws.status);
     // Hydrate from whatever the same-browser phone view last wrote (a dashboard opened late still shows the walk so far).
@@ -183,7 +197,12 @@ function Dash({ venue }: { venue: Venue }) {
       if (demoTimer.current) clearInterval(demoTimer.current);
       replayTimers.current.forEach(clearTimeout);
     };
-  }, [bc, ws, onBusPose, onBusRoute, onBusEvent]);
+  }, [bc, ws, onBusPose, onBusRoute, onBusEvent, clearDashboard, venue.id]);
+
+  const resetAll = async () => {
+    clearDashboard();
+    try { await fetch(`/api/demo/reset/${encodeURIComponent(venue.id)}`, { method: "POST" }); } catch { /* local dashboard is still reset */ }
+  };
 
   const stopReplay = useCallback(() => {
     replayTimers.current.forEach(clearTimeout);
@@ -315,6 +334,7 @@ function Dash({ venue }: { venue: Venue }) {
   const mode = !pose ? "—" : pose.ar ? "AR tracking" : pose.mode === "nav" ? "2D map (nav)" : pose.screen;
   const source = u?.source ?? null;
   const anchorAge = anchorAt === null ? null : Math.max(0, Math.round((Date.now() - anchorAt) / 1000));
+  const adTaps = events.filter((e) => e.kind === "ad" && e.text.startsWith("Ad tapped:")).length;
 
   return (
     <div className="is-dash" data-testid="dash-root">
@@ -363,6 +383,7 @@ function Dash({ venue }: { venue: Venue }) {
           <div className="row" style={{ marginBottom: 10 }}>
             <h3 style={{ margin: 0 }}>Live tracking</h3>
             <span className="spacer" />
+            <button className="btn" data-testid="dashboard-reset" onClick={() => void resetAll()}>Reset demo</button>
             <button className="btn primary" onClick={() => window.open("/nav?demo=1", "is-phone", "width=1000,height=900")}>📱 Open phone view ↗</button>
           </div>
           {!live && (
@@ -415,7 +436,8 @@ function Dash({ venue }: { venue: Venue }) {
           <div className="grid2" style={{ marginBottom: 12 }}>
             <div className="stat"><b>{Math.round(pose?.walked ?? 0)} m</b><span>walked this session</span></div>
             <div className="stat"><b data-testid="k-scan">{pose?.scans ?? 0}</b><span>marker scans</span></div>
-            <div className="stat"><b>{pose?.impressions ?? 0}</b><span>ad impressions</span></div>
+            <div className="stat"><b data-testid="k-ad-impressions">{pose?.impressions ?? 0}</b><span>ad impressions</span></div>
+            <div className="stat"><b data-testid="k-ad-taps">{adTaps}</b><span>ad taps</span></div>
             <div className="stat"><b>{pose ? (LANG_NAME[pose.lang] ?? pose.lang) : "—"}</b><span>voice language</span></div>
           </div>
           <h4>Event log</h4>

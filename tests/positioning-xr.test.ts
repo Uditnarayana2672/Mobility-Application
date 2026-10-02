@@ -47,6 +47,18 @@ describe("XrPoseCore", () => {
     expect(q.markerId).toBe(1);
   });
 
+  it("maps venue content back into the same aligned XR local frame", () => {
+    const { core } = anchored();
+    const map = { x: 12, y: 17, z: 0.04 };
+    const got = core.mapPointToXr(map)!;
+    const wx = map.x - tau0[0];
+    const wy = -map.y - tau0[1];
+    const c = Math.cos(-theta0); const s = Math.sin(-theta0);
+    const q: V3 = [c * wx - s * wy, s * wx + c * wy, map.z - tau0[2]];
+    const expected: V3 = [q[0], q[2], -q[1]];
+    expect(Math.hypot(got[0] - expected[0], got[1] - expected[1], got[2] - expected[2])).toBeLessThan(0.05);
+  });
+
   it("follows the phone's own tracking after the marker is gone, and accuracy degrades with distance", () => {
     const { core } = anchored();
     core.tick(0.05);

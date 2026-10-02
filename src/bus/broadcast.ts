@@ -52,7 +52,7 @@ const newId = () => `${Date.now().toString(36)}-${(counter++).toString(36)}-${Ma
 export class BroadcastChannelBus implements Bus {
   private readonly ch: ChannelLike | null;
   private readonly store: BroadcastBusOptions["storage"];
-  private readonly listeners: { [K in BusType]: Set<(p: BusPayload<K>, meta: BusMeta) => void> } = { pose: new Set(), route: new Set(), event: new Set(), venue: new Set(), campaigns: new Set() };
+  private readonly listeners: { [K in BusType]: Set<(p: BusPayload<K>, meta: BusMeta) => void> } = { pose: new Set(), route: new Set(), event: new Set(), venue: new Set(), campaigns: new Set(), reset: new Set() };
   private readonly seen = new Set<string>();
 
   constructor(opts: BroadcastBusOptions = {}) {

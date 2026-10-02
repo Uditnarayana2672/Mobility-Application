@@ -1,5 +1,7 @@
 /** Geometry helpers. Frame: x east, y south, bearing 0 = north, clockwise. */
 export const WALK = 1.3; // m/s
+/** Default corridor width (m) for walk edges without an explicit `width`. */
+export const CORRIDOR_W = 2.4;
 
 export interface Pt {
   x: number;

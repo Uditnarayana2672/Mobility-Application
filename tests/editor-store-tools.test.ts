@@ -161,15 +161,111 @@ describe("select tool", () => {
     t.onSelect(null, { x: 1, y: 1 }, h.host);
     expect(h.get().selected).toBeNull();
   });
-  it("rooms only drag once selected; otherwise the gesture pans the map", () => {
+  it("rooms drag straight away (no need to select first); Shift+drag pans instead", () => {
     const v = must(ops.addRoom(ops.blankVenue(), "F1", { x: 5, y: 5 }, { x: 15, y: 12 })).venue;
     const h = harness(v);
     const t = createTool("select");
-    expect(t.onPointer("down", { x: 8, y: 8 }, on("room", "F1-r1"), h.host)).toBe(false);
-    h.dispatch({ type: "select", selection: { type: "room", id: "F1-r1" } });
+    expect(t.onPointer("down", { x: 8, y: 8 }, { ...on("room", "F1-r1"), shiftKey: true }, h.host)).toBe(false);
     expect(drag(t, h, on("room", "F1-r1"), [{ x: 8, y: 8 }, { x: 10, y: 9 }, { x: 11, y: 10 }])).toBe(true);
     expect(h.get().venue.rooms[0]).toMatchObject({ x: 8, y: 7 });
+    expect(h.get().selected).toEqual({ type: "room", id: "F1-r1" });
     expect(h.get().past).toHaveLength(1);
+  });
+});
+
+describe("free layout (Stage 1)", () => {
+  const withGrid = <T,>(step: number, fn: () => T): T => {
+    const old = ops.getGrid();
+    ops.setGrid(step);
+    try {
+      return fn();
+    } finally {
+      ops.setGrid(old);
+    }
+  };
+
+  it("snap off: rooms and walk nodes keep their exact (1 cm) coordinates", () => {
+    withGrid(0, () => {
+      expect(ops.snap(1.237)).toBe(1.24);
+      const r = must(ops.addRoom(ops.blankVenue(), "F1", { x: 5.13, y: 5.27 }, { x: 11.62, y: 9.04 }));
+      expect(r.venue.rooms[0]).toMatchObject({ x: 5.13, y: 5.27, w: 6.49, h: 3.77 });
+      const w = ops.walkClick(r.venue, "F1", null, { x: 20.33, y: 3.07 });
+      expect(w.venue.nodes.find((n) => n.id === w.nodeId)).toMatchObject({ x: 20.33, y: 3.07 });
+    });
+  });
+  it("snap off allows small rooms (a 1.2 x 1.5 m bathroom); snap on still refuses", () => {
+    withGrid(0, () => {
+      expect("venue" in ops.addRoom(ops.blankVenue(), "F1", { x: 2, y: 2 }, { x: 3.2, y: 3.5 })).toBe(true);
+    });
+    withGrid(0.5, () => {
+      expect("error" in ops.addRoom(ops.blankVenue(), "F1", { x: 2, y: 2 }, { x: 3.2, y: 3.5 })).toBe(true);
+    });
+  });
+
+  it("dragging a corner handle of the selected room resizes it, one undo step", () => {
+    withGrid(0.5, () => {
+      const v = must(ops.addRoom(ops.blankVenue(), "F1", { x: 5, y: 5 }, { x: 15, y: 12 })).venue;
+      const h = harness(v);
+      h.dispatch({ type: "select", selection: { type: "room", id: "F1-r1" } });
+      const t = createTool("select");
+      // se corner is at (15, 12): drag to (18, 14)
+      expect(drag(t, h, bare, [{ x: 15, y: 12 }, { x: 16, y: 13 }, { x: 18, y: 14 }])).toBe(true);
+      expect(h.get().venue.rooms[0]).toMatchObject({ x: 5, y: 5, w: 13, h: 9 });
+      expect(h.get().past).toHaveLength(1);
+      // the west edge handle moves only x
+      drag(t, h, bare, [{ x: 5, y: 9.5 }, { x: 3, y: 9.5 }]);
+      expect(h.get().venue.rooms[0]).toMatchObject({ x: 3, y: 5, w: 15, h: 9 });
+    });
+  });
+  it("a room cannot be dragged smaller than the minimum", () => {
+    withGrid(0.5, () => {
+      const v = must(ops.addRoom(ops.blankVenue(), "F1", { x: 5, y: 5 }, { x: 15, y: 12 })).venue;
+      const r = ops.resizeRoom(v, "F1-r1", "se", { x: 5.2, y: 5.1 });
+      expect(r.rooms[0]!.w).toBeGreaterThanOrEqual(1.5);
+      expect(r.rooms[0]!.h).toBeGreaterThanOrEqual(1.5);
+    });
+  });
+
+  const lineVenue = () => {
+    let v = ops.blankVenue();
+    let chain: string | null = null;
+    for (const p of [{ x: 5, y: 10 }, { x: 15, y: 10 }, { x: 25, y: 10 }]) {
+      const r = ops.walkClick(v, "F1", chain, p);
+      v = r.venue;
+      chain = r.nodeId;
+    }
+    return v;
+  };
+
+  it("clicking a corridor line selects it; dragging its middle dot inserts a bend in ONE undo step", () => {
+    withGrid(0, () => {
+      const v = lineVenue();
+      const key = ops.edgeKey(v.edges[0]!);
+      const h = harness(v);
+      const t = createTool("select");
+      t.onSelect({ type: "edge", id: key }, { x: 10, y: 10 }, h.host);
+      expect(h.get().selected).toEqual({ type: "edge", id: key });
+      // the bend handle sits in the middle of the first line (10, 10)
+      expect(drag(t, h, bare, [{ x: 10, y: 10 }, { x: 10, y: 11 }, { x: 10, y: 13.4 }])).toBe(true);
+      const after = h.get();
+      expect(after.past).toHaveLength(1);
+      expect(after.venue.nodes.filter((n) => n.kind === "corridor")).toHaveLength(4);
+      expect(after.venue.nodes.some((n) => n.x === 10 && n.y === 13.4)).toBe(true);
+      expect(after.venue.edges.filter((e) => e.type === "walk")).toHaveLength(3);
+      expect(after.selected?.type).toBe("node");
+    });
+  });
+  it("Alt+drag on a corridor line moves the whole connected corridor", () => {
+    withGrid(0, () => {
+      const v = lineVenue();
+      const key = ops.edgeKey(v.edges[1]!);
+      const h = harness(v);
+      const t = createTool("select");
+      expect(drag(t, h, { ...on("edge", key), altKey: true }, [{ x: 20, y: 10 }, { x: 21, y: 11 }, { x: 20, y: 14 }])).toBe(true);
+      const ys = h.get().venue.nodes.filter((n) => n.kind === "corridor").map((n) => n.y);
+      expect(ys).toEqual([14, 14, 14]);
+      expect(h.get().past).toHaveLength(1);
+    });
   });
 });
 

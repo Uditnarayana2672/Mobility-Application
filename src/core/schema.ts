@@ -86,6 +86,8 @@ export const EdgeSchema = z
     b: z.string(),
     type: z.enum(["walk", "stairs", "lift"]),
     len: z.number().positive().optional(),
+    /** Corridor width in metres (walk edges between corridor nodes): drawn on the map and used by step counting. */
+    width: z.number().positive().optional(),
     upSec: z.number().positive().optional(),
     downSec: z.number().positive().optional(),
   })

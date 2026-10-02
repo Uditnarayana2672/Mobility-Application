@@ -7,7 +7,8 @@ const ROUTES: [string, string][] = [
   ["/owner", "Owner portal: status + version history"],
   ["/dashboard", "Laptop live view of the phone (mirrors /nav)"],
   ["/markers", "Printable ArUco markers"],
-  ["/ads", "Advertiser portal (Phase 4)"],
+  ["/ads", "Advertiser portal: wall slots, creatives and live KPIs"],
+  ["/preflight", "Stage checklist: certificate, sensors, WebXR, voices, server and live marker"],
   ["/legacy-editor", "Old Blueprint editor (frozen)"],
 ];
 

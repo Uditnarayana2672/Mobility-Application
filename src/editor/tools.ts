@@ -38,6 +38,8 @@ export interface Host {
 
 export interface PointerEventLike {
   target: EventTarget | null;
+  altKey?: boolean;
+  shiftKey?: boolean;
 }
 
 export interface Tool {
@@ -56,7 +58,7 @@ const err = (r: unknown): string | null => (r && typeof r === "object" && "error
 export function itemFromEvent(ev: PointerEventLike): MapItem | null {
   const el = (ev.target as Element | null)?.closest?.("[data-id]") ?? null;
   const type = el?.getAttribute("data-type");
-  if (!el || !type || !["room", "marker", "wall", "poi", "node"].includes(type)) return null;
+  if (!el || !type || !["room", "marker", "wall", "poi", "node", "edge"].includes(type)) return null;
   return { type: type as MapItem["type"], id: el.getAttribute("data-id") ?? "" };
 }
 
@@ -64,30 +66,101 @@ const noopPointer = (): boolean => false;
 
 /* ------------------------------------------------------------------ select / move */
 
+/** Handles shown for the current selection (resize corners of a rectangle room, the middle of a corridor line). Shared with the overlay. */
+export interface SelHandle {
+  kind: "resize" | "bend";
+  id: string;
+  at: Pt;
+  /** For resize handles. */
+  handle?: ops.ResizeHandle;
+}
+
+export function selectionHandles(v: Venue, sel: Selection, floorId: string): SelHandle[] {
+  if (!sel) return [];
+  if (sel.type === "room") {
+    const r = v.rooms.find((x) => x.id === sel.id);
+    if (!r || r.floor !== floorId) return [];
+    return ops.RESIZE_HANDLES.map((h) => ({ kind: "resize" as const, id: r.id, handle: h, at: ops.resizeHandlePoint(r, h) }));
+  }
+  if (sel.type === "edge") {
+    const e = ops.findEdge(v, sel.id);
+    const a = e && ops.findNode(v, e.a);
+    const b = e && ops.findNode(v, e.b);
+    if (!e || !a || !b || a.floor !== floorId) return [];
+    return [{ kind: "bend", id: sel.id, at: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } }];
+  }
+  return [];
+}
+
 function selectTool(): Tool {
-  let drag: { item: MapItem; base: Venue; start: Pt; moved: boolean } | null = null;
+  type Drag =
+    | { mode: "item"; item: MapItem; base: Venue; start: Pt; moved: boolean }
+    | { mode: "component"; nodeId: string; base: Venue; start: Pt; moved: boolean }
+    | { mode: "resize"; roomId: string; handle: ops.ResizeHandle; base: Venue; moved: boolean }
+    | { mode: "bend"; edgeKey: string; base: Venue; start: Pt; moved: boolean; nodeId: string | null };
+  let drag: Drag | null = null;
   return {
     id: "select",
-    hint: "Click an item to edit it. Drag markers, ad walls, POIs and walk nodes to move them; select a room first to drag it. Drag the background to pan, scroll to zoom.",
+    hint: "Drag rooms, markers, ad walls, POIs and walk nodes to move them; drag a selected room's handles to resize it. Click a corridor line to select it, drag its middle dot to add a bend. Alt+drag a corridor to move all of it. Shift+drag or drag the background to pan; scroll to zoom.",
     onPointer(phase, pt, ev, h) {
       if (phase === "down") {
+        if (ev.shiftKey) return false; // pan
+        const v = h.venue();
+        // 1. a handle of the current selection
+        const reach = 10 / h.scale();
+        for (const hd of selectionHandles(v, h.selected(), h.floorId())) {
+          if (Math.hypot(pt.x - hd.at.x, pt.y - hd.at.y) > reach) continue;
+          drag = hd.kind === "resize" ? { mode: "resize", roomId: hd.id, handle: hd.handle!, base: v, moved: false } : { mode: "bend", edgeKey: hd.id, base: v, start: pt, moved: false, nodeId: null };
+          return true;
+        }
+        // 2. an item under the pointer
         const item = itemFromEvent(ev);
         if (!item) return false;
-        const sel = h.selected();
-        const movable = item.type === "marker" || item.type === "wall" || item.type === "poi" || item.type === "node" || (item.type === "room" && sel?.type === "room" && sel.id === item.id);
-        if (!movable) return false;
-        drag = { item, base: h.venue(), start: pt, moved: false };
         h.select(item);
+        if (item.type === "edge") {
+          const e = ops.findEdge(v, item.id);
+          if (ev.altKey && e) {
+            drag = { mode: "component", nodeId: e.a, base: v, start: pt, moved: false };
+            return true;
+          }
+          return false; // a plain click on a line only selects it (onSelect), a drag pans
+        }
+        if (item.type === "node" && ev.altKey) {
+          drag = { mode: "component", nodeId: item.id, base: v, start: pt, moved: false };
+          return true;
+        }
+        drag = { mode: "item", item, base: v, start: pt, moved: false };
         return true;
       }
       if (phase === "move" && drag) {
-        const dist = Math.hypot(pt.x - drag.start.x, pt.y - drag.start.y);
-        if (!drag.moved && dist * h.scale() < 3) return true; // ignore jitter
-        drag.moved = true;
-        const { item, base } = drag;
+        const d = drag;
+        if (d.mode === "resize") {
+          d.moved = true;
+          h.preview(ops.resizeRoom(d.base, d.roomId, d.handle, pt));
+          return true;
+        }
+        const dist = Math.hypot(pt.x - d.start.x, pt.y - d.start.y);
+        if (!d.moved && dist * h.scale() < 3) return true; // ignore jitter
+        d.moved = true;
+        if (d.mode === "component") {
+          h.preview(ops.moveComponent(d.base, d.nodeId, pt.x - d.start.x, pt.y - d.start.y));
+          return true;
+        }
+        if (d.mode === "bend") {
+          // The first real move inserts the node; after that it follows the pointer.
+          if (d.nodeId === null) {
+            const r = ops.insertNodeOnEdge(d.base, d.edgeKey, pt);
+            if ("error" in r) return true;
+            d.base = r.venue;
+            d.nodeId = r.nodeId;
+          }
+          h.preview(ops.moveNode(d.base, d.nodeId, pt));
+          return true;
+        }
+        const { item, base } = d;
         const next =
           item.type === "room"
-            ? ops.moveRoom(base, item.id, pt.x - drag.start.x, pt.y - drag.start.y)
+            ? ops.moveRoom(base, item.id, pt.x - d.start.x, pt.y - d.start.y)
             : item.type === "node"
               ? ops.moveNode(base, item.id, pt)
               : ops.moveItem(base, item.type as "marker" | "wall" | "poi", item.id, pt);
@@ -95,7 +168,11 @@ function selectTool(): Tool {
         return true;
       }
       if (phase === "up" && drag) {
-        if (drag.moved) h.commitPending();
+        const d = drag;
+        if (d.moved) {
+          h.commitPending();
+          if (d.mode === "bend" && d.nodeId) h.select({ type: "node", id: d.nodeId });
+        }
         drag = null;
         return true;
       }
@@ -116,7 +193,7 @@ function roomTool(): Tool {
   let start: Pt | null = null;
   return {
     id: "room",
-    hint: "Drag a rectangle to draw a room (0.5 m snap). Its door goes on the side facing the nearest corridor and is linked to the walk network automatically.",
+    hint: "Drag a rectangle to draw a room (snaps to 0.5 m while Snap is on). Its door goes on the side facing the nearest corridor and is linked to the walk network automatically.",
     onPointer(phase, pt, _ev, h) {
       if (phase === "down") {
         start = pt;
@@ -179,12 +256,12 @@ function doorTool(): Tool {
 function walkTool(): Tool {
   let chain: string | null = null;
   const snapPreview = (h: Host, pt: Pt): Pt => {
-    const n = ops.nearestNode(h.venue(), h.floorId(), pt, ops.NODE_SNAP, ["corridor", "door"]);
+    const n = ops.nearestNode(h.venue(), h.floorId(), pt, ops.joinRadius(), ["corridor", "door"]);
     return n ? { x: n.x, y: n.y } : { x: ops.snap(pt.x), y: ops.snap(pt.y) };
   };
   return {
     id: "walk",
-    hint: "Click along the corridor centre-line to lay walk nodes (0.5 m snap). Click an existing node to join it; clicking the last node again, Esc or Enter ends the chain. Nodes next to a door link to it automatically.",
+    hint: "Click along the corridor centre-line to lay walk nodes at any angle (snaps only while Snap is on). Click an existing node to join it; clicking the last node again, Esc or Enter ends the chain. Nodes next to a door link to it automatically.",
     onPointer(phase, pt, _ev, h) {
       if (phase === "hover") {
         const a = chain ? h.venue().nodes.find((n) => n.id === chain) : null;

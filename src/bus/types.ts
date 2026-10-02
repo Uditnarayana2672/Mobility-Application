@@ -60,12 +60,18 @@ export interface ChangeNotice {
   at: number;
 }
 
+export interface ResetNotice {
+  venue: string;
+  at: number;
+}
+
 export type BusMessage =
   | { type: "pose"; payload: PosePayload }
   | { type: "route"; payload: RoutePayload | null }
   | { type: "event"; payload: EventPayload }
   | { type: "venue"; payload: ChangeNotice }
-  | { type: "campaigns"; payload: ChangeNotice };
+  | { type: "campaigns"; payload: ChangeNotice }
+  | { type: "reset"; payload: ResetNotice };
 
 /** Who sent a message and when we received it (receive time: sender clocks are not trusted). */
 export interface BusMeta {

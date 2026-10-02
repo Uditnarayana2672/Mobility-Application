@@ -5,6 +5,7 @@ import { PdrPoseSource } from "@/positioning/pdrPoseSource";
 import { XrPoseSource } from "@/positioning/xrPoseSource";
 import { loadVenue, type VenueSource } from "@/shared/useVenue";
 import { NavController, type NavState } from "./controller";
+import { HybridIntentResolver } from "./intentResolver";
 import type { PoseKind } from "./poseSource";
 import { readRuntimeConfig, usesBroadcast, wsPublishes, type RuntimeConfig } from "./runtimeConfig";
 import { SimPoseSource } from "./simPose";
@@ -51,7 +52,7 @@ export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<
     const bc = usesBroadcast(cfg) ? new BroadcastChannelBus() : null;
     const ws = new WebSocketBus({ room: venue.id, role: "device", sendTypes: wsPublishes(cfg) ? undefined : [] });
     const bus: Bus = bc ? new CompositeBus([bc, ws]) : ws;
-    const ctl = new NavController({ venue, venueSource: source, sim: xr ?? pdr ?? sim, speech: new SpeechSynthesisOut(), bus });
+    const ctl = new NavController({ venue, venueSource: source, sim: xr ?? pdr ?? sim, speech: new SpeechSynthesisOut(), bus, resolver: new HybridIntentResolver() });
     // A live phone has no demo switch: the floor prompt waits for the visitor (tap) or a lobby marker.
     if (kind !== "sim") ctl.setAutoConfirm(false);
     return { ctl, sim, xr, pdr, kind, cfg, bus, bc, switchKind: (k) => {
@@ -77,10 +78,17 @@ export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<
         if (r && r.source === "api") rt.ctl.setVenue(r.venue);
       });
     });
+    const offReset = rt.bus.on("reset", (n) => {
+      if (n.venue === venue.id) {
+        rt.bc?.clearSnapshot();
+        rt.ctl.resetDemo();
+      }
+    });
     // Tests and the demo panel can reach the controller from the console.
     (window as unknown as { __nav?: NavController }).__nav = rt.ctl;
     return () => {
       offVenue();
+      offReset();
       window.removeEventListener("hashchange", onHash);
       stop();
       rt.xr?.stopAr();

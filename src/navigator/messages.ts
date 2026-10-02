@@ -18,6 +18,10 @@ export const MSG = {
   } as L<[]>,
   stop: { en: () => "Navigation ended.", hi: () => "Navigation band kar diya.", te: () => "నావిగేషన్ ఆపివేశాను." } as L<[]>,
   pref: { en: () => "Okay, I’ll avoid stairs.", hi: () => "Theek hai, seedhiyon se bachenge.", te: () => "సరే, మెట్లు నివారిస్తాను." } as L<[]>,
+  ar: { en: () => "Switching to AR guidance.", hi: () => "AR guidance dikha raha hoon.", te: () => "ఏఆర్ మార్గదర్శకానికి మారుతున్నాను." } as L<[]>,
+  map: { en: () => "Switching to the map.", hi: () => "Map dikha raha hoon.", te: () => "మ్యాప్‌కు మారుతున్నాను." } as L<[]>,
+  noEta: { en: () => "Start a route first, then I can tell you the time.", hi: () => "Pehle route shuru kijiye, phir main time bataunga.", te: () => "ముందు మార్గాన్ని ప్రారంభించండి, తర్వాత సమయం చెబుతాను." } as L<[]>,
+  eta: { en: (t) => `About ${t} remaining.`, hi: (t) => `Lagbhag ${t} baaki hai.`, te: (t) => `సుమారు ${t} మిగిలి ఉంది.` } as L<[string]>,
   restricted: {
     en: (n) => `${n} is staff-only, so I can’t route you there.`,
     hi: (n) => `${n} sirf staff ke liye hai, wahan raasta nahi de sakta.`,
@@ -30,9 +34,9 @@ export const MSG = {
 };
 
 export const EXAMPLES: Record<Lang, string[]> = {
-  en: ["Where is the cafeteria?", "Take me to Everest meeting room", "Nearest washroom", "Avoid stairs", "Where am I?"],
-  hi: ["Cafeteria kahan hai?", "Mujhe canteen le chalo", "Sabse paas ka washroom", "Main kahan hoon?"],
-  te: ["క్యాంటీన్ ఎక్కడ ఉంది?", "నన్ను టాయిలెట్ కి తీసుకెళ్ళు", "నేను ఎక్కడ ఉన్నాను?"],
+  en: ["Where is the cafeteria?", "Take me to Everest meeting room", "Nearest washroom", "Avoid stairs", "How long?"],
+  hi: ["Cafeteria kahan hai?", "Mujhe canteen le chalo", "Sabse paas ka washroom", "Main kahan hoon?", "Kitna time baaki hai?"],
+  te: ["క్యాంటీన్ ఎక్కడ ఉంది?", "నన్ను టాయిలెట్ కి తీసుకెళ్ళు", "నేను ఎక్కడ ఉన్నాను?", "ఇంకా ఎంత సేపు?"],
 };
 
 export const LANG_SHORT: Record<Lang, string> = { en: "EN", hi: "HI", te: "తె" };

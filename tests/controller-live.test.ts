@@ -87,9 +87,12 @@ describe("NavController with a live pose source", () => {
   it("tracking lost: a toast and an event, once; back again is logged", () => {
     const { ctl, src, events } = setup();
     src.put(marker1);
+    ctl.showAr();
+    expect(ctl.getState().screen).toBe("ar");
     src.put({ ...marker1, source: "ar", stale: true });
     src.put({ ...marker1, source: "ar", stale: true });
     expect(ctl.getState().toast?.text).toContain("scan a marker");
+    expect(ctl.getState().screen).toBe("map");
     expect(events.filter((e) => e.kind === "tracking")).toHaveLength(1);
     src.put({ ...marker1, source: "ar", stale: false });
     expect(events.filter((e) => e.kind === "tracking")).toHaveLength(2);
@@ -162,5 +165,15 @@ describe("NavController with a live pose source", () => {
   it("exposes debug info only when the source has it", () => {
     const { ctl } = setup();
     expect(ctl.getDebug()).toBeNull();
+  });
+
+  it("publishes AR ad impressions and tap events for the dashboard", () => {
+    const { ctl, src, poses, events } = setup();
+    src.put(marker1);
+    ctl.recordAdImpression("C1", "BrewBox Coffee");
+    ctl.recordAdTap("C1", "BrewBox Coffee");
+    expect(ctl.getState().impressions).toBe(1);
+    expect(poses.at(-1)?.impressions).toBe(1);
+    expect(events.some((e) => e.kind === "ad" && e.text.startsWith("Ad tapped:"))).toBe(true);
   });
 });

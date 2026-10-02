@@ -16,7 +16,7 @@ let hub: RealtimeHub;
 beforeAll(async () => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), "indore-rt-"));
   fs.cpSync(path.join(process.cwd(), "public", "venues"), path.join(root, "public", "venues"), { recursive: true });
-  const api = createApi({ root, onPublished: (kind, id, version) => hub.notify(id, kind, id, version) });
+  const api = createApi({ root, onPublished: (kind, id, version) => hub.notify(id, kind, id, version), onReset: (id) => hub.reset(id) });
   server = http.createServer((req, res) => void api(req, res, () => ((res.statusCode = 404), res.end("next"))));
   hub = attachWs(server, { root, heartbeatMs: 200 });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
@@ -110,6 +110,24 @@ describe("realtime hub", () => {
     }
     expect(other.got).toEqual([]);
     for (const c of [phone, dash, other]) c.ws.close();
+  });
+
+  it("one reset reaches phone and dashboard and clears late-join replay state", async () => {
+    const phone = await connect("room=reset-room&role=device&device=ph-reset");
+    phone.ws.send(JSON.stringify({ ...pose(7), deviceId: "ph-reset" }));
+    await wait(60);
+    const dash = await connect("room=reset-room&role=viewer");
+    await wait(60);
+    expect(dash.got.some((g) => g.type === "pose")).toBe(true);
+    const r = await fetch(`http://${base}/api/demo/reset/reset-room`, { method: "POST" });
+    expect(r.status).toBe(200);
+    await wait(60);
+    expect(phone.got.some((g) => g.type === "reset")).toBe(true);
+    expect(dash.got.some((g) => g.type === "reset")).toBe(true);
+    const late = await connect("room=reset-room&role=viewer");
+    await wait(60);
+    expect(late.got).toEqual([]);
+    for (const c of [phone, dash, late]) c.ws.close();
   });
 
   it("plain peers (no role) still get the room relay", async () => {

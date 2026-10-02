@@ -95,6 +95,7 @@ const LANG_BTNS: [Lang, string][] = [["en", "EN"], ["hi", "Hinglish"], ["te", "�
 export function VoiceOverlay({ ctl, s }: P) {
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
+  const [partial, setPartial] = useState("");
   const [status, setStatus] = useState("Tap to speak");
   const stopRef = useRef<() => void>(() => undefined);
   const chat = useRef<HTMLDivElement>(null);
@@ -106,27 +107,30 @@ export function VoiceOverlay({ ctl, s }: P) {
   const send = (t: string) => {
     if (t.trim()) void ctl.askText(t);
   };
-  const mic = () => {
+  const startMic = () => {
     if (!supported) {
       setStatus("Speech recognition isn’t available in this browser — type or tap an example.");
       return;
     }
-    if (listening) {
-      stopRef.current();
-      return;
-    }
+    if (listening) return;
+    ctl.cancelSpeech();
+    setPartial("");
     const l = listenOnce(s.lang, () => {
       setListening(true);
-      setStatus("Listening…");
-    });
+      setStatus("Listening… release to send");
+    }, setPartial);
     stopRef.current = l.stop;
     void l.result.then((r) => {
       setListening(false);
       if (r.ok) {
+        setPartial(r.text);
         setStatus("Tap to speak");
         send(r.text);
       } else setStatus(r.reason === "denied" ? "Microphone permission denied — type instead." : r.reason === "no-speech" ? "Couldn’t hear that — try again or type." : "Couldn’t hear that — try typing.");
     });
+  };
+  const stopMic = () => {
+    stopRef.current();
   };
   return (
     <div className="ov on" id="voiceOv" data-testid="voice-overlay">
@@ -148,8 +152,18 @@ export function VoiceOverlay({ ctl, s }: P) {
           ))}
         </div>
         <div style={{ textAlign: "center", margin: "12px 0 6px" }}>
-          <button className={`mic-big ${listening ? "listening" : ""}`} data-testid="voice-mic" onClick={mic}>🎤</button>
+          <button
+            className={`mic-big ${listening ? "listening" : ""}`}
+            data-testid="voice-mic"
+            aria-label="Hold to talk"
+            onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); startMic(); }}
+            onPointerUp={stopMic}
+            onPointerCancel={stopMic}
+            onKeyDown={(e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) startMic(); }}
+            onKeyUp={(e) => { if (e.key === " " || e.key === "Enter") stopMic(); }}
+          >🎤</button>
           <div className="muted small" style={{ marginTop: 8 }} data-testid="voice-state">{status}</div>
+          {partial && <div className="voice-partial" data-testid="voice-partial">{partial}</div>}
         </div>
         <div className="row voice-in" style={{ marginBottom: 8 }}>
           <input
@@ -172,7 +186,7 @@ export function VoiceOverlay({ ctl, s }: P) {
             <button key={e} className="mchip" style={{ background: "#eef2fd", borderColor: "#d5def8", color: "#2f5bea" }} onClick={() => send(e)}>{e}</button>
           ))}
         </div>
-        <div className="small muted" style={{ marginTop: 4 }}>Understood by rules first (deterministic). {LANGS[s.lang].speech} · an AI model arrives in Phase 5, for free-form questions only.</div>
+        <div className="small muted" style={{ marginTop: 4 }}>Hold the mic to talk. Rules run first; free-form questions use the server assistant when online. {LANGS[s.lang].speech}</div>
       </div>
     </div>
   );

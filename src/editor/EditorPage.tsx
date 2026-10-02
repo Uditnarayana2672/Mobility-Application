@@ -62,6 +62,26 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
   const [scaleReq, setScaleReq] = useState<{ floorId: string; a: ops.Pt; b: ops.Pt } | null>(null);
   const [serverResults, setServerResults] = useState<ValidationResult[] | null>(null);
   const [publishing, setPublishing] = useState(false);
+  // Free drawing by default; the grid is a toggle (key G), remembered in the browser.
+  const [snapOn, setSnapOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("indore.editor.snap") === "1";
+    } catch {
+      return false;
+    }
+  });
+  ops.setGrid(snapOn ? ops.GRID : 0);
+  const setSnap = useCallback((on: boolean) => {
+    ops.setGrid(on ? ops.GRID : 0);
+    setSnapOn(on);
+    try {
+      localStorage.setItem("indore.editor.snap", on ? "1" : "0");
+    } catch {
+      /* private mode */
+    }
+  }, []);
+  const snapRef = useRef(snapOn);
+  snapRef.current = snapOn;
   const mapRef = useRef<MapHandle>(null);
   const toastId = useRef(0);
 
@@ -134,6 +154,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
       } else if (e.key === "Escape") toolRef.current.cancel(host);
       else if (e.key === "Enter") toolRef.current.finish?.(host);
       else if (e.key === "Delete" || e.key === "Backspace") deleteSelected();
+      else if (!mod && e.key.toLowerCase() === "g") setSnap(!snapRef.current);
       else if (!mod) {
         const tool = TOOL_LIST.find((x) => x.key === e.key.toLowerCase());
         if (tool) dispatch({ type: "setTool", tool: tool.id });
@@ -141,7 +162,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dispatch, host, deleteSelected]);
+  }, [dispatch, host, deleteSelected, setSnap]);
 
   /* ---- actions ---- */
   const commit = useCallback((venue: Venue) => dispatch({ type: "commit", venue }), [dispatch]);
@@ -247,9 +268,11 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
             onPointer={(phase, pt, ev) => toolRef.current.onPointer(phase, pt, ev, host)}
             onSelect={(item, pt) => toolRef.current.onSelect(item, pt, host)}
           >
-            {(view) => <ToolOverlay view={view} overlay={overlay} tool={state.tool} venue={state.venue} floorId={state.floorId} />}
+            {(view) => <ToolOverlay view={view} overlay={overlay} tool={state.tool} venue={state.venue} floorId={state.floorId} selected={state.selected} />}
           </MapCanvas>
           <LayerBar
+            snapOn={snapOn}
+            onSnap={setSnap}
             layers={state.layers}
             tool={state.tool}
             poiKind={state.poiKind}

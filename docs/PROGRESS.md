@@ -29,7 +29,9 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
 | 2026-10-02 | HTTPS via mkcert (`npm run certs`, certs/ gitignored); falls back to `@vitejs/plugin-basic-ssl` when certs are missing. |
 | 2026-10-02 | No PWA / service worker. |
 | 2026-10-02 | Vitest pinned to **2.x**: Vitest ≥3/5 needs Vite ≥6, the repo is on Vite 5. |
-| 2026-10-02 | Marker dictionary: **custom generated "IND_4X4_50"** (4x4 data cells + 1 black border cell, 50 ids, min Hamming distance 3 across rotations; `src/spikes/aruco/dict.ts`). 4x4 = big cells at A5 size, robust to blur/low-res camera frames. Not OpenCV's table (can't be verified offline; we print our own markers). Black square 120 mm (`src/spikes/aruco/print.ts`). |
+| 2026-10-02 | Marker dictionary: **custom generated "IND_4X4_50"** (4x4 data cells + 1 black border cell, 50 ids, min Hamming distance 3 across rotations; `src/spikes/aruco/dict.ts`). 4x4 = big cells at A5 size, robust to blur/low-res camera frames. Not OpenCV's table (can't be verified offline; we print our own markers). Black square 120 mm (`src/spikes/aruco/print.ts`). **Measured (tests/aruco.test.ts): min Hamming distance between any two codes over all 4 rotations = 3 (need ≥ 3); min distance of a code to its own 90/180/270 rotations = 4 (no code is rotation-ambiguous). No regeneration needed.** |
+| 2026-10-02 | S2 fallback B FOV: "Calibrate at 1 m" computes hFOV from the detected square (face-on marker, exactly 1.00 m) and stores it in localStorage (`indore.s2.hfov`); default 65° until calibrated. |
+| 2026-10-02 | Real-photo regression: put `id<NN>_<note>.jpg/png` in `tests/fixtures/markers-real/`; `tests/real-markers.test.ts` runs the detector on each (640 px wide) and expects that id. Empty for now. |
 | 2026-10-02 | Own small TS detector (adaptive threshold → blobs → 4 corners → grid decode) instead of OpenCV.js (≈8 MB) / js-aruco2. Pose = planar homography decomposition with intrinsics from the XR projection matrix. **No Gauss-Newton refinement yet** (add if S2 distance error is large). |
 | 2026-10-02 | Docs 01–03 and mock-ui were outside the repo (`Indore map/artifacts/`); copied to `docs/`. The originals in `artifacts/` are untouched. |
 
@@ -56,6 +58,7 @@ npm test             # vitest
 
 Setup once: follow `docs/https-on-phone.md`, run `npm run dev:lan`, open the URL on the phone → `/spikes`. Page must say "Secure context". For each spike press **Save results** at the end
 (writes `docs/spikes/<name>.json` on the laptop), then copy the numbers into the table below.
+Optional but useful: photograph each printed marker with the phone (different light/angles/distances) and save as `tests/fixtures/markers-real/id<NN>_<note>.jpg`; `npm test` then checks the detector on them.
 Print the markers first: `/spikes/s2/markers` → print on A5 at **100%**, measure the black square with a ruler (must be 120 mm; if not, set `MARKER_SIZE_MM` in `src/spikes/aruco/print.ts`).
 
 **S1 – WebXR (pass: AR starts; cube stays put on the floor while walking)**
@@ -69,7 +72,7 @@ Print the markers first: `/spikes/s2/markers` → print on A5 at **100%**, measu
 2. `/spikes/s2` → "A · AR + camera-access". Check the log for "camera-access" in enabled features. Aim at the marker from ~1 m: the axes should appear on it.
 3. At 1 m, 2 m, 3 m (tape measured, camera to marker) enter the tape distance and press **Record sample** → compares estimated vs tape. Pass: error < 10 cm at 1–2 m.
 4. Walk 20 m away and back with AR running; look at the marker again; note how far the axes are from it (cm) in Notes.
-5. If A fails (no camera-access / no detections), use **B · camera outside XR** and record samples the same way (B uses an assumed 65° FOV, so expect a scale error; the point is whether detection works at all). Report which path works and the "first detection after … ms" log line.
+5. If A fails (no camera-access / no detections), use **B · camera outside XR**: first **Calibrate at 1 m** (marker face-on at exactly 1.00 m from the phone), then record samples the same way (uncalibrated B assumes 65°, so expect a scale error). Report which path works and the "first detection after … ms" log line.
 
 **S3 – voice (pass: TTS speaks en-IN, hi-IN, te-IN; recognition returns text for Hinglish and Telugu phrases)**
 1. `/spikes/s3`. Note voice counts per language (installing Google TTS voice data for Hindi/Telugu may be needed: Settings → Languages → Text-to-speech).

@@ -5,7 +5,7 @@ import SpikeShell, { Btn, Readout, useLog } from "./SpikeShell";
 import { arSupported, blockXrSelect, startAr, type ArHandle } from "./ar";
 import { CameraReader } from "./camera";
 import { detectMarkers } from "./aruco/detect";
-import { intrinsicsFromProjection, solveMarkerPose, type Intrinsics } from "./aruco/pose";
+import { hfovFromSquare, intrinsicsFromProjection, meanSidePx, solveMarkerPose, type Intrinsics } from "./aruco/pose";
 import { MARKER_SIZE_M, MARKER_SIZE_MM } from "./aruco/print";
 
 interface Seen {
@@ -17,6 +17,18 @@ interface Sample {
   id: number;
   tapeM: number;
   estimatedM: number;
+}
+
+const FOV_KEY = "indore.s2.hfov";
+const DEFAULT_HFOV = 65;
+
+function loadHfov(): number | null {
+  try {
+    const v = Number(localStorage.getItem(FOV_KEY));
+    return v > 20 && v < 140 ? v : null;
+  } catch {
+    return null;
+  }
 }
 
 // OpenCV camera (x right, y down, z fwd) -> WebXR camera (x right, y up, z back): rotate 180 deg about x.
@@ -48,6 +60,9 @@ export default function S2Page() {
   // Fallback B
   const video = useRef<HTMLVideoElement>(null);
   const stopB = useRef<(() => void) | null>(null);
+  const hfovRef = useRef<number>(loadHfov() ?? DEFAULT_HFOV);
+  const [hfov, setHfov] = useState<number | null>(loadHfov());
+  const lastB = useRef<{ side: number; width: number } | null>(null);
 
   useEffect(() => {
     void arSupported().then(setSupported);
@@ -165,7 +180,6 @@ export default function S2Page() {
       const ctx = c.getContext("2d", { willReadFrequently: true })!;
       let raf = 0;
       let on = true;
-      const hfov = 65; // assumed horizontal FOV for a phone main camera; fallback B has no real intrinsics
       const loop = () => {
         if (!on) return;
         const w = 640;
@@ -176,10 +190,11 @@ export default function S2Page() {
         const px = ctx.getImageData(0, 0, w, h).data;
         const gray = new Uint8Array(w * h);
         for (let i = 0; i < gray.length; i++) gray[i] = (px[i * 4]! * 77 + px[i * 4 + 1]! * 150 + px[i * 4 + 2]! * 29) >> 8;
-        const f = w / 2 / Math.tan((hfov * Math.PI) / 360);
+        const f = w / 2 / Math.tan((hfovRef.current * Math.PI) / 360);
         const K: Intrinsics = { fx: f, fy: f, cx: w / 2, cy: h / 2 };
         const dets = detectMarkers({ data: gray, width: w, height: h });
         seenRef.current = dets.map((d) => ({ id: d.id, distance: solveMarkerPose(d.corners, MARKER_SIZE_M, K).distance }));
+        lastB.current = dets[0] ? { side: meanSidePx(dets[0].corners), width: w } : null;
         statsRef.current.processed++;
         if (dets.length) statsRef.current.detections++;
         raf = requestAnimationFrame(loop);
@@ -191,11 +206,32 @@ export default function S2Page() {
         stream.getTracks().forEach((t) => t.stop());
         stopB.current = null;
       };
-      log("fallback B running (distance uses an ASSUMED 65 deg FOV: calibrate with the tape sample)");
+      log(`fallback B running (hFOV ${hfovRef.current.toFixed(1)} deg, ${hfov === null ? "ASSUMED: use Calibrate at 1 m" : "calibrated"})`);
     } catch (e) {
       setError(String(e));
       log(`fallback B failed: ${String(e)}`);
     }
+  };
+
+  const calibrate = () => {
+    const m = lastB.current;
+    if (path !== "B" || !m) {
+      log("calibrate: start fallback B and keep the marker in view, face-on, at exactly 1.00 m");
+      return;
+    }
+    const v = hfovFromSquare(m.side, m.width, MARKER_SIZE_M, 1);
+    if (!(v > 20 && v < 140)) {
+      log(`calibrate: implausible FOV ${v.toFixed(1)} deg, check the distance and that the marker is face-on`);
+      return;
+    }
+    hfovRef.current = v;
+    setHfov(v);
+    try {
+      localStorage.setItem(FOV_KEY, String(v));
+    } catch {
+      log("could not store FOV in localStorage (value only kept for this session)");
+    }
+    log(`calibrated: hFOV = ${v.toFixed(1)} deg (square ${m.side.toFixed(1)} px of ${m.width} px at 1.00 m)`);
   };
 
   const record = () => {
@@ -214,6 +250,7 @@ export default function S2Page() {
     markerSizeMm: MARKER_SIZE_MM,
     dictionary: "IND_4X4_50 (custom generated, see src/spikes/aruco/dict.ts)",
     pathUsed: path,
+    fallbackBHfovDeg: hfov,
     stats,
     samples,
     notes,
@@ -244,7 +281,14 @@ export default function S2Page() {
             Stop B
           </Btn>
         )}
+        <Btn className="bg-amber-600" onClick={calibrate}>
+          Calibrate at 1 m
+        </Btn>
       </div>
+      <p className="text-xs text-neutral-400">
+        B-mode FOV: {hfov === null ? `${DEFAULT_HFOV}° (assumed)` : `${hfov.toFixed(1)}° (calibrated, stored in this browser)`}. To calibrate: run B, tape-measure exactly 1.00 m from the phone to the
+        marker, hold the marker face-on (not tilted) and press Calibrate.
+      </p>
       <video ref={video} playsInline muted className={path === "B" ? "w-full rounded" : "hidden"} />
       <p className="text-xs text-neutral-400">
         Fallback C (only if A and B both fail): Chrome image tracking via chrome://flags/#webxr-incubations. Not implemented here.

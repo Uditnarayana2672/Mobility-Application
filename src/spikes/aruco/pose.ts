@@ -87,3 +87,23 @@ export function project(pose: Pick<MarkerPose, "R" | "t">, K: Intrinsics, p: [nu
   const Z = R[6]! * p[0] + R[7]! * p[1] + R[8]! * p[2] + t[2];
   return { x: (K.fx * X) / Z + K.cx, y: (K.fy * Y) / Z + K.cy };
 }
+
+/** Mean edge length (px) of a quad given as 4 corners in order. */
+export function meanSidePx(corners: readonly Pt[]): number {
+  let sum = 0;
+  for (let i = 0; i < 4; i++) {
+    const a = corners[i]!;
+    const b = corners[(i + 1) % 4]!;
+    sum += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  return sum / 4;
+}
+
+/**
+ * Horizontal FOV (degrees) from a face-on square of known size at a known distance:
+ * side_px = fx * size / distance  ->  fx = side_px * distance / size,  hfov = 2 atan(W / 2fx).
+ */
+export function hfovFromSquare(sidePx: number, imageWidthPx: number, sizeM: number, distanceM: number): number {
+  const fx = (sidePx * distanceM) / sizeM;
+  return (2 * Math.atan(imageWidthPx / 2 / fx) * 180) / Math.PI;
+}

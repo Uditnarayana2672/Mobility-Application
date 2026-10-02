@@ -84,3 +84,33 @@ export function markerBits(id: number): boolean[][] {
   if (code === undefined) throw new Error(`marker id ${id} out of range`);
   return Array.from({ length: GRID }, (_, r) => Array.from({ length: GRID }, (_, c) => ((code >> (r * GRID + c)) & 1) === 1));
 }
+
+const hamming = (a: number, b: number): number => popcount(a ^ b);
+
+/** Min Hamming distance between any two different codes over all 4 rotations of the second. */
+export function minInterCodeDistance(codes: readonly number[] = DICTIONARY): number {
+  let min = Infinity;
+  for (let i = 0; i < codes.length; i++) {
+    for (let j = i + 1; j < codes.length; j++) {
+      let c = codes[j]!;
+      for (let r = 0; r < 4; r++) {
+        min = Math.min(min, hamming(codes[i]!, c));
+        c = rotate90(c);
+      }
+    }
+  }
+  return min;
+}
+
+/** Min Hamming distance between a code and its own 90/180/270 rotations (0 = rotation-ambiguous). */
+export function minSelfRotationDistance(codes: readonly number[] = DICTIONARY): number {
+  let min = Infinity;
+  for (const code of codes) {
+    let c = code;
+    for (let r = 1; r < 4; r++) {
+      c = rotate90(c);
+      min = Math.min(min, hamming(code, c));
+    }
+  }
+  return min;
+}

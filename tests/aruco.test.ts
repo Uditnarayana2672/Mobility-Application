@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { DICTIONARY, DICT_SIZE, GRID, MIN_DIST, markerBits, rotate90 } from "@/spikes/aruco/dict";
+import { DICTIONARY, DICT_SIZE, GRID, MIN_DIST, markerBits, minInterCodeDistance, minSelfRotationDistance, rotate90 } from "@/spikes/aruco/dict";
 import { applyH, detectMarkers, homography, type GrayImage, type Pt } from "@/spikes/aruco/detect";
-import { intrinsicsFromProjection, project, solveMarkerPose } from "@/spikes/aruco/pose";
+import { hfovFromSquare, intrinsicsFromProjection, meanSidePx, project, solveMarkerPose } from "@/spikes/aruco/pose";
 
 const pc = (x: number) => x.toString(2).split("1").length - 1;
 
@@ -17,6 +17,23 @@ describe("dictionary", () => {
         }
       }
     }
+  });
+  it("(a) min Hamming distance between any two codes over all 4 rotations is >= 3", () => {
+    const d = minInterCodeDistance();
+    console.log(`measured min inter-code distance: ${d}`);
+    expect(d).toBeGreaterThanOrEqual(3);
+  });
+  it("(b) no code equals any of its own 90/180/270 rotations", () => {
+    for (let id = 0; id < DICTIONARY.length; id++) {
+      const c = DICTIONARY[id]!;
+      const r1 = rotate90(c);
+      const r2 = rotate90(r1);
+      const r3 = rotate90(r2);
+      expect([id, c === r1, c === r2, c === r3]).toEqual([id, false, false, false]);
+    }
+    const d = minSelfRotationDistance();
+    console.log(`measured min self-rotation distance: ${d}`);
+    expect(d).toBeGreaterThanOrEqual(3);
   });
   it("rotate90 x4 is identity", () => {
     const c = DICTIONARY[7]!;
@@ -92,5 +109,16 @@ describe("pose", () => {
     const est = solveMarkerPose(corners, s, K);
     expect(est.distance).toBeCloseTo(Math.hypot(0.1, 0.05, 1.5), 3);
     for (let i = 0; i < 9; i++) expect(est.R[i]!).toBeCloseTo(R[i]!, 3);
+  });
+});
+
+describe("FOV calibration", () => {
+  it("recovers the horizontal FOV from a face-on marker at 1 m", () => {
+    const W = 640;
+    const hfov = 70;
+    const fx = W / 2 / Math.tan((hfov * Math.PI) / 360);
+    const half = (0.12 / 2) * fx; // projected half-side at 1 m
+    const corners: Pt[] = [{ x: 300 - half, y: 200 - half }, { x: 300 + half, y: 200 - half }, { x: 300 + half, y: 200 + half }, { x: 300 - half, y: 200 + half }];
+    expect(hfovFromSquare(meanSidePx(corners), W, 0.12, 1)).toBeCloseTo(hfov, 3);
   });
 });

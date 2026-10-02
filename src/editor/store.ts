@@ -1,8 +1,8 @@
-import type { PoiKind } from "@/core/cats";
+import type { ObjectKind, PoiKind } from "@/core/cats";
 import type { Venue } from "@/core/schema";
 import { DEFAULT_LAYERS, type MapItem, type MapLayers } from "@/ui/map";
 
-export type ToolId = "select" | "room" | "door" | "walk" | "vertical" | "marker" | "wall" | "poi" | "scale" | "background";
+export type ToolId = "select" | "room" | "door" | "walk" | "vertical" | "marker" | "wall" | "poi" | "object" | "scale" | "background";
 export type Selection = MapItem | { type: "floor"; id: string } | null;
 export const MAX_HISTORY = 80;
 
@@ -18,6 +18,7 @@ export interface EditorState {
   selected: Selection;
   layers: MapLayers;
   poiKind: PoiKind;
+  objectKind: ObjectKind;
   verticalKind: "lift" | "stairs";
   /** Bumped by every committed change; autosave watches it. */
   rev: number;
@@ -36,6 +37,7 @@ export type Action =
   | { type: "select"; selection: Selection }
   | { type: "setLayer"; name: keyof MapLayers; on: boolean }
   | { type: "setPoiKind"; kind: PoiKind }
+  | { type: "setObjectKind"; kind: ObjectKind }
   | { type: "setVerticalKind"; kind: "lift" | "stairs" };
 
 /** Layers each tool needs to be usable (switched on when the tool is picked). */
@@ -47,6 +49,7 @@ export const TOOL_LAYERS: Partial<Record<ToolId, Partial<MapLayers>>> = {
   scale: { underlay: true },
   background: { underlay: true },
   poi: { pois: true },
+  object: { objects: true },
 };
 
 export function initialState(venue: Venue): EditorState {
@@ -60,6 +63,7 @@ export function initialState(venue: Venue): EditorState {
     selected: null,
     layers: { ...DEFAULT_LAYERS, underlay: true, grid: true, walknet: true, markers: true, walls: true },
     poiKind: "water",
+    objectKind: "bed",
     verticalKind: "lift",
     rev: 0,
   };
@@ -81,6 +85,8 @@ export function selectionExists(v: Venue, s: Selection): boolean {
       return v.nodes.some((n) => n.id === s.id);
     case "edge":
       return v.edges.some((e) => `${e.a}|${e.b}` === s.id);
+    case "object":
+      return v.objects.some((o) => o.id === s.id);
     case "floor":
       return v.floors.some((f) => f.id === s.id);
   }
@@ -92,7 +98,7 @@ export function reducer(s: EditorState, a: Action): EditorState {
   switch (a.type) {
     case "load": {
       const base = initialState(a.venue);
-      return { ...base, layers: s.layers, poiKind: s.poiKind, tool: "select", floorId: a.venue.floors.some((f) => f.id === s.floorId) ? s.floorId : base.floorId };
+      return { ...base, layers: s.layers, poiKind: s.poiKind, objectKind: s.objectKind, tool: "select", floorId: a.venue.floors.some((f) => f.id === s.floorId) ? s.floorId : base.floorId };
     }
     case "commit": {
       if (a.venue === s.venue) return s;
@@ -128,6 +134,8 @@ export function reducer(s: EditorState, a: Action): EditorState {
       return { ...s, layers: { ...s.layers, [a.name]: a.on } };
     case "setPoiKind":
       return { ...s, poiKind: a.kind };
+    case "setObjectKind":
+      return { ...s, objectKind: a.kind };
     case "setVerticalKind":
       return { ...s, verticalKind: a.kind };
   }

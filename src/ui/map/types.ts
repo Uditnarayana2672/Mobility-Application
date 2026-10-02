@@ -8,11 +8,13 @@ export interface MapLayers {
   markers: boolean;
   walls: boolean;
   walknet: boolean;
+  /** Furniture and fixtures. */
+  objects: boolean;
 }
 
-export const DEFAULT_LAYERS: MapLayers = { underlay: false, grid: false, doors: true, labels: true, pois: true, markers: false, walls: false, walknet: false };
+export const DEFAULT_LAYERS: MapLayers = { underlay: false, grid: false, doors: true, labels: true, pois: true, markers: false, walls: false, walknet: false, objects: true };
 
-export type ItemType = "room" | "marker" | "wall" | "poi" | "node" | "edge";
+export type ItemType = "room" | "marker" | "wall" | "poi" | "node" | "edge" | "object";
 
 export interface MapItem {
   type: ItemType;

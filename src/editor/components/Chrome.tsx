@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { CATS, POI_KINDS, POI_KIND_IDS, type PoiKind } from "@/core/cats";
+import { CATS, OBJECT_KINDS, OBJECT_KIND_IDS, POI_KINDS, POI_KIND_IDS, type ObjectKind, type PoiKind } from "@/core/cats";
 import type { Venue } from "@/core/schema";
 import type { MapLayers, MapView } from "@/ui/map";
 import type { SaveState } from "../useAutosave";
@@ -130,6 +130,7 @@ const LAYERS: [keyof MapLayers, string][] = [
   ["underlay", "Floor photo"],
   ["grid", "Grid"],
   ["walknet", "Walk network"],
+  ["objects", "Furniture"],
   ["markers", "Markers"],
   ["walls", "Ad walls"],
   ["labels", "Labels"],
@@ -141,9 +142,11 @@ export function LayerBar(p: {
   layers: MapLayers;
   tool: ToolId;
   poiKind: PoiKind;
+  objectKind: ObjectKind;
   verticalKind: "lift" | "stairs";
   onLayer(name: keyof MapLayers, on: boolean): void;
   onPoiKind(k: PoiKind): void;
+  onObjectKind(k: ObjectKind): void;
   onVerticalKind(k: "lift" | "stairs"): void;
 }) {
   return (
@@ -163,6 +166,15 @@ export function LayerBar(p: {
           {POI_KIND_IDS.map((k) => (
             <option key={k} value={k}>
               {POI_KINDS[k].icon} {POI_KINDS[k].label}
+            </option>
+          ))}
+        </select>
+      )}
+      {p.tool === "object" && (
+        <select className="rounded border border-slate-300 px-1 py-0.5" data-testid="object-kind" value={p.objectKind} onChange={(e) => p.onObjectKind(e.target.value as ObjectKind)}>
+          {OBJECT_KIND_IDS.map((k) => (
+            <option key={k} value={k}>
+              {OBJECT_KINDS[k].icon} {OBJECT_KINDS[k].label}
             </option>
           ))}
         </select>
@@ -231,7 +243,11 @@ export function ToolOverlay({ view, overlay, tool, venue, floorId, selected }: {
   if (tool === "select") {
     for (const hd of selectionHandles(venue, selected, floorId)) {
       els.push(
-        hd.kind === "resize" ? (
+        hd.kind === "orotate" ? (
+          <circle key="h-orot" cx={hd.at.x} cy={hd.at.y} r={7 * px} fill="#e8890c" stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        ) : hd.kind === "oresize" ? (
+          <rect key={`h-o${hd.at.x}-${hd.at.y}`} x={hd.at.x - 4 * px} y={hd.at.y - 4 * px} width={8 * px} height={8 * px} fill="#fff" stroke="#2f5bea" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+        ) : hd.kind === "resize" ? (
           <rect key={`h-${hd.handle}`} x={hd.at.x - 4 * px} y={hd.at.y - 4 * px} width={8 * px} height={8 * px} fill="#fff" stroke="#2f5bea" strokeWidth={2} vectorEffect="non-scaling-stroke" />
         ) : (
           <circle key="h-bend" cx={hd.at.x} cy={hd.at.y} r={6 * px} fill="#fff" stroke="#2f5bea" strokeWidth={2} vectorEffect="non-scaling-stroke" />

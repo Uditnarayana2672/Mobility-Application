@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { CAT_IDS, CATS, POI_KINDS, POI_KIND_IDS, type PoiKind } from "@/core/cats";
+import { CAT_IDS, CATS, OBJECT_KINDS, OBJECT_KIND_IDS, POI_KINDS, POI_KIND_IDS, type ObjectKind, type PoiKind } from "@/core/cats";
 import type { Floor, Room, ValidationResult, Venue } from "@/core/schema";
 import { DICT_SIZE } from "@/core/aruco/dict";
 import { roomDoors } from "@/core/doors";
@@ -43,6 +43,7 @@ export function PropertiesPanel(p: PanelProps) {
   if (s.type === "wall") return <WallProps {...p} id={s.id} />;
   if (s.type === "poi") return <PoiProps {...p} id={s.id} />;
   if (s.type === "edge") return <EdgeProps {...p} id={s.id} />;
+  if (s.type === "object") return <ObjectProps {...p} id={s.id} />;
   return <NodeProps {...p} id={s.id} />;
 }
 
@@ -512,6 +513,61 @@ function PoiProps({ venue: v, id, commit, select }: PanelProps & { id: string })
         }}
       >
         Delete POI
+      </DeleteBtn>
+    </div>
+  );
+}
+
+function ObjectProps({ venue: v, id, commit, select }: PanelProps & { id: string }) {
+  const o = v.objects.find((x) => x.id === id);
+  if (!o) return <p className="text-sm text-slate-500">Item not found.</p>;
+  const k = OBJECT_KINDS[o.kind];
+  const set = (patch: Partial<typeof o>) => commit(ops.updateObject(v, id, patch));
+  return (
+    <div data-testid="object-panel">
+      <div className="flex items-center gap-2">
+        <span className="text-2xl">{k.icon}</span>
+        <h3 className="text-lg font-bold">{o.label || k.label}</h3>
+      </div>
+      <p className="text-xs text-slate-500">
+        {floorName(v, o.floor)} · {o.w}×{o.h} m · id {o.id}. Furniture is only drawn on the map; routes ignore it.
+      </p>
+      <Field label="Kind">
+        <select className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-sm" value={o.kind} onChange={(e) => set({ kind: e.target.value as ObjectKind })}>
+          {OBJECT_KIND_IDS.map((x) => (
+            <option key={x} value={x}>
+              {OBJECT_KINDS[x].icon} {OBJECT_KINDS[x].label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Label (shown when you hover it)">
+        <CommitInput value={o.label} placeholder="e.g. Bed A" onCommit={(x) => set({ label: String(x) })} />
+      </Field>
+      <Grid2>
+        <Field label="Width (m)">
+          <CommitInput type="number" step={0.1} min={0.2} value={o.w} onCommit={(x) => set({ w: Math.max(0.2, Number(x)) })} />
+        </Field>
+        <Field label="Depth (m)">
+          <CommitInput type="number" step={0.1} min={0.2} value={o.h} onCommit={(x) => set({ h: Math.max(0.2, Number(x)) })} />
+        </Field>
+        <Field label="Rotation (°)">
+          <CommitInput type="number" step={1} value={o.rotation} onCommit={(x) => set({ rotation: ((Number(x) % 360) + 360) % 360 })} />
+        </Field>
+        <Field label="Centre x, y (m)">
+          <div className="flex gap-1">
+            <CommitInput type="number" step={0.1} value={o.x} onCommit={(x) => set({ x: Number(x) })} />
+            <CommitInput type="number" step={0.1} value={o.y} onCommit={(x) => set({ y: Number(x) })} />
+          </div>
+        </Field>
+      </Grid2>
+      <DeleteBtn
+        onClick={() => {
+          commit(ops.deleteItem(v, { type: "object", id }));
+          select(null);
+        }}
+      >
+        Delete item
       </DeleteBtn>
     </div>
   );

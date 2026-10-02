@@ -178,6 +178,7 @@ describe("door tool", () => {
       floorId: () => s.floorId,
       selected: () => s.selected,
       poiKind: () => s.poiKind,
+      objectKind: () => s.objectKind,
       verticalKind: () => s.verticalKind,
       commit: (v) => dispatch({ type: "commit", venue: v }),
       preview: (v) => dispatch({ type: "preview", venue: v }),

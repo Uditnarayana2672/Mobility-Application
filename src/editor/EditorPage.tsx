@@ -102,6 +102,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
       floorId: () => stateRef.current.floorId,
       selected: () => stateRef.current.selected,
       poiKind: () => stateRef.current.poiKind,
+      objectKind: () => stateRef.current.objectKind,
       verticalKind: () => stateRef.current.verticalKind,
       commit: (venue) => dispatch({ type: "commit", venue }),
       preview: (venue) => dispatch({ type: "preview", venue }),
@@ -276,9 +277,11 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
             layers={state.layers}
             tool={state.tool}
             poiKind={state.poiKind}
+            objectKind={state.objectKind}
             verticalKind={state.verticalKind}
             onLayer={(name, on) => dispatch({ type: "setLayer", name, on })}
             onPoiKind={(kind) => dispatch({ type: "setPoiKind", kind })}
+            onObjectKind={(kind) => dispatch({ type: "setObjectKind", kind })}
             onVerticalKind={(kind) => {
               dispatch({ type: "setVerticalKind", kind });
               toolRef.current.cancel(host);

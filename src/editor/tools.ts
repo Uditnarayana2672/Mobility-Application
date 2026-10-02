@@ -1,4 +1,4 @@
-import type { PoiKind } from "@/core/cats";
+import type { ObjectKind, PoiKind } from "@/core/cats";
 import { nearestDoor } from "@/core/doors";
 import { POI_KINDS } from "@/core/cats";
 import type { Venue } from "@/core/schema";
@@ -22,6 +22,7 @@ export interface Host {
   floorId(): string;
   selected(): Selection;
   poiKind(): PoiKind;
+  objectKind(): ObjectKind;
   verticalKind(): "lift" | "stairs";
   commit(v: Venue): void;
   preview(v: Venue): void;
@@ -59,7 +60,7 @@ const err = (r: unknown): string | null => (r && typeof r === "object" && "error
 export function itemFromEvent(ev: PointerEventLike): MapItem | null {
   const el = (ev.target as Element | null)?.closest?.("[data-id]") ?? null;
   const type = el?.getAttribute("data-type");
-  if (!el || !type || !["room", "marker", "wall", "poi", "node", "edge"].includes(type)) return null;
+  if (!el || !type || !["room", "marker", "wall", "poi", "node", "edge", "object"].includes(type)) return null;
   return { type: type as MapItem["type"], id: el.getAttribute("data-id") ?? "" };
 }
 
@@ -69,7 +70,7 @@ const noopPointer = (): boolean => false;
 
 /** Handles shown for the current selection (resize corners of a rectangle room, the middle of a corridor line). Shared with the overlay. */
 export interface SelHandle {
-  kind: "resize" | "bend";
+  kind: "resize" | "bend" | "oresize" | "orotate";
   id: string;
   at: Pt;
   /** For resize handles. */
@@ -82,6 +83,14 @@ export function selectionHandles(v: Venue, sel: Selection, floorId: string): Sel
     const r = v.rooms.find((x) => x.id === sel.id);
     if (!r || r.floor !== floorId) return [];
     return ops.RESIZE_HANDLES.map((h) => ({ kind: "resize" as const, id: r.id, handle: h, at: ops.resizeHandlePoint(r, h) }));
+  }
+  if (sel.type === "object") {
+    const o = v.objects.find((x) => x.id === sel.id);
+    if (!o || o.floor !== floorId) return [];
+    return [
+      ...[0, 1, 2, 3].map((i) => ({ kind: "oresize" as const, id: o.id, at: ops.objectCorner(o, i) })),
+      { kind: "orotate" as const, id: o.id, at: ops.objectRotateHandle(o) },
+    ];
   }
   if (sel.type === "edge") {
     const e = ops.findEdge(v, sel.id);
@@ -98,6 +107,8 @@ function selectTool(): Tool {
     | { mode: "item"; item: MapItem; base: Venue; start: Pt; moved: boolean }
     | { mode: "component"; nodeId: string; base: Venue; start: Pt; moved: boolean }
     | { mode: "resize"; roomId: string; handle: ops.ResizeHandle; base: Venue; moved: boolean }
+    | { mode: "oresize"; objectId: string; base: Venue; moved: boolean }
+    | { mode: "orotate"; objectId: string; base: Venue; moved: boolean }
     | { mode: "bend"; edgeKey: string; base: Venue; start: Pt; moved: boolean; nodeId: string | null };
   let drag: Drag | null = null;
   return {
@@ -111,7 +122,14 @@ function selectTool(): Tool {
         const reach = 10 / h.scale();
         for (const hd of selectionHandles(v, h.selected(), h.floorId())) {
           if (Math.hypot(pt.x - hd.at.x, pt.y - hd.at.y) > reach) continue;
-          drag = hd.kind === "resize" ? { mode: "resize", roomId: hd.id, handle: hd.handle!, base: v, moved: false } : { mode: "bend", edgeKey: hd.id, base: v, start: pt, moved: false, nodeId: null };
+          drag =
+            hd.kind === "resize"
+              ? { mode: "resize", roomId: hd.id, handle: hd.handle!, base: v, moved: false }
+              : hd.kind === "oresize"
+                ? { mode: "oresize", objectId: hd.id, base: v, moved: false }
+                : hd.kind === "orotate"
+                ? { mode: "orotate", objectId: hd.id, base: v, moved: false }
+                : { mode: "bend", edgeKey: hd.id, base: v, start: pt, moved: false, nodeId: null };
           return true;
         }
         // 2. an item under the pointer
@@ -135,6 +153,11 @@ function selectTool(): Tool {
       }
       if (phase === "move" && drag) {
         const d = drag;
+        if (d.mode === "oresize" || d.mode === "orotate") {
+          d.moved = true;
+          h.preview(d.mode === "oresize" ? ops.resizeObject(d.base, d.objectId, pt) : ops.rotateObject(d.base, d.objectId, pt));
+          return true;
+        }
         if (d.mode === "resize") {
           d.moved = true;
           h.preview(ops.resizeRoom(d.base, d.roomId, d.handle, pt));
@@ -164,7 +187,9 @@ function selectTool(): Tool {
             ? ops.moveRoom(base, item.id, pt.x - d.start.x, pt.y - d.start.y)
             : item.type === "node"
               ? ops.moveNode(base, item.id, pt)
-              : ops.moveItem(base, item.type as "marker" | "wall" | "poi", item.id, pt);
+              : item.type === "object"
+                ? ops.moveObjectBy(base, item.id, pt.x - d.start.x, pt.y - d.start.y)
+                : ops.moveItem(base, item.type as "marker" | "wall" | "poi", item.id, pt);
         h.preview(next);
         return true;
       }
@@ -391,6 +416,24 @@ function placeTool(id: "marker" | "wall" | "poi", hint: string): Tool {
   };
 }
 
+/* ------------------------------------------------------------------ furniture / fixtures */
+
+function objectTool(): Tool {
+  return {
+    id: "object",
+    hint: "Click to place the item chosen in the bar above the map (bed, table, chair, toilet...). Then drag it, drag its corner squares to resize, and the orange dot to rotate. Furniture is only drawn on the map; it never blocks routes.",
+    onPointer: noopPointer,
+    onSelect(item, pt, h) {
+      // Clicking an existing item selects it (so it can be edited with the Select tool's handles) instead of stacking another on top.
+      if (item?.type === "object") return h.select(item);
+      const ok = ops.addObject(h.venue(), h.floorId(), pt, h.objectKind());
+      h.commit(ok.venue);
+      h.select({ type: "object", id: ok.id });
+    },
+    cancel() {},
+  };
+}
+
 /* ------------------------------------------------------------------ scale calibration */
 
 function scaleTool(): Tool {
@@ -507,6 +550,8 @@ export function createTool(id: ToolId): Tool {
       return placeTool("marker", "Click near a wall to place a printable ArUco marker. It snaps onto the nearest room wall, faces into the corridor and gets the lowest free ID.");
     case "wall":
       return placeTool("wall", "Click a blank wall to add a surveyed 3 m ad slot (never over doors, exits or signs).");
+    case "object":
+      return objectTool();
     case "poi":
       return placeTool("poi", "Click to drop a point of interest. Choose its kind in the bar above the map.");
     case "scale":
@@ -525,6 +570,7 @@ export const TOOL_LIST: { id: ToolId; label: string; icon: string; key: string }
   { id: "marker", label: "Marker", icon: "▣", key: "m" },
   { id: "wall", label: "Ad wall", icon: "🖼️", key: "a" },
   { id: "poi", label: "POI", icon: "📍", key: "p" },
+  { id: "object", label: "Furniture", icon: "🛏️", key: "f" },
   { id: "scale", label: "Scale", icon: "📏", key: "s" },
   { id: "background", label: "Photo", icon: "🗺️", key: "b" },
 ];

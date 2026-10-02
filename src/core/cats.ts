@@ -42,3 +42,21 @@ export function catOf(id: string): CatInfo | undefined {
 export function poiKindOf(id: string): { icon: string; label: string } | undefined {
   return (POI_KINDS as Record<string, { icon: string; label: string }>)[id];
 }
+
+/** Furniture and fixtures: drawn on the map, never used for routing or positioning. Sizes are the default footprint in metres. */
+export const OBJECT_KINDS = {
+  bed: { icon: "🛏️", label: "Bed", w: 2, h: 1, fill: "#e6ddf5", stroke: "#8f7bc4" },
+  table: { icon: "▦", label: "Table", w: 1.6, h: 0.9, fill: "#f3e2cc", stroke: "#b98b52" },
+  chair: { icon: "🪑", label: "Chair", w: 0.5, h: 0.5, fill: "#f3e2cc", stroke: "#b98b52" },
+  desk: { icon: "🖥️", label: "Desk", w: 1.4, h: 0.7, fill: "#e3e8ef", stroke: "#8794a8" },
+  sofa: { icon: "🛋️", label: "Sofa", w: 2, h: 0.9, fill: "#e6ddf5", stroke: "#8f7bc4" },
+  wardrobe: { icon: "🗄️", label: "Wardrobe", w: 1.2, h: 0.6, fill: "#eadfd3", stroke: "#a98a68" },
+  toilet: { icon: "🚽", label: "Toilet", w: 0.7, h: 0.5, fill: "#d9eef3", stroke: "#59b8cc" },
+  sink: { icon: "🚰", label: "Sink", w: 0.6, h: 0.5, fill: "#d9eef3", stroke: "#59b8cc" },
+  shower: { icon: "🚿", label: "Shower", w: 0.9, h: 0.9, fill: "#d9eef3", stroke: "#59b8cc" },
+  shelf: { icon: "📚", label: "Shelf", w: 1.2, h: 0.4, fill: "#eadfd3", stroke: "#a98a68" },
+  custom: { icon: "◻️", label: "Other item", w: 1, h: 1, fill: "#eceff3", stroke: "#a9b4c2" },
+} as const satisfies Record<string, { icon: string; label: string; w: number; h: number; fill: string; stroke: string }>;
+
+export type ObjectKind = keyof typeof OBJECT_KINDS;
+export const OBJECT_KIND_IDS = Object.keys(OBJECT_KINDS) as [ObjectKind, ...ObjectKind[]];

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CAT_IDS, POI_KIND_IDS } from "./cats";
+import { CAT_IDS, OBJECT_KIND_IDS, POI_KIND_IDS } from "./cats";
 
 /**
  * Venue package, schema v2. Units are metres; frame is x east, y south, bearing 0 = north (clockwise).
@@ -140,6 +140,20 @@ export type Wall = z.infer<typeof WallSchema>;
 export const PoiSchema = z.object({ id: z.string().min(1), floor: z.string(), kind: z.enum(POI_KIND_IDS), name: z.string(), x: finite, y: finite });
 export type Poi = z.infer<typeof PoiSchema>;
 
+/** A piece of furniture or a fixture (bed, table, toilet...). Centre x,y, footprint w x h metres, rotation in degrees clockwise. Map-only. */
+export const ObjectSchema = z.object({
+  id: z.string().min(1),
+  floor: z.string(),
+  kind: z.enum(OBJECT_KIND_IDS),
+  x: finite,
+  y: finite,
+  w: z.number().positive(),
+  h: z.number().positive(),
+  rotation: finite.default(0),
+  label: z.string().default(""),
+});
+export type MapObject = z.infer<typeof ObjectSchema>;
+
 export const ScaleSchema = z.object({
   /** Always 1 in v2: coordinates are metres. Kept for mock compatibility. */
   metersPerUnit: z.number().positive().default(1),
@@ -167,6 +181,8 @@ export const VenueSchema = z.object({
   markers: z.array(MarkerSchema).default([]),
   walls: z.array(WallSchema).default([]),
   pois: z.array(PoiSchema).default([]),
+  /** Furniture and fixtures (map-only). */
+  objects: z.array(ObjectSchema).default([]),
 });
 export type Venue = z.infer<typeof VenueSchema>;
 

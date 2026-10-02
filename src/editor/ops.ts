@@ -1,8 +1,8 @@
 import { DICT_SIZE } from "@/core/aruco/dict";
 import { distToSegment } from "@/core/geo";
 import { doorNodeId, nearestDoor, roomDoors } from "@/core/doors";
-import type { Background, Door, Edge, Floor, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
-import type { PoiKind } from "@/core/cats";
+import type { Background, Door, Edge, Floor, MapObject, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
+import { OBJECT_KINDS, type ObjectKind, type PoiKind } from "@/core/cats";
 
 /**
  * Pure venue editing operations. Each takes a venue and returns a NEW venue (never mutates its input);
@@ -543,6 +543,78 @@ export function resizeRoom(v0: Venue, rId: string, handle: ResizeHandle, pt: Pt)
   return updateRoom(v0, rId, { x: r2(x0), y: r2(y0), w: r2(x1 - x0), h: r2(y1 - y0) });
 }
 
+/* ------------------------------------------------------------------ furniture / fixtures (map-only) */
+
+export const objectId = (v: Venue): string => `O${String(nextNum(v.objects.map((o) => o.id), /^O(\d+)$/)).padStart(2, "0")}`;
+
+const rotPt = (p: Pt, deg: number): Pt => {
+  const a = (deg * Math.PI) / 180;
+  return { x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a) };
+};
+
+/** World position of corner `i` (0 = top-left, clockwise) of an object's footprint. */
+export function objectCorner(o: Pick<MapObject, "x" | "y" | "w" | "h" | "rotation">, i: number): Pt {
+  const sx = i === 1 || i === 2 ? 1 : -1;
+  const sy = i >= 2 ? 1 : -1;
+  const r = rotPt({ x: (sx * o.w) / 2, y: (sy * o.h) / 2 }, o.rotation);
+  return { x: o.x + r.x, y: o.y + r.y };
+}
+
+/** The rotate handle sits above the object's "top" edge. */
+export function objectRotateHandle(o: Pick<MapObject, "x" | "y" | "w" | "h" | "rotation">): Pt {
+  const r = rotPt({ x: 0, y: -(o.h / 2 + 0.9) }, o.rotation);
+  return { x: o.x + r.x, y: o.y + r.y };
+}
+
+export function addObject(v0: Venue, floor: string, p: Pt, kind: ObjectKind, label = ""): { venue: Venue; id: string } {
+  const v = clone(v0);
+  const id = objectId(v);
+  const k = OBJECT_KINDS[kind];
+  v.objects.push({ id, floor, kind, x: snap(p.x), y: snap(p.y), w: k.w, h: k.h, rotation: 0, label });
+  return { venue: v, id };
+}
+
+export function updateObject(v0: Venue, id: string, patch: Partial<MapObject>): Venue {
+  const v = clone(v0);
+  const o = v.objects.find((x) => x.id === id);
+  if (o) Object.assign(o, patch);
+  return v;
+}
+
+/** Move by a drag offset (the object keeps its grab point under the pointer). */
+export function moveObjectBy(v0: Venue, id: string, dx: number, dy: number): Venue {
+  const v = clone(v0);
+  const o = v.objects.find((x) => x.id === id);
+  const o0 = v0.objects.find((x) => x.id === id);
+  if (!o || !o0) return v;
+  o.x = snap(o0.x + dx);
+  o.y = snap(o0.y + dy);
+  return v;
+}
+
+/** Drag a corner: the footprint grows symmetrically about the centre, in the object's own axes. */
+export function resizeObject(v0: Venue, id: string, p: Pt): Venue {
+  const v = clone(v0);
+  const o = v.objects.find((x) => x.id === id);
+  if (!o) return v;
+  const local = rotPt({ x: p.x - o.x, y: p.y - o.y }, -o.rotation);
+  const step = grid > 0 ? grid / 2 : 0;
+  o.w = Math.max(0.2, step ? snap(Math.abs(local.x) * 2, step) : r2(Math.abs(local.x) * 2));
+  o.h = Math.max(0.2, step ? snap(Math.abs(local.y) * 2, step) : r2(Math.abs(local.y) * 2));
+  return v;
+}
+
+/** Drag the rotate handle: the object turns so its top edge points at the pointer (15 degree steps while snapping). */
+export function rotateObject(v0: Venue, id: string, p: Pt): Venue {
+  const v = clone(v0);
+  const o = v.objects.find((x) => x.id === id);
+  if (!o) return v;
+  let deg = (Math.atan2(p.y - o.y, p.x - o.x) * 180) / Math.PI + 90;
+  deg = grid > 0 ? Math.round(deg / 15) * 15 : Math.round(deg * 10) / 10;
+  o.rotation = ((deg % 360) + 360) % 360;
+  return v;
+}
+
 /* ------------------------------------------------------------------ vertical links */
 
 export const LIFT_SEC = { base: 30, perFloor: 14 };
@@ -668,7 +740,7 @@ export function moveItem(v0: Venue, type: "marker" | "wall" | "poi", id: string,
 
 /* ------------------------------------------------------------------ delete */
 
-export type Deletable = { type: "room" | "marker" | "wall" | "poi" | "node" | "edge"; id: string };
+export type Deletable = { type: "room" | "marker" | "wall" | "poi" | "node" | "edge" | "object"; id: string };
 
 export function deleteItem(v0: Venue, item: Deletable): Venue {
   const v = clone(v0);
@@ -695,6 +767,9 @@ export function deleteItem(v0: Venue, item: Deletable): Venue {
       break;
     case "edge":
       return deleteEdge(v, item.id);
+    case "object":
+      v.objects = v.objects.filter((o) => o.id !== item.id);
+      break;
   }
   return v;
 }
@@ -809,5 +884,6 @@ export function blankVenue(base?: Pick<Venue, "id" | "name" | "type" | "city" | 
     markers: [],
     walls: [],
     pois: [],
+    objects: [],
   };
 }

@@ -35,7 +35,7 @@ export interface MapCanvasProps {
   cursor?: string;
 }
 
-const TYPES = new Set(["room", "marker", "wall", "poi", "node", "edge"]);
+const TYPES = new Set(["room", "marker", "wall", "poi", "node", "edge", "object"]);
 
 /**
  * SVG indoor map, shared by /editor, /nav and /dashboard. World units are metres (x east, y south).

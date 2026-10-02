@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { catOf } from "@/core/cats";
+import { OBJECT_KINDS, catOf } from "@/core/cats";
 import { routeRuns } from "@/core/playback";
 import type { Route } from "@/core/route";
 import { doorOutward, roomDoors } from "@/core/doors";
@@ -108,6 +108,25 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
             );
           })}
       </g>
+      {layers.objects && (
+        <g>
+          {venue.objects
+            .filter((o) => o.floor === floor.id)
+            .map((o) => {
+              const k = OBJECT_KINDS[o.kind] ?? OBJECT_KINDS.custom;
+              const sel = selected?.type === "object" && selected.id === o.id;
+              return (
+                <g key={o.id} transform={`translate(${o.x},${o.y}) rotate(${o.rotation})`} data-type="object" data-id={o.id} style={{ cursor: "pointer" }}>
+                  <title>{o.label || k.label}</title>
+                  <rect x={-o.w / 2} y={-o.h / 2} width={o.w} height={o.h} rx={Math.min(o.w, o.h) * 0.12} fill={k.fill} stroke={sel ? "#2f5bea" : k.stroke} strokeWidth={sel ? 3 : 1.1} {...NS} />
+                  <text x={0} y={0} fontSize={Math.max(0.25, Math.min(o.w, o.h) * 0.6)} textAnchor="middle" dominantBaseline="central" style={{ pointerEvents: "none" }}>
+                    {k.icon}
+                  </text>
+                </g>
+              );
+            })}
+        </g>
+      )}
       {layers.doors && <g>{venue.rooms.filter((r) => r.floor === floor.id).map((r) => <Doors key={r.id} room={r} />)}</g>}
       {layers.walknet && (
         <g>

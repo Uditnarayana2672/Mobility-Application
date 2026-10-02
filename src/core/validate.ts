@@ -1,4 +1,5 @@
 import { roomDoors } from "./doors";
+import { roomPolygon, selfIntersects } from "./geom";
 import { DICT_SIZE } from "./aruco/dict";
 import { distToSegment } from "./geo";
 import { attachPoint, buildGraph, type Graph } from "./graph";
@@ -85,6 +86,8 @@ export function validate(v: Venue): ValidationResult[] {
   }
   if (v.walls.length && !out.some((o) => o.title.startsWith("Ad slot"))) add("pass", `${v.walls.length} ad slot(s) on blank walls`, "Awaiting venue-owner approval flags.");
 
+  const crossing = v.rooms.filter((r) => r.polygon && selfIntersects(roomPolygon(r)));
+  if (crossing.length) add("warn", "Room outline crosses itself", crossing.map((r) => r.name || r.id).join(", "));
   const blank = v.rooms.filter((r) => !r.name || !r.name.trim());
   if (blank.length) add("fail", "Unnamed rooms", `${blank.length} room(s) have no name.`);
   return out;

@@ -1,4 +1,5 @@
 import { nearestDoor } from "@/core/doors";
+import { pointInRoom, roomLabelPoint } from "@/core/geom";
 import { catOf, poiKindOf } from "@/core/cats";
 import type { Target } from "@/core/intent";
 import type { Room, Venue } from "@/core/schema";
@@ -33,8 +34,8 @@ export function placeOf(v: Venue, t: Target): Place | null {
       name: r.name,
       icon: r.icon || cat?.icon || "📍",
       floor: r.floor,
-      x: r.x + r.w / 2,
-      y: r.y + r.h / 2,
+      x: roomLabelPoint(r).x,
+      y: roomLabelPoint(r).y,
       sub: `${cat?.label ?? "Room"} · ${floorName(v, r.floor)}`,
       hours: r.hours,
       staffOnly: r.access === "staff",
@@ -50,7 +51,7 @@ export function placeOf(v: Venue, t: Target): Place | null {
 
 /** "Near Meeting Room Everest": the room you stand in, else the closest door within 9 m, else "the corridor". */
 export function nearName(v: Venue, u: Pick<Pose, "floor" | "x" | "y">): string {
-  const inside = v.rooms.find((r) => r.floor === u.floor && u.x > r.x && u.x < r.x + r.w && u.y > r.y && u.y < r.y + r.h);
+  const inside = v.rooms.find((r) => r.floor === u.floor && pointInRoom(r, u.x, u.y));
   if (inside) return inside.name;
   let best: { d: number; n: string } | null = null;
   for (const r of v.rooms as Room[]) {

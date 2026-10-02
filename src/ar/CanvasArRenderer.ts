@@ -1,3 +1,4 @@
+import { polygonEdges, roomPolygon } from "@/core/geom";
 import type { ArSceneModel, MapPoint3 } from "./sceneModel";
 import type { Pose } from "@/navigator/poseSource";
 import type { Venue } from "@/core/schema";
@@ -88,8 +89,7 @@ export class CanvasArRenderer {
     for (const c of model.chevrons) this.chevron(c.at, c.bearing, c.opacity * (0.72 + 0.28 * Math.sin(timeSec * 5 - c.distanceM)));
     const wallTop = model.floorElevation + (plate?.height ?? 3);
     const panels = venue.rooms.filter((room) => room.floor === model.floor).flatMap((room) => {
-      const x0 = room.x; const x1 = room.x + room.w; const y0 = room.y; const y1 = room.y + room.h;
-      return [[x0, y0, x1, y0], [x1, y0, x1, y1], [x1, y1, x0, y1], [x0, y1, x0, y0]] as const;
+      return polygonEdges(roomPolygon(room)).map((e) => [e.a.x, e.a.y, e.b.x, e.b.y] as const);
     }).sort((a, b) => Math.hypot((b[0] + b[2]) / 2 - pose.x, (b[1] + b[3]) / 2 - pose.y) - Math.hypot((a[0] + a[2]) / 2 - pose.x, (a[1] + a[3]) / 2 - pose.y));
     for (const [x1, y1, x2, y2] of panels) this.poly([
       { x: x1, y: y1, z: model.floorElevation }, { x: x2, y: y2, z: model.floorElevation },

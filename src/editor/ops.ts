@@ -1,6 +1,7 @@
 import { DICT_SIZE } from "@/core/aruco/dict";
 import { distToSegment } from "@/core/geo";
 import { doorNodeId, nearestDoor, roomDoors } from "@/core/doors";
+import { edgeOutwardNormal, nearestOnPolygon, polygonArea, polygonBounds, polygonEdges, rotatePoints, roomLabelPoint, roomPolygon } from "@/core/geom";
 import type { Background, Door, Edge, Floor, MapObject, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
 import { OBJECT_KINDS, type ObjectKind, type PoiKind } from "@/core/cats";
 
@@ -66,7 +67,8 @@ const OUTWARD: Record<Side, number> = { N: 0, E: 90, S: 180, W: 270 };
 
 export interface EdgeHit {
   room: Room;
-  side: Side;
+  /** Which wall of a rectangle room; undefined for a polygon edge. */
+  side?: Side;
   /** Nearest point on the room edge. */
   point: Pt;
   dist: number;
@@ -77,12 +79,16 @@ export interface EdgeHit {
   b: Pt;
 }
 
-function roomEdges(r: Room): { side: Side; a: Pt; b: Pt }[] {
+function roomEdges(r: Room): { side?: Side; a: Pt; b: Pt; normal: number }[] {
+  if (r.polygon && r.polygon.length >= 3) {
+    const poly = roomPolygon(r);
+    return polygonEdges(poly).map((e) => ({ a: e.a, b: e.b, normal: edgeOutwardNormal(poly, e.index) }));
+  }
   return [
-    { side: "N", a: { x: r.x, y: r.y }, b: { x: r.x + r.w, y: r.y } },
-    { side: "S", a: { x: r.x, y: r.y + r.h }, b: { x: r.x + r.w, y: r.y + r.h } },
-    { side: "W", a: { x: r.x, y: r.y }, b: { x: r.x, y: r.y + r.h } },
-    { side: "E", a: { x: r.x + r.w, y: r.y }, b: { x: r.x + r.w, y: r.y + r.h } },
+    { side: "N", a: { x: r.x, y: r.y }, b: { x: r.x + r.w, y: r.y }, normal: OUTWARD.N },
+    { side: "S", a: { x: r.x, y: r.y + r.h }, b: { x: r.x + r.w, y: r.y + r.h }, normal: OUTWARD.S },
+    { side: "W", a: { x: r.x, y: r.y }, b: { x: r.x, y: r.y + r.h }, normal: OUTWARD.W },
+    { side: "E", a: { x: r.x + r.w, y: r.y }, b: { x: r.x + r.w, y: r.y + r.h }, normal: OUTWARD.E },
   ];
 }
 
@@ -102,7 +108,7 @@ export function nearestRoomEdge(v: Venue, floor: string, p: Pt, maxD: number, on
     for (const e of roomEdges(room)) {
       const { pt } = projectOnSegment(p, e.a, e.b);
       const d = Math.hypot(p.x - pt.x, p.y - pt.y);
-      if (d <= maxD && (!best || d < best.dist)) best = { room, side: e.side, point: pt, dist: d, normal: OUTWARD[e.side], a: e.a, b: e.b };
+      if (d <= maxD && (!best || d < best.dist)) best = { room, side: e.side, point: pt, dist: d, normal: e.normal, a: e.a, b: e.b };
     }
   }
   return best;
@@ -167,10 +173,11 @@ function ensureRoomNodes(v: Venue, room: Room): void {
   const ids = new Set(v.nodes.map((n) => n.id));
   v.edges = v.edges.filter((e) => ids.has(e.a) && ids.has(e.b));
   const c = findNode(v, room.id);
+  const lp = roomLabelPoint(room);
   if (c) {
-    c.x = r2(room.x + room.w / 2);
-    c.y = r2(room.y + room.h / 2);
-  } else v.nodes.push({ id: room.id, floor: room.floor, x: r2(room.x + room.w / 2), y: r2(room.y + room.h / 2), kind: "room", room: room.id });
+    c.x = r2(lp.x);
+    c.y = r2(lp.y);
+  } else v.nodes.push({ id: room.id, floor: room.floor, x: r2(lp.x), y: r2(lp.y), kind: "room", room: room.id });
   doors.forEach((d, i) => {
     const id = doorNodeId(room.id, i);
     const n = findNode(v, id);
@@ -264,6 +271,13 @@ export function addRoom(v0: Venue, floor: string, a: Pt, b: Pt): { venue: Venue;
 
 /** The point on a room edge nearest to `p`, as a door position (kept 0.5 m from the corners of straight walls). */
 function doorOnEdge(room: Room, hit: EdgeHit): Door {
+  if (!hit.side) {
+    // a slanted / free-form wall: slide along the edge, keep 0.3 m clear of its ends
+    const len = Math.hypot(hit.b.x - hit.a.x, hit.b.y - hit.a.y) || 1;
+    const t0 = Math.hypot(hit.point.x - hit.a.x, hit.point.y - hit.a.y) / len;
+    const t = Math.max(Math.min(0.3 / len, 0.5), Math.min(1 - Math.min(0.3 / len, 0.5), t0));
+    return { x: r2(hit.a.x + (hit.b.x - hit.a.x) * t), y: r2(hit.a.y + (hit.b.y - hit.a.y) * t), normal: hit.normal };
+  }
   const pt = hit.side === "N" || hit.side === "S" ? { x: snap(clamp(hit.point.x, room.x + 0.5, room.x + room.w - 0.5)), y: hit.point.y } : { x: hit.point.x, y: snap(clamp(hit.point.y, room.y + 0.5, room.y + room.h - 0.5)) };
   return { x: r2(pt.x), y: r2(pt.y), side: hit.side };
 }
@@ -350,6 +364,7 @@ export function connectRoom(v0: Venue, rId: string, radius = 12): Venue | { erro
 function refitDoor(v: Venue, room: Room, d: Door): Door {
   const hit = nearestRoomEdge(v, room.floor, { x: d.x, y: d.y }, Infinity, room.id);
   if (!hit) return d;
+  if (!hit.side) return { x: r2(hit.point.x), y: r2(hit.point.y), normal: hit.normal };
   return {
     ...d,
     x: r2(hit.side === "N" || hit.side === "S" ? clamp(d.x, room.x, room.x + room.w) : hit.point.x),
@@ -362,9 +377,16 @@ export function updateRoom(v0: Venue, rId: string, patch: Partial<Room>): Venue 
   const v = clone(v0);
   const room = v.rooms.find((r) => r.id === rId);
   if (!room) return v;
+  const old = { x: room.x, y: room.y, w: room.w, h: room.h };
   Object.assign(room, patch);
   if (patch.kind) room.cat = "vertical";
   if (patch.x !== undefined || patch.y !== undefined || patch.w !== undefined || patch.h !== undefined) {
+    if (room.polygon && !patch.polygon) {
+      // typing a new bounding box stretches the free-form outline to fit it
+      const sx = old.w > 0 ? room.w / old.w : 1;
+      const sy = old.h > 0 ? room.h / old.h : 1;
+      room.polygon = room.polygon.map(([px, py]) => [r2(room.x + (px - old.x) * sx), r2(room.y + (py - old.y) * sy)] as [number, number]);
+    }
     // Keep the doors on their sides and the nodes in sync after a resize/move.
     room.door = refitDoor(v, room, room.door);
     room.extraDoors = room.extraDoors.map((d) => refitDoor(v, room, d));
@@ -385,6 +407,7 @@ export function moveRoom(v0: Venue, rId: string, dx: number, dy: number): Venue 
   const shift = (d: Door): Door => ({ ...d, x: r2(d.x + ddx), y: r2(d.y + ddy) });
   room.door = shift(room.door);
   room.extraDoors = room.extraDoors.map(shift);
+  if (room.polygon) room.polygon = room.polygon.map(([px, py]) => [r2(px + ddx), r2(py + ddy)] as [number, number]);
   ensureRoomNodes(v, room);
   return v;
 }
@@ -543,6 +566,125 @@ export function resizeRoom(v0: Venue, rId: string, handle: ResizeHandle, pt: Pt)
   return updateRoom(v0, rId, { x: r2(x0), y: r2(y0), w: r2(x1 - x0), h: r2(y1 - y0) });
 }
 
+/* ------------------------------------------------------------------ free-form rooms (polygons) */
+
+/** Recompute the bounding box from the outline, keep the doors on the walls, rebuild the nodes (mutates `v`). */
+function refitRoom(v: Venue, room: Room): void {
+  if (room.polygon) {
+    const b = polygonBounds(roomPolygon(room));
+    room.x = r2(b.x);
+    room.y = r2(b.y);
+    room.w = r2(b.w);
+    room.h = r2(b.h);
+  }
+  room.door = refitDoor(v, room, room.door);
+  room.extraDoors = room.extraDoors.map((d) => refitDoor(v, room, d));
+  ensureRoomNodes(v, room);
+}
+
+const MIN_AREA = 0.5;
+
+/** A room with any outline: click the corners. The first door goes on the wall nearest the corridor network. */
+export function addPolygonRoom(v0: Venue, floor: string, pts: Pt[]): { venue: Venue; id: string } | { error: string } {
+  const poly = pts.map((p) => ({ x: snap(p.x), y: snap(p.y) }));
+  const clean = poly.filter((p, i) => i === 0 || p.x !== poly[i - 1]!.x || p.y !== poly[i - 1]!.y);
+  if (clean.length < 3) return { error: "A free-form room needs at least 3 corners" };
+  if (Math.abs(polygonArea(clean)) < MIN_AREA) return { error: "Too small: the corners enclose almost no area" };
+  const v = clone(v0);
+  const id = roomId(v, floor);
+  const b = polygonBounds(clean);
+  const room: Room = {
+    id,
+    floor,
+    name: "New room",
+    cat: "workspace",
+    x: r2(b.x),
+    y: r2(b.y),
+    w: r2(b.w),
+    h: r2(b.h),
+    door: { x: 0, y: 0 },
+    extraDoors: [],
+    aliases: [],
+    hours: "9:00 – 19:00",
+    access: "public",
+    short: null,
+    polygon: clean.map((p) => [r2(p.x), r2(p.y)] as [number, number]),
+  };
+  const target = nearestNetworkPoint(v, floor, roomLabelPoint(room));
+  const near = nearestOnPolygon(clean, target ?? { x: b.x + b.w / 2, y: b.y + b.h + 1 });
+  const edges = roomEdges(room);
+  const e = edges[near.edgeIndex]!;
+  room.door = doorOnEdge(room, { room, point: near.point, dist: near.dist, normal: e.normal, a: e.a, b: e.b });
+  v.rooms.push(room);
+  ensureRoomNodes(v, room);
+  linkDoor(v, room, DOOR_LINK_RADIUS);
+  return { venue: v, id };
+}
+
+/** Turn a rectangle room into an editable outline (4 corners) so it can be reshaped or rotated. */
+export function makePolygon(v0: Venue, rId: string): Venue {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room || room.polygon) return v;
+  room.polygon = roomPolygon(room).map((p) => [p.x, p.y] as [number, number]);
+  return v;
+}
+
+export function moveVertex(v0: Venue, rId: string, index: number, p: Pt): Venue {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return v;
+  if (!room.polygon) room.polygon = roomPolygon(room).map((q) => [q.x, q.y] as [number, number]);
+  if (index < 0 || index >= room.polygon.length) return v;
+  room.polygon[index] = [r2(snap(p.x)), r2(snap(p.y))];
+  refitRoom(v, room);
+  return v;
+}
+
+/** Add a corner on edge `edgeIndex` (default: its middle). The new corner has index edgeIndex + 1. */
+export function insertVertex(v0: Venue, rId: string, edgeIndex: number, p?: Pt): Venue {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return v;
+  if (!room.polygon) room.polygon = roomPolygon(room).map((q) => [q.x, q.y] as [number, number]);
+  const n = room.polygon.length;
+  const a = room.polygon[edgeIndex % n]!;
+  const b = room.polygon[(edgeIndex + 1) % n]!;
+  const at = p ? projectOnSegment(p, { x: a[0], y: a[1] }, { x: b[0], y: b[1] }).pt : { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2 };
+  room.polygon.splice(edgeIndex + 1, 0, [r2(at.x), r2(at.y)]);
+  refitRoom(v, room);
+  return v;
+}
+
+/** Remove a corner (a room keeps at least 3). */
+export function deleteVertex(v0: Venue, rId: string, index: number): Venue | { error: string } {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room || !room.polygon) return { error: "Only free-form rooms have removable corners" };
+  if (room.polygon.length <= 3) return { error: "A room needs at least 3 corners" };
+  room.polygon.splice(index, 1);
+  refitRoom(v, room);
+  return v;
+}
+
+/** Rotate a room (and its doors) clockwise by `deg` about the centre of its bounding box. A rotated rectangle becomes a 4-corner outline. */
+export function rotateRoom(v0: Venue, rId: string, deg: number): Venue {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room || !deg) return v;
+  const c = { x: room.x + room.w / 2, y: room.y + room.h / 2 };
+  const poly = rotatePoints(roomPolygon(room), c, deg);
+  room.polygon = poly.map((p) => [r2(p.x), r2(p.y)] as [number, number]);
+  const spin = (d: Door): Door => {
+    const q = rotatePoints([{ x: d.x, y: d.y }], c, deg)[0]!;
+    return { x: r2(q.x), y: r2(q.y) };
+  };
+  room.door = spin(room.door);
+  room.extraDoors = room.extraDoors.map(spin);
+  refitRoom(v, room); // snaps each door onto the nearest edge of the rotated outline and sets its normal
+  return v;
+}
+
 /* ------------------------------------------------------------------ furniture / fixtures (map-only) */
 
 export const objectId = (v: Venue): string => `O${String(nextNum(v.objects.map((o) => o.id), /^O(\d+)$/)).padStart(2, "0")}`;
@@ -673,6 +815,15 @@ export function addWall(v0: Venue, floor: string, p: Pt): { venue: Venue; id: st
     // 3 m slot centred on the click, kept inside the edge.
     const len = Math.hypot(hit.b.x - hit.a.x, hit.b.y - hit.a.y);
     const half = Math.min(1.5, len / 2);
+    if (!hit.side) {
+      const ux = (hit.b.x - hit.a.x) / (len || 1);
+      const uy = (hit.b.y - hit.a.y) / (len || 1);
+      const t0 = Math.hypot(hit.point.x - hit.a.x, hit.point.y - hit.a.y);
+      const c0 = Math.max(half, Math.min(len - half, t0));
+      w = { id, floor, label: "New blank wall", x1: r2(hit.a.x + ux * (c0 - half)), y1: r2(hit.a.y + uy * (c0 - half)), x2: r2(hit.a.x + ux * (c0 + half)), y2: r2(hit.a.y + uy * (c0 + half)), normal: hit.normal, bottom: 1, height: 1.6, approved: false };
+      v.walls.push(w);
+      return { venue: v, id };
+    }
     const horizontal = hit.side === "N" || hit.side === "S";
     const c = horizontal ? clamp(hit.point.x, hit.a.x + half, hit.b.x - half) : clamp(hit.point.y, hit.a.y + half, hit.b.y - half);
     w = horizontal

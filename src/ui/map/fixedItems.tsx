@@ -1,3 +1,4 @@
+import { roomLabelPoint, roomLabelWidth } from "@/core/geom";
 import type { ReactNode } from "react";
 import { catOf, poiKindOf } from "@/core/cats";
 import type { Route } from "@/core/route";
@@ -43,15 +44,17 @@ export function buildFixedItems(c: FixedContext): FixedItem[] {
 
   for (const r of v.rooms.filter((x) => x.floor === floorId)) {
     const cat = catOf(r.cat) ?? catOf("workspace")!;
-    const cx = r.x + r.w / 2;
-    const cy = r.y + r.h / 2;
+    const lp = roomLabelPoint(r);
+    const cx = lp.x;
+    const cy = lp.y;
+    const labelW = roomLabelWidth(r);
     const text = r.short || r.name;
     items.push({
       key: `ri-${r.id}`,
       x: cx,
       y: cy,
       dy: c.labels ? -4 : 6,
-      availW: r.w,
+      availW: labelW,
       availH: r.h,
       needW: 30,
       needH: 44,
@@ -67,7 +70,7 @@ export function buildFixedItems(c: FixedContext): FixedItem[] {
       x: cx,
       y: cy,
       dy: 16,
-      availW: r.w,
+      availW: labelW,
       availH: r.h,
       needW: text.length * 6.3 + 6,
       needH: 30,

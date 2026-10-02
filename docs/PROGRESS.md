@@ -25,7 +25,7 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
   - [x] `/nav`: mobile-first full screen, phone frame + demo panel on desktop; city → locate → map → search → place → preview (stairs vs lift, Avoid stairs) → nav → floor prompt → arrived; hash deep links `#map #search #voice #place #preview #nav #navf2` (`#arturn #arad #arf2` = AR stub)
   - [x] Map: floor switcher, labels by zoom, dot + heading cone + accuracy ring (grey when stale), route solid / dashed on other floors, lift/stairs pills, Explore (north-up) vs Navigate (heading-up, eased), recentre
   - [x] `src/navigator/session.ts` pure state machine + synthetic-trace tests (15 m / 3 m announcements, floor prompt, arrival ≤3 m, off-route >5 m for 3 s)
-  - [x] Voice out (`speech.ts`: queue, en/hi/te, captions always, caption-only without a voice); voice in behind `IntentResolver` (rules now, LLM in Phase 5) + text fallback
+  - [x] Voice out (`speech.ts`: queue, en/hi/te, captions always, caption-only without a voice); voice in behind `IntentResolver` + text fallback (Phase 5 now supplies the rules-first hybrid)
   - [x] `PoseSource` + `SimPoseSource` (1.3 m/s, ×1/×3, play/pause, WASD+QE manual, marker scans, floor-change pause, lose tracking, wrong turn); `?demo=1` panel with Reset
   - [x] `src/bus`: `Bus` + `BroadcastChannelBus` (pose / route / event, payloads as in the mock); WebSocketBus stays Phase 3
   - [x] `/dashboard`: connection pill, follow / trail / markers, stats, route progress (route re-computed from `{from, target, via}`), event log, built-in demo feed
@@ -43,8 +43,26 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
   - [x] Phone `?debug=1` overlay (fps, tracking, reprojection error, reject reason, particle cloud mini-map); `?pose=sim|xr|pdr`, `?bus=bc|ws|both`
   - [x] `docs/field-tests.md` (4 routes, tape checkpoints, tables)
   - [ ] Your field tests on the POCO X5 Pro (numbers go in "Phase 3 field results" below)
-- [ ] Phase 4 – AR (chevrons, arrows, ads on walls, `/ads`)
-- [ ] Phase 5 – two-way voice + AI (LLM key on the server only)
+- [ ] **Phase 4 – AR guidance + wall ads + `/ads`** (session 5) — code done 2026-10-02; **waiting on the POCO X5 Pro wall/route measurements below**
+  - [x] `src/ar/sceneModel.ts`: pure map-coordinate scene (1.5 m chevrons / 20 m look-ahead, turn arrows ≤15 m, destination/floor-change cues, 2 m lift/stair exclusion, visible wall ads ≤10 m) + unit tests
+  - [x] Same-session WebXR three.js renderer (map ↔ AR only toggles the content group) + mock-style canvas renderer for simulation/PDR
+  - [x] Marker camera readback throttled to 4 Hz; marker corrections ease over 0.5 s; optional vertical-plane snap within 0.3 m
+  - [x] Image/video wall textures (`VideoTexture`, muted/playsinline, AR-enter playback, generated poster fallback), raycast/polygon tap → offer sheet → Route to
+  - [x] Impression (≥1 s in view) and tap persistence + phone session KPIs/event log on `/dashboard`
+  - [x] `/ads`: campaign list/editor, approved wall slots, media upload to `data/media`, pause/resume, performance KPIs; campaign publish pushes over WebSocket
+  - [x] Safety: 20 s look-up nudge; no ads/chevrons within 2 m of lift/stair doors; tracking lost automatically returns to 2D
+  - [x] Automated: 340 unit/golden tests + 30 real-browser tests; pause → phone ad hidden measured **1,065 ms** (target <2 s)
+  - [ ] Physical: arrow error along demo route ≤2 m and wall-ad registration ≈0.3 m on the POCO X5 Pro
+- [ ] **Phase 5 – two-way voice + AI + demo hardening** (session 6) — code done 2026-10-02; **waiting on the POCO X5 Pro preflight/full-scenario pass**
+  - [x] Rules first: confidence-aware matcher for goto, where-am-I, nearest, repeat, stop, AR/map, avoid-stairs and how-long; English, romanised Hinglish, Telugu script + romanised Telugu; 72-row table corpus
+  - [x] Low-confidence-only `/api/assistant`: swappable provider interface + OpenAI Responses implementation; server-only `.env`; 6 s budget; text-only JSONL logs; offline/timeout “Did you mean…” suggestions
+  - [x] Assistant tools `search_places`, `get_route`, `where_am_i`, `place_info` call pure `src/core/assistantTools.ts`; model never computes routes or positions
+  - [x] Voice sheet: press-and-hold mic, partial transcript, listening pulse, release-to-send, TTS barge-in cancellation; text/example fallback remains
+  - [x] `/preflight`: secure context, motion permission, immersive WebXR, en/hi/te voices, server health, venue version, local live marker detection at 4 Hz
+  - [x] One-click reset clears phone + dashboard + server replay state over WebSocket; historical JSONL walk files are retained
+  - [x] `docs/demo-runbook.md`: complete stage scenario and a recovery for every hand-off, ending in laptop simulation
+  - [x] Automated: typecheck + production build; **421 unit/golden tests and 32 real-browser tests**
+  - [ ] Physical: `/preflight` 7/7 green and full runbook completed on the phone with the laptop dashboard
 
 ## Decisions log
 
@@ -91,9 +109,20 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
 | 2026-10-02 | **Bus**: `Bus.on` callbacks now get `(payload, {deviceId, recvT})`; liveness uses the receive time (phone clocks are not trusted). WebSocket protocol `{type, payload, deviceId, t}` on `/ws?room=<venue>&role=device|viewer&device=<id>`: phones' messages go to viewers (not to other phones), a late dashboard gets each phone's last route / 30 events / pose, 15 s ping/pong heartbeat, server pushes `{type:"venue"|"campaigns"}` after a publish (`ApiOptions.onPublished` → `hub.notify`). Roles absent = plain room relay (old behaviour). Backoff: 0.5 s × 2ⁿ, cap 15 s, ×0.5–1 jitter; offline it keeps the last pose + route + 50 events. |
 | 2026-10-02 | **Which bus**: simulator → BroadcastChannel (same-browser dashboard, the stage backup) and a *listen-only* WebSocket (so it still gets "venue published"); a live phone → WebSocket only. Dashboard listens on both. `?bus=bc|ws|both` overrides. |
 | 2026-10-02 | **Recording**: every phone message (pose/route/event) is appended to `data/sessions/<venue>/<YYYYMMDDTHHMMSS>-<device>.jsonl` as `{recvT, msg}`; "Replay last walk" plays the latest file that contains a pose, with its original timing. |
-| 2026-10-02 | **Venue refresh on publish**: the phone refetches `/api/venues/:id` and calls `NavController.setVenue`: applied at once when idle, deferred until the navigation ends otherwise (the sources keep their alignment/cloud). `campaigns` notices are delivered on the bus but nothing consumes them until Phase 4. |
+| 2026-10-02 | **Venue refresh on publish**: the phone refetches `/api/venues/:id` and calls `NavController.setVenue`: applied at once when idle, deferred until the navigation ends otherwise (the sources keep their alignment/cloud). Phase 4 also consumes `campaigns` notices immediately to refresh AR ads. |
+| 2026-10-02 | **Phase 4 scene contract:** `buildSceneModel(route, venue, pose, campaigns)` is the only placement policy. It returns venue/map-frame primitives; both canvas and three.js renderers consume it. Chevrons look 20 m ahead at 1.5 m spacing, turns appear at ≤15 m, ads require active + approved + same floor + ≤10 m + facing/in-view, and chevrons/ads are suppressed within 2 m of a lift/stair door. |
+| 2026-10-02 | **Same XR session:** `XrPoseSource` owns the only immersive session. The three.js Phase 4 group subscribes to its frames and is merely hidden on the 2D map; map points are transformed back through the marker-derived XR alignment. Marker image readback is time-throttled to 250 ms (4 Hz), and rendered corrections ease with a 0.5 s time constant. |
+| 2026-10-02 | **AR ads:** surveyed wall quads sit 4 cm in front of the wall to avoid z-fighting; an available vertical plane may translate the quad only when its centre is within 0.3 m. Video uses a muted/playsinline `VideoTexture`, primed synchronously by the AR-enter gesture, with the generated campaign poster displayed until media is ready. |
+| 2026-10-02 | **Campaign live path:** `/ads` publishes each pause/resume immediately. The existing `campaigns` WebSocket notice makes phones refetch; the real-browser measurement was 1,065 ms click → no ad (target <2 s). Creative files are content-addressed under `data/media`; impression/tap events mutate live counters without creating a campaign content version. |
+| 2026-10-02 | **Phase 5 intent boundary:** `matchIntent()` returns an intent plus 0..1 confidence. Rules at confidence ≥0.65 execute locally; only lower-confidence/free-form text reaches `/api/assistant`. The 72-case corpus covers English, romanised Hinglish, Telugu script and romanised Telugu. |
+| 2026-10-02 | **Assistant provider:** OpenAI Responses API is the first `AssistantProvider`, configured only by server `.env` (`OPENAI_API_KEY`, `OPENAI_MODEL`; default model `gpt-5.4-mini`). Strict function calls are executed by `src/core/assistantTools.ts`; a single AbortController caps the whole tool loop at 6 s. Disabled/offline/timeout/error paths return the top three local search suggestions. Only text/request metadata are logged under `data/assistant/*.jsonl`. |
+| 2026-10-02 | **Stage reset:** `POST /api/demo/reset/:venue` calls `RealtimeHub.reset()`, clears its late-join pose/route/event replay and broadcasts `reset` to phones/dashboards. Clients clear navigation, trails, events and mirrored localStorage. Past JSONL recordings are deliberately retained for audit/replay. |
+| 2026-10-02 | **Preflight is gesture-driven:** automatic checks cover HTTPS, server, venue, WebXR and voices; **Run phone checks** requests motion/camera permission and runs the production marker detector locally every 250 ms. Frames never leave the phone. |
+| 2026-10-02 | **Free-form editor (after Phase 3, from the user's feedback "I want to design freely like the old layout"):** (1) snapping is a toggle, **off by default** (`ops.setGrid(0)`, key `G`, remembered in localStorage; the ops module keeps a global grid step that defaults to 0.5 so unit tests are unchanged); rooms drag without being selected first (Shift+drag pans), rectangle rooms have 8 resize handles; corridor lines are selectable (new `edge` selection, id `a|b`), the middle dot bends them, Alt+drag moves a whole connected corridor, optional per-line `width` (default 2.4 m, drawn as a strip and used by step counting). (2) **Several doors per room**: `Room.door` stays the main door, `extraDoors[]` adds more, node ids `<room>:door`, `:door2`…; **a second door is not a shortcut**: routing does not walk through a room node unless the room is lift/stairs or `passThrough` is set. (3) **Furniture** (`Venue.objects`, kinds in `core/cats.ts OBJECT_KINDS`): map-only, never used by routing/validation/positioning. (4) **Any-shape rooms**: `Room.polygon` is authoritative when present, `x,y,w,h` are kept as its bounding box so rectangle-only consumers still work; `core/geom.ts` is the single place for point-in-room, distance, label point, outward normals; doors on polygon walls carry a `normal` instead of a `side`. All additions are optional with defaults, so every older venue still parses and routes identically (golden tests unchanged). |
 
 ## Known issues
+
+- **Free-form editor** (verified in headless Edge and unit tests, not on a touch screen): handles are small (8–12 px), so on a phone-sized editor window they are fiddly. Furniture has no search / no routing role. Importing the legacy Blueprint data is not supported. Self-crossing room outlines are only a warning. A room with two doors is a dead end for routing unless "People may walk through this room" is ticked.
 
 - `/nav` and `/dashboard` are verified in headless Edge (desktop and a 390 px mobile-emulated context), not on a real phone: touch pan/pinch, real `speechSynthesis` voices for Hindi/Telugu and `SpeechRecognition` are untested. Headless Edge has no voices, so the smoke test exercises the caption-only path.
 - **Phase 3 is untested on a real phone.** Everything that needs the device is unverified: WebXR session start with the nav UI as DOM overlay, `camera-access` + camera texture orientation (the XR source toggles `flipY` after 90 frames without a detection), projection-matrix aspect vs camera size, `devicemotion` sign conventions for the step detector / gyro heading (copied from S4), getUserMedia scan and the assumed 65° horizontal FOV (or the S2-B calibrated value in localStorage `indore.s2.hfov`). The maths (marker pose, XR alignment, smoothing, particle filter, floor logic, bus, hub, recording, replay) is covered by unit and real-browser tests with synthetic inputs only.
@@ -102,7 +131,10 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
 - A lift ride can leave ARCore with a wrong height; the floor then follows the "yes, I'm on Floor N" tap or the lobby marker, not the height.
 - The PDR stride is fixed at 0.7 m (not learned). The particle filter only knows rectangles (corridors, rooms, doors), not walls drawn in the editor.
 - Replay of a walk shows only the recorded phone's poses/route/events; the phone's HUD is not reproduced.
-- AR is a stub (📷 and `#arturn/#arad/#arf2` open "AR view arrives in Phase 4"). Ads on the arrived screen are the mock's static placeholder card.
+- **Phase 4 WebXR visuals are not yet field-tested on the POCO X5 Pro.** The pure placement and XR inverse transform are synthetic-tested (surveyed wall offset 0.04 m; recovered map→XR point error <0.05 m in the fixture), but real arrow-to-floor error and ad-to-wall error still depend on the unmeasured Phase 3 marker/alignment accuracy. Fill the Phase 4 field table below before calling the physical targets done.
+- **Phase 5 is not yet field-tested on the POCO X5 Pro.** Headless browser tests verify `/preflight` HTTPS/server/venue checks, but sensor permission, real WebXR, installed voices, live camera detection, speech recognition and the complete runbook still need the phone. The OpenAI path is contract-tested with a fake provider; no real API key/network call was made in automated tests.
+- Chrome's `SpeechRecognition` service may itself require internet. If it is unavailable, the typed field and example chips still feed the same offline deterministic matcher; TTS/captions and all routing remain independent of the LLM provider.
+- Plane detection is optional and browser-dependent. Without a nearby detected vertical plane, ads stay at the deterministic surveyed wall pose; this is the intended fallback.
 - (Phase 3) Position comes from the simulator on a desktop / `?demo=1`, from AR or step counting on a phone; the dashboard listens on BroadcastChannel *and* the WebSocket, so the same-browser simulation still works.
 - The manual walker (WASD) has no wall collision; it is clamped to the floor plate only.
 - The venue fallback is the bundled `office-hq` only; another `?venue=` id needs the server.
@@ -110,7 +142,7 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
 - Editor is verified in headless Edge, not on a phone/touch screen. Touch gestures on the map (pinch/pan) are implemented but untested on real hardware.
 - Large phone photos (up to 10 MB) are stored as uploaded; no client-side downscale. Very large PNGs can make the editor sluggish.
 - Autosave sends the whole venue on every committed change (fine for a 2-floor office; revisit for big venues).
-- Campaign publish exists in the API only; the `/ads` portal arrives in Phase 4.
+- Video upload accepts MP4/WebM up to 30 MB and streams from the same origin, but long videos are not transcoded or adaptive-streamed; use short demo loops.
 - `npm run e2e` needs Edge or Chrome installed (default paths for Windows/Linux, or `E2E_BROWSER`).
 - Legacy editor: B1–B5, B7–B10 from `docs/01-…` are NOT fixed (editor is being rebuilt from the mock; Blueprint is frozen at `/legacy-editor`).
 - `npm audit` reports vulnerabilities in the inherited dependency tree; not addressed.
@@ -132,8 +164,41 @@ npm run convert:mock # regenerate public/venues/office-hq/*.json from docs/mock-
 ```
 
 Phase 3 URL switches on `/nav`: `?pose=sim|xr|pdr` (force the position source), `?bus=bc|ws|both`, `?debug=1` (overlay). REST also has `GET /api/sessions/:venue` (list), `/last`, `/:file`. Realtime: `wss://<host>/ws?room=<venue>&role=device|viewer&device=<id>`.
-Routes: `/` hub · `/nav` (`?demo=1`, `?venue=ID`, `#map|search|voice|place|preview|nav|navf2|arturn|arad|arf2`) · `/dashboard` · `/editor` · `/owner` · `/markers` (`?id=N`, `?draft=1`, `?venue=ID`) · `/legacy-editor` · `/spikes/*` · `/ads` (placeholder).
-REST: `GET /api/venues/:id` · `GET|PUT /api/venues/:id/draft` · `POST /api/venues/:id/publish` · `GET /api/venues/:id/versions` · same under `/api/campaigns/:id` · `POST /api/uploads` (raw image body) · `GET /uploads/<file>`.
+Routes: `/` hub · `/nav` (`?demo=1`, `?venue=ID`, `#map|search|voice|place|preview|nav|navf2|arturn|arad|arf2`) · `/dashboard` · `/editor` · `/owner` · `/markers` (`?id=N`, `?draft=1`, `?venue=ID`) · `/ads` · `/preflight` · `/legacy-editor` · `/spikes/*`.
+REST: `POST /api/assistant` · `POST /api/demo/reset/:venue` · `GET /api/venues/:id` · `GET|PUT /api/venues/:id/draft` · `POST /api/venues/:id/publish` · `GET /api/venues/:id/versions` · same under `/api/campaigns/:id` · `POST /api/campaigns/:id/events` · `POST /api/uploads` (floor-plan images) · `POST /api/media` (ad image/video) · `GET /uploads/<file>` · `GET /media/<file>`.
+
+## Phase 5 phone result (fill in after `docs/demo-runbook.md`)
+
+| Check | Target | Automated result | Physical result |
+|---|---|---|---|
+| Deterministic multilingual corpus | ≥60 utterances, all pass | **72/72 pass** | ___ |
+| Preflight | 7/7 green | HTTPS/server/venue browser pass; device APIs not emulated | ___/7 |
+| Push-to-talk + partial transcript + barge-in | pass | implementation/unit integration pass | pass / fail |
+| LLM free-form reply | <6 s or local suggestions | fake-provider + disabled-provider tests pass | ___ s / fallback |
+| Internet disconnected | deterministic commands still work | matcher is local; provider failure caught | pass / fail |
+| One-click reset | phone + dashboard + server state clear | realtime + browser tests pass | pass / fail |
+| Full doc 03 route | arrival + live dashboard + AR ad | component flows pass separately | pass / fail |
+
+## Phase 4 field results (fill in on the POCO X5 Pro)
+
+| Metric | Target | Automated / model result | Physical result |
+|---|---|---|---|
+| AR arrow error vs taped route checkpoints | ≤ 2 m | 0 m in map geometry; map→XR inverse fixture error < 0.05 m | ___ m median / ___ m worst |
+| Ad quad error vs surveyed wall corners | ≈ 0.3 m | 0.04 m intentional wall-normal offset; plane snap capped at 0.3 m | ___ m |
+| Pause on laptop → ad absent on phone | < 2 s | **1.065 s** real-browser WebSocket test | ___ s |
+| Marker detection cadence during AR | 3–5 Hz | 4 Hz configured | ___ Hz |
+| Video starts muted/inline and loops; poster appears first | pass | Browser automation/build pass; real WebXR not emulated | pass / fail |
+| Tracking loss returns to 2D with message | pass | controller test pass | pass / fail |
+| 20 s look-up nudge | pass | timer implemented | pass / fail |
+
+## Phase 4 hand-test
+
+1. Start `npm run dev:lan`; laptop: `/dashboard` and `/ads`; phone: `/nav?debug=1`. Start AR tracking, scan marker 1, route to Cafeteria, then tap the camera button. Switching **Map ↔ AR** must not reopen the XR permission prompt or require another marker scan.
+2. Put tape at three route checkpoints (straight, turn, and the stair/lift door). In AR, measure the floor-arrow centre to each tape mark. Record median/worst above; target ≤2 m. Confirm chevrons and ads disappear inside the 2 m safety circle around lift/stair doors.
+3. Measure the four corners of W01, aim the phone from 3–8 m, and measure virtual-quad edge to wall target. Record the worst edge error; target about 0.3 m. Note whether `plane-detection` tightened it or the surveyed-pose fallback was used.
+4. Keep AR open for 20 s: the look-up nudge appears. Cover the camera / force tracking loss: the app returns to 2D with the tracking-lost message.
+5. In `/ads`, upload a short MP4 and an image, assign W01, and save. Tap the AR ad → offer sheet → **Route to Cafeteria**. After ≥1 s in view, `/dashboard` increments impressions; a tap appears in its event log/tap KPI.
+6. While the ad is visible, pause it on the laptop and time until it disappears on the phone; target <2 s. Resume it and verify the reverse. The automated same-origin test measured 1.065 s.
 
 ## Phase 3 field results (fill in after `docs/field-tests.md`)
 
@@ -235,3 +300,14 @@ Print the markers first: `/spikes/s2/markers` → print on A5 at **100%**, measu
 
 Decision rules (doc 03): S5 pass → Phase 3 uses the 2D map inside immersive-ar as the main positioning mode. S5 fail → step counting + particle filter (needs S4 pass) becomes the main path.
 S2-A fail → S2-B; both fail → AR uses "tap the marker on screen" alignment.
+
+## Free-form editor hand-test (what the automated tests cannot judge)
+
+Automated: `tests/geom.test.ts`, `doors.test.ts`, `objects.test.tsx`, `polygon-rooms.test.tsx`, `polygon-consumers.test.tsx`, extended `editor-ops` / `editor-store-tools`, and `tests/e2e/freeform.e2e.ts` (free drawing with snap off, an L-shaped room by clicking corners, a second door, bed + toilet, a bent corridor, publish, `/nav` draws the outline and the furniture and routes into the room).
+
+1. `/editor?venue=<id>` → **Start a blank venue**. The **Snap 0.5 m** box (top left of the map, key `G`) is off: everything you draw keeps its exact position.
+2. **W** lays corridor points at any angle. **V**: click a corridor line (it turns blue), drag the white dot in its middle to bend it, **Alt+drag** a line or point to move the whole corridor, set its **Width** in the right panel, **Delete** removes a selected line.
+3. **R**: choose **▭ Rectangle** (drag) or **⬠ Free shape** (click each corner, Enter or the first corner closes). Select a room: drag corners, drag the small dots on the walls to add corners, **Shift+click** a corner to remove it, drag the orange dot (or "Rotate by") to rotate. "Make free-shape" turns a rectangle into corners.
+4. **D**: click a wall to add a door, click a door to remove it, Shift+click moves the nearest one. Tick "People may walk through this room" for a passage.
+5. **F**: pick Bed / Table / Chair / Toilet / Shower… above the map, click to place; drag it, drag a corner square to resize, the orange dot to rotate; label and size in the right panel.
+6. Publish, then open `/nav` (or the phone): outlines, doors and furniture show; routes use any door.

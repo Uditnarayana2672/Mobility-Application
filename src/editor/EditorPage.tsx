@@ -103,6 +103,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
       selected: () => stateRef.current.selected,
       poiKind: () => stateRef.current.poiKind,
       objectKind: () => stateRef.current.objectKind,
+      roomShape: () => stateRef.current.roomShape,
       verticalKind: () => stateRef.current.verticalKind,
       commit: (venue) => dispatch({ type: "commit", venue }),
       preview: (venue) => dispatch({ type: "preview", venue }),
@@ -278,6 +279,11 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
             tool={state.tool}
             poiKind={state.poiKind}
             objectKind={state.objectKind}
+            roomShape={state.roomShape}
+            onRoomShape={(shape) => {
+              dispatch({ type: "setRoomShape", shape });
+              toolRef.current.cancel(host);
+            }}
             verticalKind={state.verticalKind}
             onLayer={(name, on) => dispatch({ type: "setLayer", name, on })}
             onPoiKind={(kind) => dispatch({ type: "setPoiKind", kind })}
@@ -290,7 +296,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
           <HintBar
             hint={`${activeTool.icon} ${activeTool.label}: ${hint}`}
             status={status}
-            canFinish={state.tool === "walk" || (state.tool === "vertical" && state.verticalKind === "lift")}
+            canFinish={state.tool === "walk" || (state.tool === "room" && state.roomShape === "polygon") || (state.tool === "vertical" && state.verticalKind === "lift")}
             onFinish={() => toolRef.current.finish?.(host)}
             onCancel={() => toolRef.current.cancel(host)}
           />

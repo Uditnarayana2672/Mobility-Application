@@ -19,6 +19,8 @@ export interface EditorState {
   layers: MapLayers;
   poiKind: PoiKind;
   objectKind: ObjectKind;
+  /** Room tool: drag a rectangle, or click the corners of any shape. */
+  roomShape: "rect" | "polygon";
   verticalKind: "lift" | "stairs";
   /** Bumped by every committed change; autosave watches it. */
   rev: number;
@@ -38,6 +40,7 @@ export type Action =
   | { type: "setLayer"; name: keyof MapLayers; on: boolean }
   | { type: "setPoiKind"; kind: PoiKind }
   | { type: "setObjectKind"; kind: ObjectKind }
+  | { type: "setRoomShape"; shape: "rect" | "polygon" }
   | { type: "setVerticalKind"; kind: "lift" | "stairs" };
 
 /** Layers each tool needs to be usable (switched on when the tool is picked). */
@@ -64,6 +67,7 @@ export function initialState(venue: Venue): EditorState {
     layers: { ...DEFAULT_LAYERS, underlay: true, grid: true, walknet: true, markers: true, walls: true },
     poiKind: "water",
     objectKind: "bed",
+    roomShape: "rect",
     verticalKind: "lift",
     rev: 0,
   };
@@ -98,7 +102,7 @@ export function reducer(s: EditorState, a: Action): EditorState {
   switch (a.type) {
     case "load": {
       const base = initialState(a.venue);
-      return { ...base, layers: s.layers, poiKind: s.poiKind, objectKind: s.objectKind, tool: "select", floorId: a.venue.floors.some((f) => f.id === s.floorId) ? s.floorId : base.floorId };
+      return { ...base, layers: s.layers, poiKind: s.poiKind, objectKind: s.objectKind, roomShape: s.roomShape, tool: "select", floorId: a.venue.floors.some((f) => f.id === s.floorId) ? s.floorId : base.floorId };
     }
     case "commit": {
       if (a.venue === s.venue) return s;
@@ -134,6 +138,8 @@ export function reducer(s: EditorState, a: Action): EditorState {
       return { ...s, layers: { ...s.layers, [a.name]: a.on } };
     case "setPoiKind":
       return { ...s, poiKind: a.kind };
+    case "setRoomShape":
+      return { ...s, roomShape: a.shape };
     case "setObjectKind":
       return { ...s, objectKind: a.kind };
     case "setVerticalKind":

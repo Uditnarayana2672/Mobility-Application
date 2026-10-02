@@ -3,6 +3,7 @@ import { OBJECT_KINDS, catOf } from "@/core/cats";
 import { routeRuns } from "@/core/playback";
 import type { Route } from "@/core/route";
 import { doorOutward, roomDoors } from "@/core/doors";
+import { roomPolygon } from "@/core/geom";
 import { CORRIDOR_W } from "@/core/geo";
 import type { Floor, Room, Venue } from "@/core/schema";
 import type { MapItem, MapLayers } from "./types";
@@ -88,22 +89,42 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
             const sel = selected?.type === "room" && selected.id === r.id;
             return (
               <g key={r.id}>
-                <rect
-                  x={r.x}
-                  y={r.y}
-                  width={r.w}
-                  height={r.h}
-                  rx={0.4}
-                  fill={cat.fill}
-                  fillOpacity={layers.underlay && floor.background ? 0.7 : 1}
-                  stroke={sel ? "#2f5bea" : cat.stroke}
-                  strokeWidth={sel ? 3.5 : 1.3}
-                  data-type="room"
-                  data-id={r.id}
-                  style={{ cursor: "pointer" }}
-                  {...NS}
-                />
-                {r.cat === "restricted" && <rect x={r.x} y={r.y} width={r.w} height={r.h} fill="url(#hatch)" style={{ pointerEvents: "none" }} />}
+                {r.polygon && r.polygon.length >= 3 ? (
+                  <path
+                    d={`M${roomPolygon(r).map((p) => `${p.x} ${p.y}`).join(" L")} Z`}
+                    fill={cat.fill}
+                    fillOpacity={layers.underlay && floor.background ? 0.7 : 1}
+                    stroke={sel ? "#2f5bea" : cat.stroke}
+                    strokeWidth={sel ? 3.5 : 1.3}
+                    strokeLinejoin="round"
+                    data-type="room"
+                    data-id={r.id}
+                    style={{ cursor: "pointer" }}
+                    {...NS}
+                  />
+                ) : (
+                  <rect
+                    x={r.x}
+                    y={r.y}
+                    width={r.w}
+                    height={r.h}
+                    rx={0.4}
+                    fill={cat.fill}
+                    fillOpacity={layers.underlay && floor.background ? 0.7 : 1}
+                    stroke={sel ? "#2f5bea" : cat.stroke}
+                    strokeWidth={sel ? 3.5 : 1.3}
+                    data-type="room"
+                    data-id={r.id}
+                    style={{ cursor: "pointer" }}
+                    {...NS}
+                  />
+                )}
+                {r.cat === "restricted" &&
+                  (r.polygon && r.polygon.length >= 3 ? (
+                    <path d={`M${roomPolygon(r).map((p) => `${p.x} ${p.y}`).join(" L")} Z`} fill="url(#hatch)" style={{ pointerEvents: "none" }} />
+                  ) : (
+                    <rect x={r.x} y={r.y} width={r.w} height={r.h} fill="url(#hatch)" style={{ pointerEvents: "none" }} />
+                  ))}
               </g>
             );
           })}

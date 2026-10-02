@@ -1,4 +1,5 @@
 import { doorNodeId, roomDoors } from "./doors";
+import { pointInRoom } from "./geom";
 import { WALK, dist } from "./geo";
 import type { Venue } from "./schema";
 
@@ -58,7 +59,7 @@ export function buildGraph(v: Venue): Graph {
 }
 
 export function roomAt(v: Venue, floor: string, x: number, y: number) {
-  return v.rooms.find((r) => r.floor === floor && x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h);
+  return v.rooms.find((r) => r.floor === floor && pointInRoom(r, x, y));
 }
 
 function link(G: Graph, a: string, b: string): void {

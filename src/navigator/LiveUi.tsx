@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { roomPolygon } from "@/core/geom";
 import type { Venue } from "@/core/schema";
 import { XrPoseSource } from "@/positioning/xrPoseSource";
 import type { NavController, NavState } from "./controller";
@@ -203,7 +204,13 @@ function drawMini(c: HTMLCanvasElement, v: Venue, floorId: string, user: NavStat
   g.fillStyle = "rgba(120,180,255,.30)";
   for (const r of v.corridors) if (r.floor === floor.id) g.fillRect(r.x * k, r.y * k, r.w * k, r.h * k);
   g.strokeStyle = "rgba(255,255,255,.35)";
-  for (const r of v.rooms) if (r.floor === floor.id) g.strokeRect(r.x * k, r.y * k, r.w * k, r.h * k);
+  for (const r of v.rooms) {
+    if (r.floor !== floor.id) continue;
+    g.beginPath();
+    roomPolygon(r).forEach((p, i) => (i ? g.lineTo(p.x * k, p.y * k) : g.moveTo(p.x * k, p.y * k)));
+    g.closePath();
+    g.stroke();
+  }
   g.fillStyle = "rgba(255,210,60,.9)";
   for (const p of cloud) if (p.floor === floor.id) g.fillRect(p.x * k - 1, p.y * k - 1, 2, 2);
   if (user && user.floor === floor.id) {

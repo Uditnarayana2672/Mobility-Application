@@ -143,6 +143,8 @@ export function LayerBar(p: {
   tool: ToolId;
   poiKind: PoiKind;
   objectKind: ObjectKind;
+  roomShape: "rect" | "polygon";
+  onRoomShape(s: "rect" | "polygon"): void;
   verticalKind: "lift" | "stairs";
   onLayer(name: keyof MapLayers, on: boolean): void;
   onPoiKind(k: PoiKind): void;
@@ -169,6 +171,15 @@ export function LayerBar(p: {
             </option>
           ))}
         </select>
+      )}
+      {p.tool === "room" && (
+        <span className="inline-flex overflow-hidden rounded border border-slate-300" data-testid="room-shape">
+          {(["rect", "polygon"] as const).map((k) => (
+            <button key={k} className={`px-2 py-0.5 font-semibold ${p.roomShape === k ? "bg-blue-600 text-white" : "bg-white"}`} onClick={() => p.onRoomShape(k)}>
+              {k === "rect" ? "▭ Rectangle" : "⬠ Free shape"}
+            </button>
+          ))}
+        </span>
       )}
       {p.tool === "object" && (
         <select className="rounded border border-slate-300 px-1 py-0.5" data-testid="object-kind" value={p.objectKind} onChange={(e) => p.onObjectKind(e.target.value as ObjectKind)}>
@@ -239,11 +250,26 @@ export function ToolOverlay({ view, overlay, tool, venue, floorId, selected }: {
   if (overlay?.kind === "line") {
     els.push(<line key="line" x1={overlay.a.x} y1={overlay.a.y} x2={overlay.b.x} y2={overlay.b.y} stroke={overlay.color} strokeWidth={2.5} strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />);
   }
+  if (overlay?.kind === "poly") {
+    const pts = overlay.cursor ? [...overlay.pts, overlay.cursor] : overlay.pts;
+    els.push(
+      <polyline key="poly" points={pts.map((p) => `${p.x},${p.y}`).join(" ")} fill="rgba(47,91,234,.14)" stroke="#2f5bea" strokeWidth={2} strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />,
+      ...overlay.pts.map((p, i) => <circle key={`pv${i}`} cx={p.x} cy={p.y} r={(i === 0 ? 6 : 4) * px} fill={i === 0 ? "#fff" : "#2f5bea"} stroke="#2f5bea" strokeWidth={2} vectorEffect="non-scaling-stroke" />),
+    );
+  }
   if (overlay?.kind === "dot") els.push(<circle key="dot" cx={overlay.at.x} cy={overlay.at.y} r={4 * px} fill="none" stroke="#0f9d8a" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />);
   if (tool === "select") {
     for (const hd of selectionHandles(venue, selected, floorId)) {
       els.push(
-        hd.kind === "orotate" ? (
+        hd.kind === "rrotate" ? (
+          <g key="h-rrot">
+            <circle cx={hd.at.x} cy={hd.at.y} r={7 * px} fill="#e8890c" stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke" />
+          </g>
+        ) : hd.kind === "vertex" ? (
+          <circle key={`h-v${hd.index}`} cx={hd.at.x} cy={hd.at.y} r={6 * px} fill="#fff" stroke="#2f5bea" strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
+        ) : hd.kind === "midpoint" ? (
+          <circle key={`h-m${hd.index}`} cx={hd.at.x} cy={hd.at.y} r={4 * px} fill="#2f5bea" fillOpacity={0.55} stroke="#fff" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        ) : hd.kind === "orotate" ? (
           <circle key="h-orot" cx={hd.at.x} cy={hd.at.y} r={7 * px} fill="#e8890c" stroke="#fff" strokeWidth={2} vectorEffect="non-scaling-stroke" />
         ) : hd.kind === "oresize" ? (
           <rect key={`h-o${hd.at.x}-${hd.at.y}`} x={hd.at.x - 4 * px} y={hd.at.y - 4 * px} width={8 * px} height={8 * px} fill="#fff" stroke="#2f5bea" strokeWidth={2} vectorEffect="non-scaling-stroke" />

@@ -1,5 +1,6 @@
 import type { ObjectKind, PoiKind } from "@/core/cats";
 import { nearestDoor } from "@/core/doors";
+import { polygonEdges, roomPolygon } from "@/core/geom";
 import { POI_KINDS } from "@/core/cats";
 import type { Venue } from "@/core/schema";
 import type { MapItem, PointerPhase } from "@/ui/map";
@@ -15,6 +16,7 @@ export type Overlay =
   | { kind: "rect"; a: Pt; b: Pt }
   | { kind: "line"; a: Pt; b: Pt; color: string }
   | { kind: "dot"; at: Pt }
+  | { kind: "poly"; pts: Pt[]; cursor?: Pt }
   | null;
 
 export interface Host {
@@ -23,6 +25,8 @@ export interface Host {
   selected(): Selection;
   poiKind(): PoiKind;
   objectKind(): ObjectKind;
+  /** Room tool mode (optional so simple test hosts can omit it). */
+  roomShape?(): "rect" | "polygon";
   verticalKind(): "lift" | "stairs";
   commit(v: Venue): void;
   preview(v: Venue): void;
@@ -70,11 +74,13 @@ const noopPointer = (): boolean => false;
 
 /** Handles shown for the current selection (resize corners of a rectangle room, the middle of a corridor line). Shared with the overlay. */
 export interface SelHandle {
-  kind: "resize" | "bend" | "oresize" | "orotate";
+  kind: "resize" | "bend" | "oresize" | "orotate" | "vertex" | "midpoint" | "rrotate";
   id: string;
   at: Pt;
   /** For resize handles. */
   handle?: ops.ResizeHandle;
+  /** Corner index (vertex) or edge index (midpoint). */
+  index?: number;
 }
 
 export function selectionHandles(v: Venue, sel: Selection, floorId: string): SelHandle[] {
@@ -82,7 +88,16 @@ export function selectionHandles(v: Venue, sel: Selection, floorId: string): Sel
   if (sel.type === "room") {
     const r = v.rooms.find((x) => x.id === sel.id);
     if (!r || r.floor !== floorId) return [];
-    return ops.RESIZE_HANDLES.map((h) => ({ kind: "resize" as const, id: r.id, handle: h, at: ops.resizeHandlePoint(r, h) }));
+    const rot: SelHandle = { kind: "rrotate", id: r.id, at: { x: r.x + r.w / 2, y: r.y - 1.2 } };
+    if (r.polygon && r.polygon.length >= 3) {
+      const poly = roomPolygon(r);
+      return [
+        ...poly.map((p, i) => ({ kind: "vertex" as const, id: r.id, index: i, at: p })),
+        ...polygonEdges(poly).map((e) => ({ kind: "midpoint" as const, id: r.id, index: e.index, at: { x: (e.a.x + e.b.x) / 2, y: (e.a.y + e.b.y) / 2 } })),
+        rot,
+      ];
+    }
+    return [...ops.RESIZE_HANDLES.map((h) => ({ kind: "resize" as const, id: r.id, handle: h, at: ops.resizeHandlePoint(r, h) })), rot];
   }
   if (sel.type === "object") {
     const o = v.objects.find((x) => x.id === sel.id);
@@ -107,6 +122,9 @@ function selectTool(): Tool {
     | { mode: "item"; item: MapItem; base: Venue; start: Pt; moved: boolean }
     | { mode: "component"; nodeId: string; base: Venue; start: Pt; moved: boolean }
     | { mode: "resize"; roomId: string; handle: ops.ResizeHandle; base: Venue; moved: boolean }
+    | { mode: "vertex"; roomId: string; index: number; base: Venue; moved: boolean }
+    | { mode: "midpoint"; roomId: string; edgeIndex: number; base: Venue; moved: boolean; inserted: boolean }
+    | { mode: "rrotate"; roomId: string; base: Venue; moved: boolean; centre: Pt; start: number }
     | { mode: "oresize"; objectId: string; base: Venue; moved: boolean }
     | { mode: "orotate"; objectId: string; base: Venue; moved: boolean }
     | { mode: "bend"; edgeKey: string; base: Venue; start: Pt; moved: boolean; nodeId: string | null };
@@ -116,14 +134,30 @@ function selectTool(): Tool {
     hint: "Drag rooms, markers, ad walls, POIs and walk nodes to move them; drag a selected room's handles to resize it. Click a corridor line to select it, drag its middle dot to add a bend. Alt+drag a corridor to move all of it. Shift+drag or drag the background to pan; scroll to zoom.",
     onPointer(phase, pt, ev, h) {
       if (phase === "down") {
-        if (ev.shiftKey) return false; // pan
         const v = h.venue();
         // 1. a handle of the current selection
         const reach = 10 / h.scale();
         for (const hd of selectionHandles(v, h.selected(), h.floorId())) {
           if (Math.hypot(pt.x - hd.at.x, pt.y - hd.at.y) > reach) continue;
+          if (hd.kind === "vertex" && ev.shiftKey) {
+            // Shift+click a corner removes it
+            const r = ops.deleteVertex(v, hd.id, hd.index!);
+            if ("error" in r) h.toast(r.error, "error");
+            else h.commit(r);
+            return true;
+          }
+          if (hd.kind === "rrotate") {
+            const rm = v.rooms.find((x) => x.id === hd.id)!;
+            const centre = { x: rm.x + rm.w / 2, y: rm.y + rm.h / 2 };
+            drag = { mode: "rrotate", roomId: hd.id, base: v, moved: false, centre, start: Math.atan2(pt.y - centre.y, pt.x - centre.x) };
+            return true;
+          }
           drag =
-            hd.kind === "resize"
+            hd.kind === "vertex"
+              ? { mode: "vertex", roomId: hd.id, index: hd.index!, base: v, moved: false }
+              : hd.kind === "midpoint"
+                ? { mode: "midpoint", roomId: hd.id, edgeIndex: hd.index!, base: v, moved: false, inserted: false }
+                : hd.kind === "resize"
               ? { mode: "resize", roomId: hd.id, handle: hd.handle!, base: v, moved: false }
               : hd.kind === "oresize"
                 ? { mode: "oresize", objectId: hd.id, base: v, moved: false }
@@ -132,7 +166,9 @@ function selectTool(): Tool {
                 : { mode: "bend", edgeKey: hd.id, base: v, start: pt, moved: false, nodeId: null };
           return true;
         }
-        // 2. an item under the pointer
+        // 2. Shift+drag pans the map even over a room
+        if (ev.shiftKey) return false;
+        // 3. an item under the pointer
         const item = itemFromEvent(ev);
         if (!item) return false;
         h.select(item);
@@ -156,6 +192,27 @@ function selectTool(): Tool {
         if (d.mode === "oresize" || d.mode === "orotate") {
           d.moved = true;
           h.preview(d.mode === "oresize" ? ops.resizeObject(d.base, d.objectId, pt) : ops.rotateObject(d.base, d.objectId, pt));
+          return true;
+        }
+        if (d.mode === "vertex") {
+          d.moved = true;
+          h.preview(ops.moveVertex(d.base, d.roomId, d.index, pt));
+          return true;
+        }
+        if (d.mode === "midpoint") {
+          d.moved = true;
+          if (!d.inserted) {
+            d.base = ops.insertVertex(d.base, d.roomId, d.edgeIndex, pt);
+            d.inserted = true;
+          }
+          h.preview(ops.moveVertex(d.base, d.roomId, d.edgeIndex + 1, pt));
+          return true;
+        }
+        if (d.mode === "rrotate") {
+          d.moved = true;
+          let deg = ((Math.atan2(pt.y - d.centre.y, pt.x - d.centre.x) - d.start) * 180) / Math.PI;
+          deg = ops.getGrid() > 0 ? Math.round(deg / 15) * 15 : Math.round(deg * 10) / 10;
+          h.preview(ops.rotateRoom(d.base, d.roomId, deg));
           return true;
         }
         if (d.mode === "resize") {
@@ -217,10 +274,28 @@ function selectTool(): Tool {
 
 function roomTool(): Tool {
   let start: Pt | null = null;
+  let corners: Pt[] = [];
+  const polygonMode = (h: Host): boolean => h.roomShape?.() === "polygon";
+  const finishPolygon = (h: Host): void => {
+    const pts = corners;
+    corners = [];
+    h.setOverlay(null);
+    if (pts.length < 3) return h.toast("Click at least 3 corners, then Enter (or click the first corner) to close the shape", "error");
+    const r = ops.addPolygonRoom(h.venue(), h.floorId(), pts);
+    const e = err(r);
+    if (e) return h.toast(e, "error");
+    const ok = r as { venue: Venue; id: string };
+    h.commit(ok.venue);
+    h.select({ type: "room", id: ok.id });
+  };
   return {
     id: "room",
-    hint: "Drag a rectangle to draw a room (snaps to 0.5 m while Snap is on). Its door goes on the side facing the nearest corridor and is linked to the walk network automatically.",
+    hint: "Rectangle: drag to draw a room. Free shape (switch above the map): click each corner, then Enter or click the first corner to close; Esc cancels. The door goes on the wall nearest the corridor.",
     onPointer(phase, pt, _ev, h) {
+      if (polygonMode(h)) {
+        if (phase === "hover" && corners.length) h.setOverlay({ kind: "poly", pts: corners, cursor: { x: ops.snap(pt.x), y: ops.snap(pt.y) } });
+        return false;
+      }
       if (phase === "down") {
         start = pt;
         return true;
@@ -245,10 +320,22 @@ function roomTool(): Tool {
       }
       return false;
     },
-    onSelect: () => undefined,
+    onSelect(_item, pt, h) {
+      if (!polygonMode(h)) return;
+      const p = { x: ops.snap(pt.x), y: ops.snap(pt.y) };
+      const first = corners[0];
+      if (first && corners.length >= 3 && Math.hypot(p.x - first.x, p.y - first.y) * h.scale() < 12) return finishPolygon(h);
+      corners = [...corners, p];
+      h.setOverlay({ kind: "poly", pts: corners, cursor: p });
+      h.status(`${corners.length} corner(s). Keep clicking; Enter or the first corner closes the shape.`);
+    },
     cancel(h) {
       start = null;
+      corners = [];
       h.setOverlay(null);
+    },
+    finish(h) {
+      if (polygonMode(h)) finishPolygon(h);
     },
   };
 }

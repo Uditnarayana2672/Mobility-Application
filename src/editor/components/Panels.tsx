@@ -3,6 +3,7 @@ import { CAT_IDS, CATS, OBJECT_KINDS, OBJECT_KIND_IDS, POI_KINDS, POI_KIND_IDS, 
 import type { Floor, Room, ValidationResult, Venue } from "@/core/schema";
 import { DICT_SIZE } from "@/core/aruco/dict";
 import { roomDoors } from "@/core/doors";
+import { polygonArea, roomPolygon } from "@/core/geom";
 import { CORRIDOR_W } from "@/core/geo";
 import { unreachableRooms, validate } from "@/core/validate";
 import * as ops from "../ops";
@@ -226,6 +227,22 @@ function RoomProps({ venue: v, id, commit, select }: PanelProps & { id: string }
         ) : (
           <Badge kind="ok">✔ connected to walk network</Badge>
         )}
+      </div>
+      <div className="mt-2 rounded border border-slate-200 bg-white p-2" data-testid="shape-panel">
+        <h4 className="text-xs font-bold text-slate-600">Shape</h4>
+        {r.polygon ? (
+          <p className="mt-1 text-xs text-slate-600">
+            Free shape · {r.polygon.length} corners · {Math.abs(polygonArea(roomPolygon(r))).toFixed(1)} m². Drag a corner to move it, drag a small dot on a wall to add a corner, Shift+click a corner to remove it.
+          </p>
+        ) : (
+          <div className="mt-1">
+            <p className="text-xs text-slate-600">Rectangle. Make it a free shape to move its corners or rotate it.</p>
+            <Btn onClick={() => commit(ops.makePolygon(v, id))}>⬠ Make free-shape</Btn>
+          </div>
+        )}
+        <Field label="Rotate by (°, clockwise)" hint="Or drag the orange dot above the room.">
+          <CommitInput key={`rot-${r.polygon?.join(",") ?? `${r.x},${r.y},${r.w},${r.h}`}`} type="number" step={5} value={0} onCommit={(x) => commit(ops.rotateRoom(v, id, Number(x)))} />
+        </Field>
       </div>
       <div className="mt-2 rounded border border-slate-200 bg-white p-2" data-testid="doors-panel">
         <h4 className="text-xs font-bold text-slate-600">Doors ({roomDoors(r).length})</h4>

@@ -1,4 +1,5 @@
-import type { Venue } from "@/core/schema";
+import { distToRoom, pointInRoom } from "@/core/geom";
+import type { Room, Venue } from "@/core/schema";
 import { roomDoors } from "@/core/doors";
 import { CORRIDOR_W, distToSegment } from "@/core/geo";
 import { bearingDelta, bearingToVector, normaliseBearing } from "@/shared/frame";
@@ -21,8 +22,9 @@ interface Rect {
   w: number;
   h: number;
 }
-interface RoomRect extends Rect {
+interface RoomRef {
   id: string;
+  shape: Pick<Room, "x" | "y" | "w" | "h" | "polygon">;
   doors: { x: number; y: number }[];
 }
 
@@ -30,9 +32,9 @@ const DOOR_REACH_M = 1.6;
 
 export function walkableFromVenue(v: Venue): Walkable {
   const corr = new Map<string, Rect[]>();
-  const rooms = new Map<string, RoomRect[]>();
+  const rooms = new Map<string, RoomRef[]>();
   for (const c of v.corridors) corr.set(c.floor, [...(corr.get(c.floor) ?? []), c]);
-  for (const r of v.rooms) rooms.set(r.floor, [...(rooms.get(r.floor) ?? []), { x: r.x, y: r.y, w: r.w, h: r.h, id: r.id, doors: roomDoors(r) }]);
+  for (const r of v.rooms) rooms.set(r.floor, [...(rooms.get(r.floor) ?? []), { shape: r, id: r.id, doors: roomDoors(r) }]);
   // Venues drawn in the editor have corridors as walk-path edges (no corridor rectangles): walkable = within CORRIDOR_HALF_M of a walk edge.
   const segs = new Map<string, { a: { x: number; y: number }; b: { x: number; y: number }; half: number }[]>();
   const nodeById = new Map(v.nodes.map((n) => [n.id, n]));
@@ -54,7 +56,7 @@ export function walkableFromVenue(v: Venue): Walkable {
   /** "c" = in a corridor, room id = inside that room (boundary points belong to the corridor), null = outside everything. */
   const region = (floor: string, x: number, y: number): string | null => {
     if ((corr.get(floor) ?? []).some((r) => dist(r, x, y) <= EPS) || segDist(floor, x, y) <= 0) return "c";
-    const room = (rooms.get(floor) ?? []).find((r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h);
+    const room = (rooms.get(floor) ?? []).find((r) => pointInRoom(r.shape, x, y));
     return room ? room.id : null;
   };
   const doorsOf = (floor: string, id: string): { x: number; y: number }[] => rooms.get(floor)?.find((r) => r.id === id)?.doors ?? [];
@@ -64,7 +66,7 @@ export function walkableFromVenue(v: Venue): Walkable {
       let d = Infinity;
       for (const r of corr.get(floor) ?? []) d = Math.min(d, dist(r, x, y));
       d = Math.min(d, Math.max(0, segDist(floor, x, y)));
-      for (const r of rooms.get(floor) ?? []) d = Math.min(d, dist(r, x, y));
+      for (const r of rooms.get(floor) ?? []) d = Math.min(d, distToRoom(r.shape, x, y));
       return d;
     },
     canMove: (floor, x0, y0, x1, y1) => {

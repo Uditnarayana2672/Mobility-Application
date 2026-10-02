@@ -12,29 +12,34 @@ a laptop dashboard mirrors the phone live; advertisers place image/video ads on 
 
 ## Folder map
 ```
-src/core/      pure strict TS: schema v2 (zod), engine port (graph, A*, instructions, search, intent, validate), steps/heading, aruco/dict
+src/core/      pure strict TS: schema v2 (zod), engine port (graph, A*, instructions, search, intent, validate), geom.ts (rectangle + polygon room geometry), doors.ts (several doors per room), steps/heading, aruco/dict
 src/shared/    frame helpers, Hub, Placeholder
 src/spikes/    Phase 0 spike pages (S1–S5), ArUco detector/pose (aruco/), AR + camera helpers
 src/bus/       Bus interface + BroadcastChannelBus (same browser) + WebSocketBus/CompositeBus (phone <-> server <-> dashboards); pose/route/event + venue/campaigns notices
 src/navigator/ /nav: NavController (all logic, no React), session.ts (pure state machine), ControllerPoseSource + SimPoseSource, runtimeConfig (?pose/?bus/?debug), speech, intent resolver, React screens, LiveUi (locate/HUD/scan sheet/debug overlay)
 src/positioning/ real positioning: markers.ts (marker pose, gate, XR alignment), refine.ts (LM), corrector.ts (snap/ease), particleFilter.ts, xrCore/pdrCore (pure) + XrPoseSource/PdrPoseSource (browser glue), liveBase.ts
+src/ar/       pure scene model + canvas simulation renderer + same-session WebXR three.js renderer + campaign metrics/loading
 src/dashboard/ /dashboard: laptop live view (mirrors /nav over the bus)
+src/ads/      /ads campaign editor, approved wall slots, media upload, live pause/resume and KPIs
+src/preflight/ /preflight stage checks: HTTPS, sensors, WebXR, voices, server, venue and live marker detection
 src/ui/map/    reusable SVG map component (editor now; /nav and /dashboard later)
-src/editor/    /editor: ops.ts (pure venue edits), store.ts (history), tools.ts (state machines), components/, EditorPage.tsx
+src/editor/    /editor: ops.ts (pure venue edits; free drawing by default, snap is a toggle), store.ts (history), tools.ts (state machines + selection handles), components/, EditorPage.tsx
 src/markers/   /markers printable ArUco sheets
 src/owner/     /owner status + version history
 src/pages, src/components, src/hooks, src/lib   LEGACY Blueprint editor (route /legacy-editor), non-strict, frozen
-server/        REST (api.ts, store.ts, sessions.ts) + realtime hub (ws.ts: roles, replay, heartbeat, publish push, JSONL recording) + Vite plugin (vite-plugin.ts) + prod server (index.ts)
+server/        REST + server-only assistant/provider + realtime hub (roles, replay, heartbeat, publish/reset push, JSONL recording) + Vite plugin + prod server
 tests/         Vitest unit + golden (tests/golden vs the docs/mock-ui engine); tests/e2e = real-browser tests (npm run e2e)
 scripts/       make-certs.mjs (mkcert), dev-lan.mjs
 certs/         mkcert output, gitignored
 data/          runtime files written by the server (drafts, published versions, uploads, sessions/*.jsonl walk recordings), gitignored
 public/venues/ seed venue + campaigns (office-hq), generated from the mock by `npm run convert:mock`
 ```
-Routes: `/` hub, `/nav` (`?demo=1`, hash deep links), `/dashboard`, `/editor`, `/owner`, `/markers`, `/spikes/*`, `/legacy-editor`; `/ads` is a placeholder until Phase 4.
+Routes: `/` hub, `/nav` (`?demo=1`, hash deep links), `/dashboard`, `/editor`, `/owner`, `/markers`, `/ads`, `/preflight`, `/spikes/*`, `/legacy-editor`.
 
 ## Commands
 `npm run dev` · `npm run dev:lan` (phone URL + QR) · `npm run certs` · `npm run build && npm run serve` · `npm run typecheck` (tsc -b, project references) · `npm test` · `npm run e2e` · `npm run convert:mock`
+
+Copy `.env.example` to `.env` for the optional free-form assistant (`OPENAI_API_KEY`, `OPENAI_MODEL`). `.env` is server-only and gitignored; never rename these to `VITE_*`. Without a key, rules/search/navigation remain available and assistant misses return local suggestions.
 
 ## Conventions
 - All NEW code is strict TS and lives in paths listed in `tsconfig.strict.json` (add new folders there). Do not loosen it; do not touch the legacy editor beyond necessity.

@@ -22,7 +22,7 @@ export default defineConfig(({ mode, command }) => {
     plugins: [
       react(),
       !certs && command === "serve" && basicSsl(),
-      indoreServer(root),
+      indoreServer(process.env.INDORE_ROOT ?? root),
       mode === "development" && componentTagger(),
     ].filter(Boolean),
     resolve: {

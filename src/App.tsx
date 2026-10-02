@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Hub from "./shared/Hub";
 import Placeholder from "./shared/Placeholder";
 
+const EditorPage = lazy(() => import("./editor/EditorPage"));
 const SpikesIndex = lazy(() => import("./spikes/SpikesIndex"));
 const S1 = lazy(() => import("./spikes/S1Page"));
 const S2 = lazy(() => import("./spikes/S2Page"));
@@ -29,7 +30,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Hub />} />
             <Route path="/legacy-editor" element={<Index />} />
-            <Route path="/editor" element={<Placeholder title="Editor" note="Built from the mock editor in Phase 1." />} />
+            <Route path="/editor" element={<EditorPage />} />
             <Route path="/nav" element={<Placeholder title="Visitor app" note="Phase 2: 2D map, search, navigation." />} />
             <Route path="/dashboard" element={<Placeholder title="Dashboard" note="Phase 3: live view of the phone." />} />
             <Route path="/markers" element={<Placeholder title="Markers" note="Phase 1: printable marker sheets for the real venue. For the spike markers see /spikes/s2/markers." />} />

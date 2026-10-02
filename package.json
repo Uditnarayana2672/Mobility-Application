@@ -14,7 +14,8 @@
     "serve": "tsx server/index.ts",
     "typecheck": "tsc -b tsconfig.app.json",
     "test": "vitest run",
-    "convert:mock": "tsx scripts/convert-mock-venue.ts"
+    "convert:mock": "tsx scripts/convert-mock-venue.ts",
+    "e2e": "vitest run -c vitest.e2e.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -89,6 +90,7 @@
     "globals": "^15.9.0",
     "jpeg-js": "^0.4.4",
     "lovable-tagger": "^1.1.7",
+    "playwright-core": "^1.63.0",
     "pngjs": "^7.0.0",
     "postcss": "^8.4.47",
     "react-dom": "^18.3.1",

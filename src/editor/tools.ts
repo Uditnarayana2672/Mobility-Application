@@ -286,7 +286,7 @@ function placeTool(id: "marker" | "wall" | "poi", hint: string): Tool {
         const ok = r as { venue: Venue; id: number };
         h.commit(ok.venue);
         h.select({ type: "marker", id: String(ok.id) });
-        h.toast(`Marker ${ok.id} placed. Print it from /markers.`, "info");
+        h.status(`Marker ${ok.id} placed on the wall. Details on the right; print it from the marker sheet.`);
       } else if (id === "wall") {
         const ok = ops.addWall(v, f, pt);
         h.commit(ok.venue);

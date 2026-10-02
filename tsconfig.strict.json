@@ -34,6 +34,7 @@
     "src/markers",
     "src/owner",
     "src/spikes",
+    "src/positioning",
     "server",
     "tests",
     "scripts/convert-mock-venue.ts",

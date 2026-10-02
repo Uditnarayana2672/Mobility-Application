@@ -75,6 +75,26 @@ describe("ParticleFilter", () => {
     expect(walk.distance("F1", 30, -3)).toBeGreaterThan(0);
   });
 
+  it("an editor-drawn venue has no corridor rectangles: the walk path edges define the corridor", () => {
+    const drawn = { ...venue, corridors: [] };
+    const w = walkableFromVenue(drawn);
+    expect(venue.corridors.length).toBeGreaterThan(0);
+    const e = venue.edges.find((x) => x.type === "walk")!;
+    const a = venue.nodes.find((n) => n.id === e.a)!;
+    const b = venue.nodes.find((n) => n.id === e.b)!;
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    expect(w.contains(a.floor, mid.x, mid.y)).toBe(true);
+    expect(w.contains("F1", 30, -3)).toBe(false);
+    expect(w.canMove("F1", 24, 16, 24, 14)).toBe(false); // still no walking through a room wall
+    // and the filter can walk it
+    const pf = new ParticleFilter(w, "F1", seededRandom(11));
+    pf.seed("F1", 5, 17, 90, 0.3);
+    for (let i = 0; i < 30; i++) pf.step(0.7, 90);
+    const est = pf.estimate();
+    expect(est.x).toBeGreaterThan(20);
+    expect(Math.abs(est.y - 17)).toBeLessThan(2);
+  });
+
   it("keeps a walker with a drifting gyro inside the corridor", () => {
     const pf = new ParticleFilter(walk, "F1", seededRandom(7));
     pf.seed("F1", 5, 17, 90, 0.4);

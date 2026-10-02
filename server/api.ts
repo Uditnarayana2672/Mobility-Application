@@ -1,97 +1,232 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { promises as fs } from "node:fs";
+import { createHash } from "node:crypto";
+import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
+import { parseCampaigns, parseVenue, type CampaignsFile, type ValidationResult, type Venue } from "../src/core/schema";
+import { validate } from "../src/core/validate";
+import { DocStore, ID_RE, listVenueIds } from "./store";
 
 export interface ApiOptions {
-  /** Repo root; spike results go to <root>/docs/spikes, venues to <root>/data/venues. */
+  /** Repo root; spike results go to <root>/docs/spikes, venue/campaign/upload data to <root>/data, seeds from <root>/public/venues. */
   root: string;
 }
 
 export type Next = (err?: unknown) => void;
 
-const ID_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
-const MAX_BODY = 5 * 1024 * 1024;
+const MAX_JSON = 5 * 1024 * 1024;
+const MAX_UPLOAD = 10 * 1024 * 1024;
+const UPLOAD_TYPES: Record<string, string> = { "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp" };
+const UPLOAD_MIME: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
+const UPLOAD_NAME_RE = /^[a-f0-9]{16,64}\.(png|jpg|webp)$/;
+
+/** Check the bytes really are the declared image type (we serve these back to browsers). */
+function sniffImage(buf: Buffer, type: string): boolean {
+  if (type === "image/png") return buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  if (type === "image/jpeg") return buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  if (type === "image/webp") return buf.length > 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP";
+  return false;
+}
+
+class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 function send(res: ServerResponse, status: number, body: unknown): void {
-  const text = JSON.stringify(body);
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
-  res.end(text);
+  res.end(JSON.stringify(body));
 }
 
-function readBody(req: IncomingMessage): Promise<string> {
+function readBuffer(req: IncomingMessage, limit: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks: Buffer[] = [];
     req.on("data", (c: Buffer) => {
       size += c.length;
-      if (size > MAX_BODY) {
-        reject(new Error("body too large"));
+      if (size > limit) {
+        reject(new HttpError(413, `body larger than ${limit} bytes`));
         req.destroy();
         return;
       }
       chunks.push(c);
     });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
 }
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  const text = await readBody(req);
-  return text ? JSON.parse(text) : undefined;
+  const text = (await readBuffer(req, MAX_JSON)).toString("utf8");
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new HttpError(400, "body is not valid JSON");
+  }
 }
 
-/** Connect-style middleware handling everything under /api. Calls next() for other URLs. */
+const failResults = (issues: { path: string; message: string }[]): ValidationResult[] =>
+  issues.map((i) => ({ level: "fail", title: `Invalid data at ${i.path || "(root)"}`, detail: i.message }));
+
+/** Connect-style middleware: /api/* plus static /uploads/*. Calls next() for anything else. */
 export function createApi(opts: ApiOptions) {
-  const spikesDir = path.join(opts.root, "docs", "spikes");
-  const venuesDir = path.join(opts.root, "data", "venues");
+  const { root } = opts;
+  const spikesDir = path.join(root, "docs", "spikes");
+  const uploadsDir = path.join(root, "data", "uploads");
+  const venues = new DocStore(root, "venue");
+  const campaigns = new DocStore(root, "campaigns");
+
+  const checkId = (id: string | undefined, what: string): string => {
+    if (!id || !ID_RE.test(id)) throw new HttpError(400, `bad ${what}`);
+    return id;
+  };
+
+  async function serveUpload(name: string, res: ServerResponse): Promise<void> {
+    if (!UPLOAD_NAME_RE.test(name)) throw new HttpError(404, "not found");
+    const file = path.join(uploadsDir, name);
+    try {
+      await fs.access(file);
+    } catch {
+      throw new HttpError(404, "not found");
+    }
+    res.statusCode = 200;
+    res.setHeader("Content-Type", UPLOAD_MIME[path.extname(name)] ?? "application/octet-stream");
+    // Content-addressed names never change, so they are safe to cache hard.
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    createReadStream(file).pipe(res);
+  }
+
+  async function venueRoutes(parts: string[], method: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+    if (parts.length === 1 && method === "GET") return send(res, 200, { venues: await listVenueIds(root) });
+    const id = checkId(parts[1], "venue id");
+    const sub = parts[2];
+    if (!sub && method === "GET") {
+      const v = await venues.getPublished<Venue>(id);
+      return v ? send(res, 200, v) : send(res, 404, { error: "no such venue" });
+    }
+    if (sub === "versions" && method === "GET") return send(res, 200, { versions: await venues.versions(id) });
+    if (sub === "draft") {
+      if (method === "GET") {
+        const d = await venues.getDraft<Venue>(id);
+        return d ? send(res, 200, d) : send(res, 404, { error: "no draft" });
+      }
+      if (method === "PUT") {
+        const parsed = parseVenue(await readJsonBody(req));
+        if (!parsed.ok) return send(res, 400, { error: "invalid venue", issues: parsed.issues });
+        if (parsed.data.id !== id) return send(res, 400, { error: "venue id in body does not match the URL" });
+        await venues.putDraft(id, { ...parsed.data, status: "draft" });
+        return send(res, 200, { ok: true });
+      }
+    }
+    if (sub === "publish" && method === "POST") {
+      const body = await readJsonBody(req);
+      const source = body !== undefined ? body : await venues.getDraft<unknown>(id);
+      if (source === null || source === undefined) return send(res, 409, { error: "nothing to publish: no draft" });
+      const parsed = parseVenue(source);
+      if (!parsed.ok) return send(res, 422, { error: "invalid venue", results: failResults(parsed.issues) });
+      if (parsed.data.id !== id) return send(res, 400, { error: "venue id in body does not match the URL" });
+      const results = validate(parsed.data);
+      if (results.some((r) => r.level === "fail")) return send(res, 422, { error: "validation failed", results });
+      const stored = await venues.publish(id, parsed.data);
+      return send(res, 200, { ok: true, version: stored.version, publishedAt: stored.publishedAt, results });
+    }
+    return send(res, 404, { error: "unknown venue route" });
+  }
+
+  async function campaignRoutes(parts: string[], method: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const id = checkId(parts[1], "venue id");
+    const sub = parts[2];
+    if (!sub && method === "GET") {
+      const c = await campaigns.getPublished<CampaignsFile>(id);
+      return c ? send(res, 200, c) : send(res, 404, { error: "no campaigns for this venue" });
+    }
+    if (sub === "versions" && method === "GET") return send(res, 200, { versions: await campaigns.versions(id) });
+    if (sub === "draft") {
+      if (method === "GET") {
+        const d = await campaigns.getDraft<CampaignsFile>(id);
+        return d ? send(res, 200, d) : send(res, 404, { error: "no draft" });
+      }
+      if (method === "PUT") {
+        const parsed = parseCampaigns(await readJsonBody(req));
+        if (!parsed.ok) return send(res, 400, { error: "invalid campaigns", issues: parsed.issues });
+        if (parsed.data.venueId !== id) return send(res, 400, { error: "venueId in body does not match the URL" });
+        await campaigns.putDraft(id, parsed.data);
+        return send(res, 200, { ok: true });
+      }
+    }
+    if (sub === "publish" && method === "POST") {
+      const body = await readJsonBody(req);
+      const source = body !== undefined ? body : await campaigns.getDraft<unknown>(id);
+      if (source === null || source === undefined) return send(res, 409, { error: "nothing to publish: no draft" });
+      const parsed = parseCampaigns(source);
+      if (!parsed.ok) return send(res, 422, { error: "invalid campaigns", results: failResults(parsed.issues) });
+      if (parsed.data.venueId !== id) return send(res, 400, { error: "venueId in body does not match the URL" });
+      const venue = await venues.getPublished<Venue>(id);
+      const results: ValidationResult[] = [];
+      const wallIds = new Set((venue?.walls ?? []).map((w) => w.id));
+      const roomIds = new Set((venue?.rooms ?? []).map((r) => r.id));
+      for (const c of parsed.data.campaigns) {
+        for (const w of c.walls) if (!wallIds.has(w)) results.push({ level: "fail", title: `Campaign ${c.id}: unknown ad wall ${w}`, detail: "The wall is not in the published venue." });
+        if (c.target && !roomIds.has(c.target)) results.push({ level: "fail", title: `Campaign ${c.id}: unknown target room ${c.target}`, detail: "The target room is not in the published venue." });
+      }
+      if (!venue) results.push({ level: "fail", title: "Venue not published", detail: `Publish venue ${id} before its campaigns.` });
+      if (results.length) return send(res, 422, { error: "validation failed", results });
+      const stored = await campaigns.publish(id, parsed.data);
+      return send(res, 200, { ok: true, version: stored.version, publishedAt: stored.publishedAt });
+    }
+    return send(res, 404, { error: "unknown campaigns route" });
+  }
 
   return async function api(req: IncomingMessage, res: ServerResponse, next: Next): Promise<void> {
     const url = new URL(req.url ?? "/", "http://localhost");
-    if (!url.pathname.startsWith("/api/")) return next();
-    const parts = url.pathname.slice("/api/".length).split("/").filter(Boolean);
+    const isApi = url.pathname.startsWith("/api/");
+    const isUpload = url.pathname.startsWith("/uploads/");
+    if (!isApi && !isUpload) return next();
     const method = req.method ?? "GET";
 
     try {
-      if (parts[0] === "health" && method === "GET") {
-        return send(res, 200, { ok: true, time: new Date().toISOString() });
+      if (isUpload) {
+        if (method !== "GET" && method !== "HEAD") throw new HttpError(405, "method not allowed");
+        return await serveUpload(decodeURIComponent(url.pathname.slice("/uploads/".length)), res);
       }
+      const parts = url.pathname.slice("/api/".length).split("/").filter(Boolean);
+
+      if (parts[0] === "health" && method === "GET") return send(res, 200, { ok: true, time: new Date().toISOString() });
 
       if (parts[0] === "spikes" && parts.length === 2 && method === "POST") {
-        const name = parts[1] ?? "";
-        if (!ID_RE.test(name)) return send(res, 400, { error: "bad spike name" });
+        const name = checkId(parts[1], "spike name");
         const body = await readJsonBody(req);
         await fs.mkdir(spikesDir, { recursive: true });
-        const file = path.join(spikesDir, `${name}.json`);
-        await fs.writeFile(file, JSON.stringify({ savedAt: new Date().toISOString(), ...(body as object) }, null, 2));
+        await fs.writeFile(path.join(spikesDir, `${name}.json`), JSON.stringify({ savedAt: new Date().toISOString(), ...(body as object) }, null, 2));
         return send(res, 200, { ok: true, file: `docs/spikes/${name}.json` });
       }
 
-      if (parts[0] === "venues" && parts.length === 2) {
-        const id = parts[1] ?? "";
-        if (!ID_RE.test(id)) return send(res, 400, { error: "bad venue id" });
-        const file = path.join(venuesDir, `${id}.json`);
-        if (method === "GET") {
-          try {
-            return send(res, 200, JSON.parse(await fs.readFile(file, "utf8")));
-          } catch {
-            return send(res, 404, { error: "not found" });
-          }
-        }
-        if (method === "PUT") {
-          const body = await readJsonBody(req);
-          await fs.mkdir(venuesDir, { recursive: true });
-          await fs.writeFile(file, JSON.stringify(body, null, 2));
-          return send(res, 200, { ok: true });
-        }
+      if (parts[0] === "uploads" && parts.length === 1 && method === "POST") {
+        const type = (req.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
+        const ext = UPLOAD_TYPES[type];
+        if (!ext) throw new HttpError(415, "content-type must be image/png, image/jpeg or image/webp");
+        const buf = await readBuffer(req, MAX_UPLOAD);
+        if (!buf.length) throw new HttpError(400, "empty upload");
+        if (!sniffImage(buf, type)) throw new HttpError(415, `file contents are not a valid ${type}`);
+        const name = createHash("sha256").update(buf).digest("hex").slice(0, 32) + ext;
+        await fs.mkdir(uploadsDir, { recursive: true });
+        await fs.writeFile(path.join(uploadsDir, name), buf);
+        return send(res, 200, { ok: true, url: `/uploads/${name}`, bytes: buf.length, contentType: type });
       }
+
+      if (parts[0] === "venues") return await venueRoutes(parts, method, req, res);
+      if (parts[0] === "campaigns" && parts.length >= 2) return await campaignRoutes(parts, method, req, res);
 
       return send(res, 404, { error: "unknown api route" });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return send(res, e instanceof SyntaxError ? 400 : 500, { error: msg });
+      if (e instanceof HttpError) return send(res, e.status, { error: e.message });
+      return send(res, 500, { error: e instanceof Error ? e.message : String(e) });
     }
   };
 }

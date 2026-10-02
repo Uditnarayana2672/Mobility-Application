@@ -48,12 +48,6 @@ describe("api", () => {
     const r = await fetch(`http://${base}/api/spikes/..%2Fevil`, { method: "POST", body: "{}" });
     expect(r.status).toBe(400);
   });
-  it("venue PUT/GET", async () => {
-    await fetch(`http://${base}/api/venues/hq`, { method: "PUT", body: JSON.stringify({ a: 1 }) });
-    const r = await fetch(`http://${base}/api/venues/hq`);
-    expect(await r.json()).toEqual({ a: 1 });
-    expect((await fetch(`http://${base}/api/venues/none`)).status).toBe(404);
-  });
   it("passes non-api urls through", async () => {
     expect((await fetch(`http://${base}/nav`)).status).toBe(404);
   });

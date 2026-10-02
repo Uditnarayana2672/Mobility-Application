@@ -25,3 +25,6 @@ dist-ssr
 
 # local HTTPS certs (mkcert)
 certs/
+
+# runtime data written by the server (drafts, published versions, uploads)
+data/

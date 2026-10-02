@@ -187,6 +187,7 @@ export type Campaign = z.infer<typeof CampaignSchema>;
 export const CampaignsFileSchema = z.object({
   venueId: z.string(),
   version: z.number().int().positive(),
+  publishedAt: z.string().optional(),
   campaigns: z.array(CampaignSchema),
 });
 export type CampaignsFile = z.infer<typeof CampaignsFileSchema>;

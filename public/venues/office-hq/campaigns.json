@@ -1,0 +1,87 @@
+{
+  "venueId": "office-hq",
+  "version": 1,
+  "campaigns": [
+    {
+      "id": "C1",
+      "name": "Fresh Brews launch",
+      "brand": "BrewBox Coffee",
+      "type": "video",
+      "theme": [
+        "#ff7a18",
+        "#af002d"
+      ],
+      "headline": "Fresh brews. 2nd cup free.",
+      "offer": "Show this screen at the Cafeteria coffee counter — 2nd cup free until 6 PM.",
+      "cta": "Route to Cafeteria",
+      "target": "F2-cafeteria",
+      "walls": [
+        "W01"
+      ],
+      "status": "active",
+      "start": "2026-10-01",
+      "end": "2026-12-31",
+      "hours": "09:00–19:00",
+      "budget": 12000,
+      "stats": {
+        "impressions": 412,
+        "taps": 37,
+        "dwell": 6.4
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Join the 6 AM club",
+      "brand": "FitNova Fitness",
+      "type": "image",
+      "theme": [
+        "#4facfe",
+        "#00c6a7"
+      ],
+      "headline": "30% off annual membership",
+      "offer": "Corporate members get 30% off. Walk-in trial pass at the front desk.",
+      "cta": "Learn more",
+      "target": null,
+      "walls": [
+        "W02"
+      ],
+      "status": "active",
+      "start": "2026-10-01",
+      "end": "2026-11-30",
+      "hours": "09:00–21:00",
+      "budget": 8000,
+      "stats": {
+        "impressions": 233,
+        "taps": 12,
+        "dwell": 3.1
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Lunch combo",
+      "brand": "SnackHub",
+      "type": "image",
+      "theme": [
+        "#f7971e",
+        "#ffd200"
+      ],
+      "headline": "Lunch combo ₹99",
+      "offer": "Thali + chaas at the Cafeteria, 12–3 PM. Placeholder offer.",
+      "cta": "Route to Cafeteria",
+      "target": "F2-cafeteria",
+      "walls": [
+        "W03"
+      ],
+      "status": "active",
+      "start": "2026-10-01",
+      "end": "2026-12-31",
+      "hours": "11:30–15:30",
+      "budget": 5000,
+      "stats": {
+        "impressions": 158,
+        "taps": 21,
+        "dwell": 4.2
+      }
+    }
+  ]
+}

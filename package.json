@@ -12,8 +12,9 @@
     "dev:lan": "node scripts/dev-lan.mjs",
     "certs": "node scripts/make-certs.mjs",
     "serve": "tsx server/index.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.strict.json",
-    "test": "vitest run"
+    "typecheck": "tsc -b tsconfig.app.json",
+    "test": "vitest run",
+    "convert:mock": "tsx scripts/convert-mock-venue.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

@@ -30,6 +30,7 @@
     "src/ui",
     "src/editor",
     "src/markers",
+    "src/owner",
     "src/spikes",
     "server",
     "tests",

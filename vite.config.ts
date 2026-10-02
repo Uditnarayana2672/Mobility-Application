@@ -9,6 +9,7 @@ import { loadCerts } from "./server/net";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, command }) => {
   const root = __dirname;
+  try { process.loadEnvFile(path.join(root, ".env")); } catch { /* assistant stays disabled */ }
   const certs = loadCerts(root);
   if (command === "serve" && !certs) {
     console.warn("\n[indore] certs/ missing: using a throwaway self-signed cert. Run `npm run certs` (docs/https-on-phone.md) for a phone-trusted one.\n");

@@ -8,6 +8,7 @@ import { lanIps, loadCerts } from "./net";
 import { attachWs, type RealtimeHub } from "./ws";
 
 const root = process.cwd();
+try { process.loadEnvFile(path.join(root, ".env")); } catch { /* assistant stays disabled */ }
 const dist = path.join(root, "dist");
 const port = Number(process.env.PORT ?? 8443);
 
@@ -35,7 +36,7 @@ const MIME: Record<string, string> = {
 };
 
 let hub: RealtimeHub | null = null;
-const api = createApi({ root, onPublished: (kind, id, version) => hub?.notify(id, kind, id, version) });
+const api = createApi({ root, onPublished: (kind, id, version) => hub?.notify(id, kind, id, version), onReset: (id) => hub?.reset(id) });
 
 const server = https.createServer(certs, (req, res) => {
   void api(req, res, () => {

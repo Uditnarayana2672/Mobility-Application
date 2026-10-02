@@ -1,0 +1,1672 @@
+{
+  "schemaVersion": 2,
+  "id": "pg-home",
+  "name": "My PG",
+  "type": "Office / Tech park",
+  "city": "Indore",
+  "address": "Placeholder address, Indore (replace with your office)",
+  "latlng": [
+    22.7196,
+    75.8577
+  ],
+  "version": 1,
+  "status": "published",
+  "scale": {
+    "metersPerUnit": 1,
+    "calibrated": true,
+    "reference": "Corridor length 60 m (placeholder)"
+  },
+  "floors": [
+    {
+      "id": "F1",
+      "name": "Floor 1",
+      "short": "1",
+      "elevation": 0,
+      "height": 3,
+      "w": 60,
+      "h": 36
+    },
+    {
+      "id": "F2",
+      "name": "Floor 2",
+      "short": "2",
+      "elevation": 4,
+      "height": 3,
+      "w": 60,
+      "h": 36
+    }
+  ],
+  "corridors": [
+    {
+      "floor": "F1",
+      "x": 0,
+      "y": 15,
+      "w": 60,
+      "h": 4
+    },
+    {
+      "floor": "F2",
+      "x": 0,
+      "y": 15,
+      "w": 60,
+      "h": 4
+    }
+  ],
+  "rooms": [
+    {
+      "id": "F1-reception",
+      "floor": "F1",
+      "name": "Reception & Lobby",
+      "cat": "reception",
+      "x": 0,
+      "y": 0,
+      "w": 14,
+      "h": 15,
+      "door": {
+        "x": 7,
+        "y": 15,
+        "side": "N"
+      },
+      "aliases": [
+        "reception",
+        "lobby",
+        "front desk",
+        "रिसेप्शन",
+        "రిసెప్షన్"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": "Reception"
+    },
+    {
+      "id": "F1-everest",
+      "floor": "F1",
+      "name": "Meeting Room Everest",
+      "cat": "meeting",
+      "x": 14,
+      "y": 0,
+      "w": 12,
+      "h": 15,
+      "door": {
+        "x": 20,
+        "y": 15,
+        "side": "N"
+      },
+      "aliases": [
+        "everest",
+        "meeting",
+        "एवरेस्ट",
+        "ఎవరెస్ట్"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": "Everest",
+      "capacity": 10
+    },
+    {
+      "id": "F1-kailash",
+      "floor": "F1",
+      "name": "Meeting Room Kailash",
+      "cat": "meeting",
+      "x": 26,
+      "y": 0,
+      "w": 12,
+      "h": 15,
+      "door": {
+        "x": 32,
+        "y": 15,
+        "side": "N"
+      },
+      "aliases": [
+        "kailash",
+        "kailas",
+        "meeting",
+        "కైలాష్"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": "Kailash",
+      "capacity": 8
+    },
+    {
+      "id": "F1-wsa",
+      "floor": "F1",
+      "name": "Open Workspace A",
+      "cat": "workspace",
+      "x": 38,
+      "y": 0,
+      "w": 22,
+      "h": 15,
+      "door": {
+        "x": 49,
+        "y": 15,
+        "side": "N"
+      },
+      "aliases": [
+        "workspace",
+        "desk",
+        "bay",
+        "my desk",
+        "work area",
+        "వర్క్‌స్పేస్"
+      ],
+      "hours": "24×7 (card access)",
+      "access": "public",
+      "short": "Workspace A"
+    },
+    {
+      "id": "F1-wash",
+      "floor": "F1",
+      "name": "Washrooms",
+      "cat": "washroom",
+      "x": 0,
+      "y": 19,
+      "w": 9,
+      "h": 17,
+      "door": {
+        "x": 4.5,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "washroom",
+        "toilet",
+        "restroom",
+        "bathroom",
+        "loo",
+        "shauchalay",
+        "वॉशरूम",
+        "టాయిలెట్",
+        "వాష్‌రూమ్",
+        "బాత్రూమ్"
+      ],
+      "hours": "24×7",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-lift",
+      "floor": "F1",
+      "name": "Lift Lobby (Lifts A & B)",
+      "cat": "vertical",
+      "x": 9,
+      "y": 19,
+      "w": 10,
+      "h": 17,
+      "door": {
+        "x": 14,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "lift",
+        "elevator",
+        "లిఫ్ట్",
+        "लिफ्ट"
+      ],
+      "hours": "24×7",
+      "access": "public",
+      "short": "Lifts",
+      "icon": "🛗",
+      "kind": "lift"
+    },
+    {
+      "id": "F1-stairs",
+      "floor": "F1",
+      "name": "Staircase S1",
+      "cat": "vertical",
+      "x": 19,
+      "y": 19,
+      "w": 8,
+      "h": 17,
+      "door": {
+        "x": 23,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "stairs",
+        "staircase",
+        "seedhi",
+        "seedhiyan",
+        "మెట్లు",
+        "सीढ़ी"
+      ],
+      "hours": "24×7",
+      "access": "public",
+      "short": "Stairs S1",
+      "icon": "🪜",
+      "kind": "stairs"
+    },
+    {
+      "id": "F1-pantry",
+      "floor": "F1",
+      "name": "Pantry",
+      "cat": "food",
+      "x": 27,
+      "y": 19,
+      "w": 10,
+      "h": 17,
+      "door": {
+        "x": 32,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "pantry",
+        "tea",
+        "chai",
+        "coffee",
+        "water",
+        "चाय",
+        "పాంట్రీ",
+        "టీ"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-training",
+      "floor": "F1",
+      "name": "Training Room",
+      "cat": "training",
+      "x": 37,
+      "y": 19,
+      "w": 12,
+      "h": 17,
+      "door": {
+        "x": 43,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "training",
+        "classroom",
+        "ట్రైనింగ్"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": "Training",
+      "capacity": 24
+    },
+    {
+      "id": "F1-server",
+      "floor": "F1",
+      "name": "Server Room",
+      "cat": "restricted",
+      "x": 49,
+      "y": 19,
+      "w": 11,
+      "h": 17,
+      "door": {
+        "x": 54.5,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "server",
+        "data room",
+        "సర్వర్"
+      ],
+      "hours": "Staff only",
+      "access": "staff",
+      "short": "Server"
+    },
+    {
+      "id": "F2-himalaya",
+      "floor": "F2",
+      "name": "Meeting Room Himalaya",
+      "cat": "meeting",
+      "x": 0,
+      "y": 0,
+      "w": 14,
+      "h": 15,
+      "door": {
+        "x": 7,
+        "y": 15,
+        "side": "N"
+      },
+      "aliases": [
+        "himalaya",
+        "meeting",
+        "హిమాలయ"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": "Himalaya",
+      "capacity": 12
+    },
+    {
+      "id": "F2-cafeteria",
+      "floor": "F2",
+      "name": "Cafeteria",
+      "cat": "food",
+      "x": 14,
+      "y": 0,
+      "w": 24,
+      "h": 15,
+      "door": {
+        "x": 26,
+        "y": 15,
+        "side": "N"
+      },
+      "aliases": [
+        "cafeteria",
+        "canteen",
+        "cafe",
+        "food",
+        "khana",
+        "bhojan",
+        "lunch",
+        "tiffin",
+        "कैंटीन",
+        "खाना",
+        "కేఫ్‌టేరియా",
+        "క్యాంటీన్",
+        "క్యాంటిన్",
+        "భోజనం",
+        "కేఫ్"
+      ],
+      "hours": "8:00 – 20:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-hr",
+      "floor": "F2",
+      "name": "HR & Admin",
+      "cat": "admin",
+      "x": 38,
+      "y": 0,
+      "w": 10,
+      "h": 15,
+      "door": {
+        "x": 43,
+        "y": 15,
+        "side": "N"
+      },
+      "aliases": [
+        "hr",
+        "human resources",
+        "admin",
+        "హెచ్ఆర్"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": "HR"
+    },
+    {
+      "id": "F2-wsb",
+      "floor": "F2",
+      "name": "Open Workspace B",
+      "cat": "workspace",
+      "x": 48,
+      "y": 0,
+      "w": 12,
+      "h": 15,
+      "door": {
+        "x": 54,
+        "y": 15,
+        "side": "N"
+      },
+      "aliases": [
+        "workspace",
+        "desk",
+        "bay",
+        "work area",
+        "వర్క్‌స్పేస్"
+      ],
+      "hours": "24×7 (card access)",
+      "access": "public",
+      "short": "Workspace B"
+    },
+    {
+      "id": "F2-wash",
+      "floor": "F2",
+      "name": "Washrooms",
+      "cat": "washroom",
+      "x": 0,
+      "y": 19,
+      "w": 9,
+      "h": 17,
+      "door": {
+        "x": 4.5,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "washroom",
+        "toilet",
+        "restroom",
+        "bathroom",
+        "loo",
+        "shauchalay",
+        "वॉशरूम",
+        "టాయిలెట్",
+        "వాష్‌రూమ్",
+        "బాత్రూమ్"
+      ],
+      "hours": "24×7",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-lift",
+      "floor": "F2",
+      "name": "Lift Lobby (Lifts A & B)",
+      "cat": "vertical",
+      "x": 9,
+      "y": 19,
+      "w": 10,
+      "h": 17,
+      "door": {
+        "x": 14,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "lift",
+        "elevator",
+        "లిఫ్ట్",
+        "लिफ्ट"
+      ],
+      "hours": "24×7",
+      "access": "public",
+      "short": "Lifts",
+      "icon": "🛗",
+      "kind": "lift"
+    },
+    {
+      "id": "F2-stairs",
+      "floor": "F2",
+      "name": "Staircase S1",
+      "cat": "vertical",
+      "x": 19,
+      "y": 19,
+      "w": 8,
+      "h": 17,
+      "door": {
+        "x": 23,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "stairs",
+        "staircase",
+        "seedhi",
+        "seedhiyan",
+        "మెట్లు",
+        "सीढ़ी"
+      ],
+      "hours": "24×7",
+      "access": "public",
+      "short": "Stairs S1",
+      "icon": "🪜",
+      "kind": "stairs"
+    },
+    {
+      "id": "F2-pantry",
+      "floor": "F2",
+      "name": "Pantry",
+      "cat": "food",
+      "x": 27,
+      "y": 19,
+      "w": 10,
+      "h": 17,
+      "door": {
+        "x": 32,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "pantry",
+        "tea",
+        "chai",
+        "coffee",
+        "water",
+        "चाय",
+        "పాంట్రీ",
+        "టీ"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-quiet",
+      "floor": "F2",
+      "name": "Phone Booths & Quiet Zone",
+      "cat": "workspace",
+      "x": 37,
+      "y": 19,
+      "w": 12,
+      "h": 17,
+      "door": {
+        "x": 43,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "quiet",
+        "phone booth",
+        "call"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": "Quiet Zone"
+    },
+    {
+      "id": "F2-wellness",
+      "floor": "F2",
+      "name": "Wellness Room",
+      "cat": "wellness",
+      "x": 49,
+      "y": 19,
+      "w": 11,
+      "h": 17,
+      "door": {
+        "x": 54.5,
+        "y": 19,
+        "side": "S"
+      },
+      "aliases": [
+        "wellness",
+        "yoga",
+        "rest",
+        "meditation",
+        "వెల్నెస్"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": "Wellness"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "F1:c0",
+      "floor": "F1",
+      "x": 0,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c3",
+      "floor": "F1",
+      "x": 3,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c4.5",
+      "floor": "F1",
+      "x": 4.5,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c7",
+      "floor": "F1",
+      "x": 7,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c11",
+      "floor": "F1",
+      "x": 11,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c14",
+      "floor": "F1",
+      "x": 14,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c20",
+      "floor": "F1",
+      "x": 20,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c21",
+      "floor": "F1",
+      "x": 21,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c23",
+      "floor": "F1",
+      "x": 23,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c32",
+      "floor": "F1",
+      "x": 32,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c43",
+      "floor": "F1",
+      "x": 43,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c45",
+      "floor": "F1",
+      "x": 45,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c49",
+      "floor": "F1",
+      "x": 49,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c54.5",
+      "floor": "F1",
+      "x": 54.5,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:c60",
+      "floor": "F1",
+      "x": 60,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c0",
+      "floor": "F2",
+      "x": 0,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c4.5",
+      "floor": "F2",
+      "x": 4.5,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c7",
+      "floor": "F2",
+      "x": 7,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c11",
+      "floor": "F2",
+      "x": 11,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c14",
+      "floor": "F2",
+      "x": 14,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c21",
+      "floor": "F2",
+      "x": 21,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c23",
+      "floor": "F2",
+      "x": 23,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c26",
+      "floor": "F2",
+      "x": 26,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c29",
+      "floor": "F2",
+      "x": 29,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c32",
+      "floor": "F2",
+      "x": 32,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c43",
+      "floor": "F2",
+      "x": 43,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c45",
+      "floor": "F2",
+      "x": 45,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c54",
+      "floor": "F2",
+      "x": 54,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c54.5",
+      "floor": "F2",
+      "x": 54.5,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:c60",
+      "floor": "F2",
+      "x": 60,
+      "y": 17,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1-reception:door",
+      "floor": "F1",
+      "x": 7,
+      "y": 15,
+      "kind": "door",
+      "room": "F1-reception"
+    },
+    {
+      "id": "F1-reception",
+      "floor": "F1",
+      "x": 7,
+      "y": 7.5,
+      "kind": "room",
+      "room": "F1-reception"
+    },
+    {
+      "id": "F1-everest:door",
+      "floor": "F1",
+      "x": 20,
+      "y": 15,
+      "kind": "door",
+      "room": "F1-everest"
+    },
+    {
+      "id": "F1-everest",
+      "floor": "F1",
+      "x": 20,
+      "y": 7.5,
+      "kind": "room",
+      "room": "F1-everest"
+    },
+    {
+      "id": "F1-kailash:door",
+      "floor": "F1",
+      "x": 32,
+      "y": 15,
+      "kind": "door",
+      "room": "F1-kailash"
+    },
+    {
+      "id": "F1-kailash",
+      "floor": "F1",
+      "x": 32,
+      "y": 7.5,
+      "kind": "room",
+      "room": "F1-kailash"
+    },
+    {
+      "id": "F1-wsa:door",
+      "floor": "F1",
+      "x": 49,
+      "y": 15,
+      "kind": "door",
+      "room": "F1-wsa"
+    },
+    {
+      "id": "F1-wsa",
+      "floor": "F1",
+      "x": 49,
+      "y": 7.5,
+      "kind": "room",
+      "room": "F1-wsa"
+    },
+    {
+      "id": "F1-wash:door",
+      "floor": "F1",
+      "x": 4.5,
+      "y": 19,
+      "kind": "door",
+      "room": "F1-wash"
+    },
+    {
+      "id": "F1-wash",
+      "floor": "F1",
+      "x": 4.5,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F1-wash"
+    },
+    {
+      "id": "F1-lift:door",
+      "floor": "F1",
+      "x": 14,
+      "y": 19,
+      "kind": "door",
+      "room": "F1-lift"
+    },
+    {
+      "id": "F1-lift",
+      "floor": "F1",
+      "x": 14,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F1-lift"
+    },
+    {
+      "id": "F1-stairs:door",
+      "floor": "F1",
+      "x": 23,
+      "y": 19,
+      "kind": "door",
+      "room": "F1-stairs"
+    },
+    {
+      "id": "F1-stairs",
+      "floor": "F1",
+      "x": 23,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F1-stairs"
+    },
+    {
+      "id": "F1-pantry:door",
+      "floor": "F1",
+      "x": 32,
+      "y": 19,
+      "kind": "door",
+      "room": "F1-pantry"
+    },
+    {
+      "id": "F1-pantry",
+      "floor": "F1",
+      "x": 32,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F1-pantry"
+    },
+    {
+      "id": "F1-training:door",
+      "floor": "F1",
+      "x": 43,
+      "y": 19,
+      "kind": "door",
+      "room": "F1-training"
+    },
+    {
+      "id": "F1-training",
+      "floor": "F1",
+      "x": 43,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F1-training"
+    },
+    {
+      "id": "F1-server:door",
+      "floor": "F1",
+      "x": 54.5,
+      "y": 19,
+      "kind": "door",
+      "room": "F1-server"
+    },
+    {
+      "id": "F1-server",
+      "floor": "F1",
+      "x": 54.5,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F1-server"
+    },
+    {
+      "id": "F2-himalaya:door",
+      "floor": "F2",
+      "x": 7,
+      "y": 15,
+      "kind": "door",
+      "room": "F2-himalaya"
+    },
+    {
+      "id": "F2-himalaya",
+      "floor": "F2",
+      "x": 7,
+      "y": 7.5,
+      "kind": "room",
+      "room": "F2-himalaya"
+    },
+    {
+      "id": "F2-cafeteria:door",
+      "floor": "F2",
+      "x": 26,
+      "y": 15,
+      "kind": "door",
+      "room": "F2-cafeteria"
+    },
+    {
+      "id": "F2-cafeteria",
+      "floor": "F2",
+      "x": 26,
+      "y": 7.5,
+      "kind": "room",
+      "room": "F2-cafeteria"
+    },
+    {
+      "id": "F2-hr:door",
+      "floor": "F2",
+      "x": 43,
+      "y": 15,
+      "kind": "door",
+      "room": "F2-hr"
+    },
+    {
+      "id": "F2-hr",
+      "floor": "F2",
+      "x": 43,
+      "y": 7.5,
+      "kind": "room",
+      "room": "F2-hr"
+    },
+    {
+      "id": "F2-wsb:door",
+      "floor": "F2",
+      "x": 54,
+      "y": 15,
+      "kind": "door",
+      "room": "F2-wsb"
+    },
+    {
+      "id": "F2-wsb",
+      "floor": "F2",
+      "x": 54,
+      "y": 7.5,
+      "kind": "room",
+      "room": "F2-wsb"
+    },
+    {
+      "id": "F2-wash:door",
+      "floor": "F2",
+      "x": 4.5,
+      "y": 19,
+      "kind": "door",
+      "room": "F2-wash"
+    },
+    {
+      "id": "F2-wash",
+      "floor": "F2",
+      "x": 4.5,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F2-wash"
+    },
+    {
+      "id": "F2-lift:door",
+      "floor": "F2",
+      "x": 14,
+      "y": 19,
+      "kind": "door",
+      "room": "F2-lift"
+    },
+    {
+      "id": "F2-lift",
+      "floor": "F2",
+      "x": 14,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F2-lift"
+    },
+    {
+      "id": "F2-stairs:door",
+      "floor": "F2",
+      "x": 23,
+      "y": 19,
+      "kind": "door",
+      "room": "F2-stairs"
+    },
+    {
+      "id": "F2-stairs",
+      "floor": "F2",
+      "x": 23,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F2-stairs"
+    },
+    {
+      "id": "F2-pantry:door",
+      "floor": "F2",
+      "x": 32,
+      "y": 19,
+      "kind": "door",
+      "room": "F2-pantry"
+    },
+    {
+      "id": "F2-pantry",
+      "floor": "F2",
+      "x": 32,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F2-pantry"
+    },
+    {
+      "id": "F2-quiet:door",
+      "floor": "F2",
+      "x": 43,
+      "y": 19,
+      "kind": "door",
+      "room": "F2-quiet"
+    },
+    {
+      "id": "F2-quiet",
+      "floor": "F2",
+      "x": 43,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F2-quiet"
+    },
+    {
+      "id": "F2-wellness:door",
+      "floor": "F2",
+      "x": 54.5,
+      "y": 19,
+      "kind": "door",
+      "room": "F2-wellness"
+    },
+    {
+      "id": "F2-wellness",
+      "floor": "F2",
+      "x": 54.5,
+      "y": 27.5,
+      "kind": "room",
+      "room": "F2-wellness"
+    }
+  ],
+  "edges": [
+    {
+      "a": "F1:c0",
+      "b": "F1:c3",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c3",
+      "b": "F1:c4.5",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c4.5",
+      "b": "F1:c7",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c7",
+      "b": "F1:c11",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c11",
+      "b": "F1:c14",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c14",
+      "b": "F1:c20",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c20",
+      "b": "F1:c21",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c21",
+      "b": "F1:c23",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c23",
+      "b": "F1:c32",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c32",
+      "b": "F1:c43",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c43",
+      "b": "F1:c45",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c45",
+      "b": "F1:c49",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c49",
+      "b": "F1:c54.5",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c54.5",
+      "b": "F1:c60",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c0",
+      "b": "F2:c4.5",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c4.5",
+      "b": "F2:c7",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c7",
+      "b": "F2:c11",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c11",
+      "b": "F2:c14",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c14",
+      "b": "F2:c21",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c21",
+      "b": "F2:c23",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c23",
+      "b": "F2:c26",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c26",
+      "b": "F2:c29",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c29",
+      "b": "F2:c32",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c32",
+      "b": "F2:c43",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c43",
+      "b": "F2:c45",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c45",
+      "b": "F2:c54",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c54",
+      "b": "F2:c54.5",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c54.5",
+      "b": "F2:c60",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c7",
+      "b": "F1-reception:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-reception:door",
+      "b": "F1-reception",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c20",
+      "b": "F1-everest:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-everest:door",
+      "b": "F1-everest",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c32",
+      "b": "F1-kailash:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-kailash:door",
+      "b": "F1-kailash",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c49",
+      "b": "F1-wsa:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-wsa:door",
+      "b": "F1-wsa",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c4.5",
+      "b": "F1-wash:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-wash:door",
+      "b": "F1-wash",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c14",
+      "b": "F1-lift:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-lift:door",
+      "b": "F1-lift",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c23",
+      "b": "F1-stairs:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-stairs:door",
+      "b": "F1-stairs",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c32",
+      "b": "F1-pantry:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-pantry:door",
+      "b": "F1-pantry",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c43",
+      "b": "F1-training:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-training:door",
+      "b": "F1-training",
+      "type": "walk"
+    },
+    {
+      "a": "F1:c54.5",
+      "b": "F1-server:door",
+      "type": "walk"
+    },
+    {
+      "a": "F1-server:door",
+      "b": "F1-server",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c7",
+      "b": "F2-himalaya:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-himalaya:door",
+      "b": "F2-himalaya",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c26",
+      "b": "F2-cafeteria:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-cafeteria:door",
+      "b": "F2-cafeteria",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c43",
+      "b": "F2-hr:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-hr:door",
+      "b": "F2-hr",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c54",
+      "b": "F2-wsb:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-wsb:door",
+      "b": "F2-wsb",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c4.5",
+      "b": "F2-wash:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-wash:door",
+      "b": "F2-wash",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c14",
+      "b": "F2-lift:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-lift:door",
+      "b": "F2-lift",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c23",
+      "b": "F2-stairs:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-stairs:door",
+      "b": "F2-stairs",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c32",
+      "b": "F2-pantry:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-pantry:door",
+      "b": "F2-pantry",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c43",
+      "b": "F2-quiet:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-quiet:door",
+      "b": "F2-quiet",
+      "type": "walk"
+    },
+    {
+      "a": "F2:c54.5",
+      "b": "F2-wellness:door",
+      "type": "walk"
+    },
+    {
+      "a": "F2-wellness:door",
+      "b": "F2-wellness",
+      "type": "walk"
+    },
+    {
+      "a": "F1-stairs",
+      "b": "F2-stairs",
+      "type": "stairs",
+      "len": 6,
+      "upSec": 18,
+      "downSec": 12
+    },
+    {
+      "a": "F1-lift",
+      "b": "F2-lift",
+      "type": "lift",
+      "len": 6,
+      "upSec": 44,
+      "downSec": 44
+    }
+  ],
+  "markers": [
+    {
+      "id": 1,
+      "floor": "F1",
+      "name": "Main entrance / Reception",
+      "x": 3,
+      "y": 15,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": "On reception wall beside the entrance"
+    },
+    {
+      "id": 2,
+      "floor": "F1",
+      "name": "Lift lobby (Floor 1)",
+      "x": 11,
+      "y": 19,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": "Beside the lift lobby doorway"
+    },
+    {
+      "id": 3,
+      "floor": "F1",
+      "name": "Stairs door (Floor 1)",
+      "x": 21,
+      "y": 19,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": "Next to the staircase door"
+    },
+    {
+      "id": 4,
+      "floor": "F1",
+      "name": "East corridor junction",
+      "x": 45,
+      "y": 15,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": "Outside Open Workspace A"
+    },
+    {
+      "id": 5,
+      "floor": "F2",
+      "name": "Stairs door (Floor 2)",
+      "x": 21,
+      "y": 19,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": "Next to the staircase door"
+    },
+    {
+      "id": 6,
+      "floor": "F2",
+      "name": "Lift lobby (Floor 2)",
+      "x": 11,
+      "y": 19,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": "Beside the lift lobby doorway"
+    },
+    {
+      "id": 7,
+      "floor": "F2",
+      "name": "Cafeteria entrance",
+      "x": 29,
+      "y": 15,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": "On the wall beside the cafeteria door"
+    },
+    {
+      "id": 8,
+      "floor": "F2",
+      "name": "East corridor junction",
+      "x": 45,
+      "y": 15,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": "Outside HR & Admin"
+    }
+  ],
+  "walls": [
+    {
+      "id": "W01",
+      "floor": "F1",
+      "label": "Blank wall outside Everest",
+      "x1": 15,
+      "y1": 15,
+      "x2": 18,
+      "y2": 15,
+      "normal": 180,
+      "bottom": 1,
+      "height": 1.6,
+      "approved": true
+    },
+    {
+      "id": "W02",
+      "floor": "F1",
+      "label": "Corridor wall near Training Room",
+      "x1": 38.5,
+      "y1": 19,
+      "x2": 41.5,
+      "y2": 19,
+      "normal": 0,
+      "bottom": 1,
+      "height": 1.6,
+      "approved": true
+    },
+    {
+      "id": "W03",
+      "floor": "F2",
+      "label": "Wall near Cafeteria (south side)",
+      "x1": 28,
+      "y1": 19,
+      "x2": 31,
+      "y2": 19,
+      "normal": 0,
+      "bottom": 1,
+      "height": 1.6,
+      "approved": true
+    }
+  ],
+  "pois": [
+    {
+      "id": "P01",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Main Entrance",
+      "x": 1,
+      "y": 17
+    },
+    {
+      "id": "P02",
+      "floor": "F1",
+      "kind": "water",
+      "name": "Water cooler",
+      "x": 33,
+      "y": 16
+    },
+    {
+      "id": "P03",
+      "floor": "F1",
+      "kind": "printer",
+      "name": "Printer",
+      "x": 41,
+      "y": 16
+    },
+    {
+      "id": "P04",
+      "floor": "F1",
+      "kind": "exit",
+      "name": "Fire exit",
+      "x": 59,
+      "y": 17
+    },
+    {
+      "id": "P05",
+      "floor": "F2",
+      "kind": "coffee",
+      "name": "Coffee counter",
+      "x": 30,
+      "y": 3
+    },
+    {
+      "id": "P06",
+      "floor": "F2",
+      "kind": "water",
+      "name": "Water cooler",
+      "x": 33,
+      "y": 16
+    },
+    {
+      "id": "P07",
+      "floor": "F2",
+      "kind": "exit",
+      "name": "Fire exit",
+      "x": 59,
+      "y": 17
+    },
+    {
+      "id": "P08",
+      "floor": "F2",
+      "kind": "firstaid",
+      "name": "First aid",
+      "x": 44,
+      "y": 16
+    }
+  ]
+}

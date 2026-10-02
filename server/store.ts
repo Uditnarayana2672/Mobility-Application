@@ -65,6 +65,11 @@ export class DocStore {
     await writeJson(path.join(this.dir(id), "draft.json"), doc);
   }
 
+  /** Replace the live document without creating a content version (used for mutable campaign counters). */
+  async putPublished(id: string, doc: unknown): Promise<void> {
+    await writeJson(path.join(this.dir(id), "published.json"), doc);
+  }
+
   /** Archive + replace the published document. Returns the stored (version-bumped) document. */
   async publish<T extends Versioned>(id: string, doc: T): Promise<T> {
     const prev = await this.getPublished<Versioned>(id);

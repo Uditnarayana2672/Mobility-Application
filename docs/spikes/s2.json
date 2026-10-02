@@ -1,0 +1,30 @@
+{
+  "savedAt": "2026-10-02T12:20:09.382Z",
+  "spike": "s2",
+  "userAgent": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36",
+  "results": {
+    "arSupported": true,
+    "markerSizeMm": 120,
+    "dictionary": "IND_4X4_50 (custom generated, see src/spikes/aruco/dict.ts)",
+    "pathUsed": "A",
+    "fallbackBHfovDeg": null,
+    "stats": {
+      "frames": 87,
+      "processed": 18,
+      "detections": 0,
+      "flipY": false,
+      "firstDetectionMs": null,
+      "lastMs": 8584,
+      "cameraFrames": 18
+    },
+    "samples": [],
+    "notes": ""
+  },
+  "log": [
+    "17:50:07 record: need a visible marker and a tape distance in metres",
+    "17:50:06 calibrate: start fallback B and keep the marker in view, face-on, at exactly 1.00 m",
+    "17:50:01 calibrate: start fallback B and keep the marker in view, face-on, at exactly 1.00 m",
+    "17:49:58 session ended",
+    "17:49:51 enabled features: local, camera-access, viewer, dom-overlay"
+  ]
+}

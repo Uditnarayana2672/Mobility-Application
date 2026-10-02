@@ -10,7 +10,7 @@ export function indoreServer(root: string): Plugin {
     configureServer(server) {
       let hub: RealtimeHub | null = null;
       if (server.httpServer) hub = attachWs(server.httpServer as unknown as Server, { root });
-      server.middlewares.use(createApi({ root, onPublished: (kind, id, version) => hub?.notify(id, kind, id, version) }));
+      server.middlewares.use(createApi({ root, onPublished: (kind, id, version) => hub?.notify(id, kind, id, version), onReset: (id) => hub?.reset(id) }));
     },
   };
 }

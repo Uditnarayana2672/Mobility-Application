@@ -34,7 +34,10 @@ export class SessionStore {
     const dir = this.dir(venue);
     fs.mkdirSync(dir, { recursive: true });
     const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\..*$/, "");
-    const file = `${stamp}-${device.replace(SAFE_DEVICE, "_").slice(0, 40) || "device"}.jsonl`;
+    const safeDevice = device.replace(SAFE_DEVICE, "_").slice(0, 40) || "device";
+    let file = `${stamp}-${safeDevice}.jsonl`;
+    let suffix = 1;
+    while (fs.existsSync(path.join(dir, file))) file = `${stamp}-${safeDevice}-${suffix++}.jsonl`;
     const full = path.join(dir, file);
     return {
       file,

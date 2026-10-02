@@ -35,6 +35,8 @@ export interface RealtimeHub {
   wss: WebSocketServer;
   /** Server push: tell every client in a room that something was republished ("venue" | "campaigns"). */
   notify(room: string, type: "venue" | "campaigns", venue: string, version: number): void;
+  /** Clear replay state and command phones/dashboards in the room back to their demo start. */
+  reset(room: string): void;
   close(): void;
 }
 
@@ -151,6 +153,14 @@ export function attachWs(server: Server, opts: WsOptions = {}): RealtimeHub {
     notify(room, type, venue, version) {
       const text = JSON.stringify({ type, payload: { venue, version, at: Date.now() }, deviceId: "server", t: Date.now() });
       for (const c of rooms.get(room) ?? []) if (c.ws.readyState === WebSocket.OPEN) c.ws.send(text);
+    },
+    reset(room) {
+      state.delete(room);
+      const text = JSON.stringify({ type: "reset", payload: { venue: room, at: Date.now() }, deviceId: "server", t: Date.now() });
+      for (const c of rooms.get(room) ?? []) {
+        c.rec = null;
+        if (c.ws.readyState === WebSocket.OPEN) c.ws.send(text);
+      }
     },
     close() {
       clearInterval(beat);

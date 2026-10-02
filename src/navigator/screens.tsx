@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { arrivedText } from "@/core/instructions";
 import type { NavController, NavState } from "./controller";
+import { LiveLocate } from "./LiveUi";
 import { floorName } from "./places";
+import type { NavRuntime } from "./useNav";
 
 type P = { ctl: NavController; s: NavState };
 
@@ -118,29 +120,33 @@ function ScanQR() {
   );
 }
 
-export function LocateScreen({ ctl, s }: P) {
+export function LocateScreen({ ctl, s, rt }: P & { rt: NavRuntime }) {
   const v = s.venue;
+  const live = rt.kind !== "sim";
   return (
-    <section className={`scr ${s.screen === "locate" ? "on" : ""}`} id="s-locate" data-testid="screen-locate">
+    <section className={`scr ${s.screen === "locate" ? "on" : ""} ${live ? `live ${rt.kind}` : ""}`} id="s-locate" data-testid="screen-locate">
+      {live && s.screen === "locate" && <LiveLocate rt={rt} ctl={ctl} s={s} />}
       <div className="viewfinder">
         <svg className="vf-corridor" viewBox="0 0 340 340" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="2">
           <path d="M20,330 L120,120 L220,120 L320,330" />
           <path d="M120,120 L120,60 L220,60 L220,120" />
           <path d="M60,330 L140,150 M280,330 L200,150" />
         </svg>
-        <div className="scanbox">
-          <i /><i /><i /><i />
-          <div className="scanline" />
-          <ScanQR />
-        </div>
+        {!live && (
+          <div className="scanbox">
+            <i /><i /><i /><i />
+            <div className="scanline" />
+            <ScanQR />
+          </div>
+        )}
       </div>
       <div className="locate-title">
         <div style={{ fontSize: 20, fontWeight: 800 }}>Where are you?</div>
         <div style={{ opacity: 0.8, fontSize: 13.5, marginTop: 4 }}>Point the camera at any marker sticker on a wall</div>
       </div>
       <div className="locate-bottom">
-        <div className="small" style={{ opacity: 0.75, marginBottom: 4 }}>DEMO · tap a marker to simulate scanning it</div>
-        <div className="chipscroll" data-testid="marker-chips">
+        {!live && <div className="small" style={{ opacity: 0.75, marginBottom: 4 }}>DEMO · tap a marker to simulate scanning it</div>}
+        <div className="chipscroll" data-testid="marker-chips" style={live ? { display: "none" } : undefined}>
           {v.markers.map((m) => (
             <button key={m.id} className="mchip" data-marker={m.id} onClick={() => ctl.scanMarker(m.id, true)}>
               {m.id}

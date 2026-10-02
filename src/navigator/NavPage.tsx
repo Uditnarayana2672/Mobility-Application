@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useVenue, type VenueSource } from "@/shared/useVenue";
 import type { Venue } from "@/core/schema";
 import DemoPanel from "./DemoPanel";
+import { DebugOverlay, LiveHud, ScanSheet } from "./LiveUi";
 import MapScreen from "./MapScreen";
 import { CaptionToast, FloorPromptOverlay, SearchOverlay, TransitionOverlay, VoiceOverlay } from "./Overlays";
 import { ArStubScreen, ArrivedScreen, CityScreen, LocateScreen } from "./screens";
@@ -10,13 +11,14 @@ import { useNav } from "./useNav";
 import "./nav.css";
 
 function NavApp({ venue, source }: { venue: Venue; source: VenueSource }) {
-  const { rt, state: s } = useNav(venue, source);
+  const root = useRef<HTMLDivElement>(null);
+  const { rt, state: s } = useNav(venue, source, root);
   const { ctl } = rt;
-  const demo = new URLSearchParams(window.location.search).get("demo") === "1";
+  const demo = rt.cfg.demo;
   const [panel, setPanel] = useState(false);
   const light = s.screen === "locate" || s.screen === "ar";
   return (
-    <div className={`is-nav ${demo ? "demo" : ""}`} data-testid="nav-root" data-screen={s.screen} data-mode={s.mode}>
+    <div ref={root} className={`is-nav ${demo ? "demo" : ""}`} data-testid="nav-root" data-pose={rt.kind} data-screen={s.screen} data-mode={s.mode}>
       <DemoPanel rt={rt} s={s} open={panel} onClose={() => setPanel(false)} />
       <div className="phone-wrap">
         <div className="phone">
@@ -24,7 +26,7 @@ function NavApp({ venue, source }: { venue: Venue; source: VenueSource }) {
           <div className="screen">
             <div className={`statusbar ${light ? "light" : ""}`}><span>9:41</span><span>5G ▂▄▆ 🔋</span></div>
             <CityScreen ctl={ctl} s={s} />
-            <LocateScreen ctl={ctl} s={s} />
+            <LocateScreen ctl={ctl} s={s} rt={rt} />
             <MapScreen ctl={ctl} s={s} />
             <ArStubScreen ctl={ctl} s={s} />
             <ArrivedScreen ctl={ctl} s={s} />
@@ -32,6 +34,9 @@ function NavApp({ venue, source }: { venue: Venue; source: VenueSource }) {
             {s.overlay === "voice" && <VoiceOverlay ctl={ctl} s={s} />}
             <TransitionOverlay ctl={ctl} s={s} />
             <FloorPromptOverlay ctl={ctl} s={s} />
+            <LiveHud rt={rt} ctl={ctl} s={s} />
+            <ScanSheet rt={rt} ctl={ctl} s={s} />
+            {rt.cfg.debug && <DebugOverlay rt={rt} ctl={ctl} s={s} />}
             <CaptionToast s={s} />
             {demo && <button className="demo-fab" data-testid="demo-fab" aria-label="demo controls" onClick={() => setPanel(true)}>🎬</button>}
           </div>

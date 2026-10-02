@@ -79,7 +79,7 @@ export default function DemoPanel({ rt, s, open, onClose }: { rt: NavRuntime; s:
   const dashboard = () => window.open("/dashboard", "is-dashboard", "width=1280,height=820");
   const reset = () => {
     ctl.resetDemo();
-    rt.bus.clearSnapshot();
+    rt.bc?.clearSnapshot();
     window.location.href = window.location.pathname + window.location.search;
   };
   return (

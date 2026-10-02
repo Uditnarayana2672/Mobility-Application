@@ -4,7 +4,7 @@ import type { Route } from "@/core/route";
 import type { Venue } from "@/core/schema";
 import { poseFromMarker } from "@/core/poseFromMarker";
 import { bearingDelta, bearingToVector, normaliseBearing } from "@/shared/frame";
-import type { Pose, PoseListener, PoseSource } from "./poseSource";
+import type { ControllerPoseSource, Pose, PoseListener } from "./poseSource";
 import { snapToRoute } from "./session";
 
 export type SimMode = "auto" | "manual";
@@ -45,7 +45,8 @@ const TURN_DEG_PER_SEC = 100;
  * Laptop simulator: a virtual walker producing the same Pose stream the real sensors will in Phase 3.
  * All time comes in through tick(dtSec), so it is deterministic and unit-testable; the browser drives it from ticker.ts.
  */
-export class SimPoseSource implements PoseSource {
+export class SimPoseSource implements ControllerPoseSource {
+  readonly kind = "sim" as const;
   private readonly listeners = new Set<PoseListener>();
   private running = false;
   private pose: Pose;

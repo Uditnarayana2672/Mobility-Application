@@ -7,10 +7,10 @@ import { alternatives, isRouteError, route as computeRoute, type Route, type Rou
 import type { Venue } from "@/core/schema";
 import { EXAMPLES, MSG } from "./messages";
 import { floorName, nearName, placeOf, type Place } from "./places";
-import type { Pose } from "./poseSource";
+import type { ControllerPoseSource, Pose, PoseDebug, PoseKind } from "./poseSource";
 import { RuleIntentResolver, type IntentResolver } from "./intentResolver";
 import { advance, createSession, snapshot, type SessionEvent, type SessionSnapshot, type SessionState } from "./session";
-import type { SimPoseSource, SimStatus } from "./simPose";
+import type { SimStatus } from "./simPose";
 import type { Caption, SpeechOut } from "./speech";
 
 export type Screen = "city" | "locate" | "map" | "arrived" | "ar";
@@ -61,6 +61,10 @@ export interface NavState {
   route: Route | null;
   snap: SessionSnapshot | null;
   sim: SimStatus;
+  /** Which pose source drives the dot: simulator, WebXR or step counting. */
+  poseKind: PoseKind;
+  /** The camera scan sheet is open (PDR re-anchoring mid-walk). */
+  scanning: boolean;
   floorPrompt: { floor: string; autoInSec: number | null } | null;
   overlay: Overlay;
   searchSeed: string;
@@ -76,7 +80,7 @@ export interface NavState {
 export interface NavDeps {
   venue: Venue;
   venueSource?: "api" | "bundled";
-  sim: SimPoseSource;
+  sim: ControllerPoseSource;
   speech: SpeechOut;
   bus: Bus;
   resolver?: IntentResolver;
@@ -96,8 +100,8 @@ const prefsFor = (via: "stairs" | "lift" | null, base: { avoidStairs: boolean })
 export class NavController {
   private st: NavState;
   private readonly listeners = new Set<() => void>();
-  private readonly v: Venue;
-  private readonly sim: SimPoseSource;
+  private v: Venue;
+  private readonly sim: ControllerPoseSource;
   private readonly speech: SpeechOut;
   private readonly bus: Bus;
   private readonly resolver: IntentResolver;
@@ -138,6 +142,8 @@ export class NavController {
       route: null,
       snap: null,
       sim: deps.sim.getStatus(),
+      poseKind: deps.sim.kind,
+      scanning: false,
       floorPrompt: null,
       overlay: "none",
       searchSeed: "",
@@ -275,11 +281,34 @@ export class NavController {
     this.located = true;
   }
   private located = false;
+  private lastAnchorAt: number | null = null;
+  private pendingVenue: Venue | null = null;
+  /** True when poses come from the phone (XR / step counting) rather than the laptop simulator. */
+  private get live(): boolean {
+    return this.sim.kind !== "sim";
+  }
 
   /* ------------------------------------------------------------------ pose pipeline */
   private onPose(p: Pose): void {
-    if (!this.located) return; // the simulator warms up before the first scan; nothing is known yet
+    if (!this.located) {
+      // The simulator warms up before the first (tapped) scan; a live source has nothing until it has seen a marker: ignore all but that fix.
+      if (!this.live || p.source !== "marker" || p.markerId === null) return;
+      this.setLocated();
+      this.patch({ user: p });
+      const m = this.v.markers.find((x) => x.id === p.markerId);
+      if (this.live && m) this.toast(`✅ Marker ${m.id} recognised · ${this.fl(m.floor)} · ±${p.acc.toFixed(1)} m`);
+      if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
+    } else if (this.live && p.source === "marker" && p.markerId !== null && this.st.scanning) {
+      this.patch({ scanning: false });
+    }
     const prev = this.lastPose;
+    if (this.live && p.stale && !(prev?.stale ?? false)) {
+      this.toast("📡 Tracking lost — scan a marker to fix your position");
+      this.ev("tracking", "Tracking lost");
+    } else if (this.live && !p.stale && prev?.stale) {
+      this.ev("tracking", "Tracking back");
+    }
+    if (p.source === "marker") this.lastAnchorAt = Date.now();
     this.lastPose = p;
     const patch: Partial<NavState> = { user: p };
     if (p.source === "marker" && p.markerId !== null) {
@@ -321,9 +350,12 @@ export class NavController {
       case "turnNow":
         this.say(stepSpeech(e.step, lang, 0), true);
         break;
-      case "connector":
+      case "connector": {
         this.ev("floor", `Leaving ${this.fl(e.fromFloor)} by ${e.via}`);
+        const end = R.points[e.hop + 1];
+        if (this.sim.onConnector && end) this.sim.onConnector(e.toFloor, end.x, end.y);
         break;
+      }
       case "floorPrompt": {
         this.floorAutoAt = this.st.autoConfirm ? this.now + FLOOR_AUTO_SEC * 1000 : null;
         this.sim.hold(true);
@@ -389,6 +421,33 @@ export class NavController {
   openVoice(): void {
     this.patch({ overlay: "voice", chat: [] });
   }
+  /** PDR: open / close the camera sheet to re-anchor on a marker while walking. */
+  setScanning(on: boolean): void {
+    this.patch({ scanning: on });
+  }
+  getDebug(): PoseDebug | null {
+    return this.sim.getDebug ? this.sim.getDebug() : null;
+  }
+
+  /** A newer published venue arrived. Applied at once unless a navigation is running (then when it ends). */
+  setVenue(v: Venue): void {
+    if (v.version === this.v.version && v.publishedAt === this.v.publishedAt) return;
+    if (this.st.mode === "nav" && this.session) {
+      this.pendingVenue = v;
+      this.toast("Map updated — it will refresh when you finish");
+      return;
+    }
+    this.applyVenue(v);
+  }
+  private applyVenue(v: Venue): void {
+    this.pendingVenue = null;
+    this.v = v;
+    this.sim.setVenue?.(v);
+    this.patch({ venue: v, route: null, options: [], place: null, snap: null, mode: this.st.mode === "nav" ? "explore" : this.st.mode === "preview" ? "explore" : this.st.mode });
+    this.ev("venue", `Map updated to version ${v.version}`);
+    this.toast(`🗺 Map updated (v${v.version})`);
+  }
+
   showAr(): void {
     this.ev("ar", "AR view requested (arrives in Phase 4)");
     this.patch({ screen: "ar" });
@@ -495,6 +554,7 @@ export class NavController {
     this.patch({ mode: "explore", route: null, options: [], snap: null, floorPrompt: null, follow: false, place: null, screen: "map" });
     this.pubRoute(null);
     this.ev("nav", "Navigation ended");
+    if (this.pendingVenue) this.applyVenue(this.pendingVenue);
     const u = this.st.user;
     if (u) this.focusOn({ floor: u.floor, x: u.x, y: u.y, scale: 9.5 });
   }
@@ -511,6 +571,7 @@ export class NavController {
         return;
       }
     }
+    this.sim.forceFloor?.(fp.floor);
     const res = advance(this.session, { type: "confirmFloor" });
     this.session = res.state;
     this.patch({ snap: snapshot(res.state) });
@@ -546,6 +607,7 @@ export class NavController {
     this.patch({ screen: "arrived", mode: "explore", arrived: info, route: null, floorPrompt: null, follow: false, snap: null });
     this.say(arrivedText(R.destName, this.st.lang), true);
     this.ev("arrive", `Arrived at ${R.destName}`);
+    if (this.pendingVenue) this.applyVenue(this.pendingVenue);
     this.publishPose(true, { s: R.total, total: R.total, dest: R.destName });
     this.pubRoute(null);
   }
@@ -748,8 +810,8 @@ export class NavController {
       t: Date.now(),
       screen: this.st.screen,
       mode: this.st.mode,
-      ar: false,
-      user: { floor: u.floor, x: u.x, y: u.y, heading: u.heading, acc: u.acc, stale: u.stale, markerId: u.markerId },
+      ar: this.sim.kind === "xr",
+      user: { floor: u.floor, x: u.x, y: u.y, heading: u.heading, acc: u.acc, stale: u.stale, markerId: u.markerId, source: u.source, anchorAgoSec: this.lastAnchorAt === null ? null : Math.max(0, (Date.now() - this.lastAnchorAt) / 1000) },
       s: final ? final.s : navigating ? snap.s : 0,
       total: final ? final.total : R ? R.total : 0,
       next: navigating ? stepAction(snap.next.step, this.st.lang) : null,

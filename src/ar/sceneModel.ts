@@ -1,3 +1,4 @@
+import { roomDoors } from "@/core/doors";
 import { delta, dist } from "@/core/geo";
 import { nextStep, pointAt } from "@/core/playback";
 import type { Route } from "@/core/route";
@@ -98,7 +99,7 @@ function floorElevation(venue: Venue, floor: string): number {
 }
 
 function verticalDoors(venue: Venue, floor: string): { x: number; y: number }[] {
-  return venue.rooms.filter((r) => r.floor === floor && (r.kind === "stairs" || r.kind === "lift")).map((r) => r.door);
+  return venue.rooms.filter((r) => r.floor === floor && (r.kind === "stairs" || r.kind === "lift")).flatMap((r) => roomDoors(r));
 }
 
 function clearOfVerticalDoor(x: number, y: number, doors: readonly { x: number; y: number }[], radius: number): boolean {
@@ -195,7 +196,8 @@ export function buildSceneModel(
       const vertical = next.step;
       const doorway = venue.rooms
         .filter((room) => room.floor === pose.floor && room.kind === vertical.via)
-        .sort((a, b) => dist(a.door, vertical.at) - dist(b.door, vertical.at))[0]?.door ?? vertical.at;
+        .flatMap((room) => roomDoors(room))
+        .sort((a, b) => dist(a, vertical.at) - dist(b, vertical.at))[0] ?? vertical.at;
       floorChangeArrow = {
         at: { x: doorway.x, y: doorway.y, z: elevation + 1.65 },
         via: vertical.via,

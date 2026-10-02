@@ -285,10 +285,10 @@ describe("room + door tools", () => {
     expect(h.toasts.at(-1)).toMatch(/Too small/);
     expect(h.get().venue.rooms).toHaveLength(1);
   });
-  it("door: moves the clicked room's door to the nearest wall point", () => {
+  it("door: Shift+click moves the nearest door to the clicked wall point", () => {
     const v = must(ops.addRoom(ops.blankVenue(), "F1", { x: 5, y: 5 }, { x: 15, y: 12 })).venue;
     const h = harness(v);
-    createTool("door").onSelect({ type: "room", id: "F1-r1" }, { x: 14.9, y: 8 }, h.host);
+    createTool("door").onSelect({ type: "room", id: "F1-r1" }, { x: 14.9, y: 8 }, h.host, { target: null, shiftKey: true });
     expect(h.get().venue.rooms[0]!.door).toMatchObject({ side: "E", x: 15 });
     expect(h.get().past).toHaveLength(1);
   });

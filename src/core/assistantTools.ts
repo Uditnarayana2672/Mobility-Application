@@ -1,3 +1,4 @@
+import { nearestDoor } from "./doors";
 import type { Target } from "./intent";
 import { isRouteError, route, type RouteFrom, type RoutePrefs } from "./route";
 import { search } from "./search";
@@ -26,7 +27,7 @@ export function whereAmI(v: Venue, from: RouteFrom | null) {
   const inside = v.rooms.find((r) => r.floor === p.floor && p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h);
   let near = inside?.name ?? "the corridor";
   if (!inside) {
-    const closest = v.rooms.filter((r) => r.floor === p.floor).map((r) => ({ name: r.short || r.name, d: Math.hypot(r.door.x - p.x, r.door.y - p.y) })).sort((a, b) => a.d - b.d)[0];
+    const closest = v.rooms.filter((r) => r.floor === p.floor).map((r) => ({ name: r.short || r.name, d: nearestDoor(r, p).dist })).sort((a, b) => a.d - b.d)[0];
     if (closest && closest.d < 9) near = closest.name;
   }
   return { located: true as const, floor: p.floor, floorName, x: p.x, y: p.y, near };

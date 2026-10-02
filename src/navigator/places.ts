@@ -1,3 +1,4 @@
+import { nearestDoor } from "@/core/doors";
 import { catOf, poiKindOf } from "@/core/cats";
 import type { Target } from "@/core/intent";
 import type { Room, Venue } from "@/core/schema";
@@ -54,7 +55,7 @@ export function nearName(v: Venue, u: Pick<Pose, "floor" | "x" | "y">): string {
   let best: { d: number; n: string } | null = null;
   for (const r of v.rooms as Room[]) {
     if (r.floor !== u.floor) continue;
-    const d = Math.hypot(r.door.x - u.x, r.door.y - u.y);
+    const d = nearestDoor(r, u).dist;
     if (!best || d < best.d) best = { d, n: r.short || r.name };
   }
   return best && best.d < 9 ? best.n : "the corridor";

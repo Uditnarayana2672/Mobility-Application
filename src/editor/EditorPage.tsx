@@ -266,7 +266,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
             maxScale={60}
             cursor={state.tool === "select" ? undefined : "crosshair"}
             onPointer={(phase, pt, ev) => toolRef.current.onPointer(phase, pt, ev, host)}
-            onSelect={(item, pt) => toolRef.current.onSelect(item, pt, host)}
+            onSelect={(item, pt, ev) => toolRef.current.onSelect(item, pt, host, ev)}
           >
             {(view) => <ToolOverlay view={view} overlay={overlay} tool={state.tool} venue={state.venue} floorId={state.floorId} selected={state.selected} />}
           </MapCanvas>

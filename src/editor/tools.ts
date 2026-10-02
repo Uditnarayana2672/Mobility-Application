@@ -1,4 +1,5 @@
 import type { PoiKind } from "@/core/cats";
+import { nearestDoor } from "@/core/doors";
 import { POI_KINDS } from "@/core/cats";
 import type { Venue } from "@/core/schema";
 import type { MapItem, PointerPhase } from "@/ui/map";
@@ -46,7 +47,7 @@ export interface Tool {
   id: ToolId;
   hint: string;
   onPointer(phase: PointerPhase, pt: Pt, ev: PointerEventLike, h: Host): boolean;
-  onSelect(item: MapItem | null, pt: Pt, h: Host): void;
+  onSelect(item: MapItem | null, pt: Pt, h: Host, ev?: PointerEventLike): void;
   /** Esc, tool switch or floor change. */
   cancel(h: Host): void;
   /** Enter / "Finish" button. */
@@ -232,19 +233,30 @@ function roomTool(): Tool {
 function doorTool(): Tool {
   return {
     id: "door",
-    hint: "Click a room (or its edge) to move its door to the nearest point on that room's wall. The door re-links to the corridor.",
+    hint: "Click a room's wall to ADD a door there (a room can have several). Click an existing door to remove it. Shift+click moves the nearest door to the clicked wall. Doors link to the corridor automatically.",
     onPointer: noopPointer,
-    onSelect(item, pt, h) {
+    onSelect(item, pt, h, ev) {
       const v = h.venue();
       const sel = h.selected();
       let roomId: string | null = item?.type === "room" ? item.id : null;
       if (!roomId && sel?.type === "room") roomId = sel.id;
       if (!roomId) roomId = ops.nearestRoomEdge(v, h.floorId(), pt, 2)?.room.id ?? null;
       if (!roomId) return h.toast("Click on a room first", "error");
-      const r = ops.setDoor(v, roomId, pt);
+      const nearIdx = ops.doorNear(v, roomId, pt, 0.9);
+      let r: Venue | { venue: Venue } | { error: string };
+      if (nearIdx !== null && !ev?.shiftKey) {
+        r = ops.deleteDoor(v, roomId, nearIdx);
+        const e = err(r);
+        if (e) return h.toast(`${e}. Click elsewhere on the wall to add another door first, or Shift+click to move this one.`, "error");
+      } else if (ev?.shiftKey) {
+        const room = v.rooms.find((x) => x.id === roomId)!;
+        r = ops.setDoor(v, roomId, pt, nearestDoor(room, pt).index);
+      } else {
+        r = ops.addDoor(v, roomId, pt);
+      }
       const e = err(r);
       if (e) return h.toast(e, "error");
-      h.commit(r as Venue);
+      h.commit("venue" in r ? r.venue : (r as Venue));
       h.select({ type: "room", id: roomId });
     },
     cancel() {},

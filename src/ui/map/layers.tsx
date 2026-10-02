@@ -2,6 +2,7 @@ import { memo } from "react";
 import { catOf } from "@/core/cats";
 import { routeRuns } from "@/core/playback";
 import type { Route } from "@/core/route";
+import { doorOutward, roomDoors } from "@/core/doors";
 import { CORRIDOR_W } from "@/core/geo";
 import type { Floor, Room, Venue } from "@/core/schema";
 import type { MapItem, MapLayers } from "./types";
@@ -9,10 +10,18 @@ import type { MapItem, MapLayers } from "./types";
 const NS = { vectorEffect: "non-scaling-stroke" } as const;
 
 /** Door gap: a short white line across the wall on the room's door side. */
-function Door({ room }: { room: Room }) {
-  const { x, y, side } = room.door;
-  const horiz = side === "N" || side === "S";
-  return <line x1={horiz ? x - 0.7 : x} y1={horiz ? y : y - 0.7} x2={horiz ? x + 0.7 : x} y2={horiz ? y : y + 0.7} stroke="#fff" strokeWidth={0.7} />;
+function Doors({ room }: { room: Room }) {
+  return (
+    <>
+      {roomDoors(room).map((d, i) => {
+        // The gap lies along the wall: perpendicular to the way out of the room.
+        const out = (doorOutward(d) * Math.PI) / 180;
+        const tx = Math.cos(out);
+        const ty = Math.sin(out);
+        return <line key={i} x1={d.x - tx * 0.7} y1={d.y - ty * 0.7} x2={d.x + tx * 0.7} y2={d.y + ty * 0.7} stroke="#fff" strokeWidth={0.7} />;
+      })}
+    </>
+  );
 }
 
 function Underlay({ floor }: { floor: Floor }) {
@@ -99,7 +108,7 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
             );
           })}
       </g>
-      {layers.doors && <g>{venue.rooms.filter((r) => r.floor === floor.id).map((r) => <Door key={r.id} room={r} />)}</g>}
+      {layers.doors && <g>{venue.rooms.filter((r) => r.floor === floor.id).map((r) => <Doors key={r.id} room={r} />)}</g>}
       {layers.walknet && (
         <g>
           {venue.edges.map((e, i) => {

@@ -1,3 +1,4 @@
+import { doorNodeId, roomDoors } from "./doors";
 import { WALK, dist } from "./geo";
 import type { Venue } from "./schema";
 
@@ -77,7 +78,12 @@ export function attachPoint(G: Graph, floor: string, x: number, y: number, tag: 
   const node: GNode = { id, floor, x, y, kind: "tmp" };
   const room = roomAt(v, floor, x, y);
   if (room) {
-    const door = G.nodes[`${room.id}:door`];
+    // nearest of the room's door nodes
+    let door: GNode | undefined;
+    roomDoors(room).forEach((d, i) => {
+      const cand = G.nodes[doorNodeId(room.id, i)];
+      if (cand && (!door || Math.hypot(d.x - x, d.y - y) < dist(door, node))) door = cand;
+    });
     if (!door) return null;
     G.nodes[id] = node;
     G.adj[id] = [];

@@ -1,3 +1,4 @@
+import { roomDoors } from "./doors";
 import { DICT_SIZE } from "./aruco/dict";
 import { distToSegment } from "./geo";
 import { attachPoint, buildGraph, type Graph } from "./graph";
@@ -66,7 +67,7 @@ export function validate(v: Venue): ValidationResult[] {
     else add("pass", `${f.name}: ${n} markers placed`, "Good coverage for re-anchoring.");
   }
   for (const r of v.rooms.filter((x) => x.kind === "lift" || x.kind === "stairs")) {
-    const near = v.markers.some((m) => m.floor === r.floor && Math.hypot(m.x - r.door.x, m.y - r.door.y) < 6);
+    const near = v.markers.some((m) => m.floor === r.floor && roomDoors(r).some((d) => Math.hypot(m.x - d.x, m.y - d.y) < 6));
     if (!near) add("fail", `No marker near ${r.name} (${floorName(r.floor)})`, "Needed to confirm the floor after a lift or stairs ride.");
   }
   const far = v.markers.filter((m) => {
@@ -79,7 +80,7 @@ export function validate(v: Venue): ValidationResult[] {
   for (const w of v.walls) {
     const len = Math.hypot(w.x2 - w.x1, w.y2 - w.y1);
     if (len < 1.5) add("warn", `Ad slot ${w.id} is narrow (${len.toFixed(1)} m)`, "Wider than 1.5 m looks better.");
-    const door = v.rooms.find((r) => r.floor === w.floor && distToSegment(r.door, { x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }) < 0.6);
+    const door = v.rooms.find((r) => r.floor === w.floor && roomDoors(r).some((d) => distToSegment(d, { x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }) < 0.6));
     if (door) add("fail", `Ad slot ${w.id} overlaps the door of ${door.name}`, "Move the slot onto a blank wall segment.");
   }
   if (v.walls.length && !out.some((o) => o.title.startsWith("Ad slot"))) add("pass", `${v.walls.length} ad slot(s) on blank walls`, "Awaiting venue-owner approval flags.");

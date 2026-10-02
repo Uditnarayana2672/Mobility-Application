@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { CAT_IDS, CATS, POI_KINDS, POI_KIND_IDS, type PoiKind } from "@/core/cats";
 import type { Floor, Room, ValidationResult, Venue } from "@/core/schema";
 import { DICT_SIZE } from "@/core/aruco/dict";
+import { roomDoors } from "@/core/doors";
 import { CORRIDOR_W } from "@/core/geo";
 import { unreachableRooms, validate } from "@/core/validate";
 import * as ops from "../ops";
@@ -211,7 +212,7 @@ function RoomProps({ venue: v, id, commit, select }: PanelProps & { id: string }
         <h3 className="text-lg font-bold">{r.name || "(unnamed)"}</h3>
       </div>
       <p className="text-xs text-slate-500">
-        {floorName(v, r.floor)} · {r.w}×{r.h} m · id {r.id} · door on the {r.door.side} wall
+        {floorName(v, r.floor)} · {r.w}×{r.h} m · id {r.id} · {roomDoors(r).length} door(s)
       </p>
       <div className="mt-2 flex items-center gap-2">
         {unreachable ? (
@@ -224,6 +225,33 @@ function RoomProps({ venue: v, id, commit, select }: PanelProps & { id: string }
         ) : (
           <Badge kind="ok">✔ connected to walk network</Badge>
         )}
+      </div>
+      <div className="mt-2 rounded border border-slate-200 bg-white p-2" data-testid="doors-panel">
+        <h4 className="text-xs font-bold text-slate-600">Doors ({roomDoors(r).length})</h4>
+        {roomDoors(r).map((d, i) => (
+          <div key={i} className="mt-1 flex items-center gap-2 text-xs">
+            <span>
+              Door {i + 1}
+              {d.side ? ` · ${d.side} wall` : ""} · ({d.x}, {d.y})
+            </span>
+            {roomDoors(r).length > 1 && (
+              <button
+                className="text-red-600 underline"
+                onClick={() => {
+                  const res = ops.deleteDoor(v, id, i);
+                  if ("error" in res) return alert(res.error);
+                  commit(res);
+                }}
+              >
+                remove
+              </button>
+            )}
+          </div>
+        ))}
+        <p className="mt-1 text-[11px] text-slate-500">Door tool (D): click a wall to add a door, click a door to remove it, Shift+click to move the nearest door.</p>
+        <label className="mt-1 flex items-center gap-1 text-xs">
+          <input type="checkbox" checked={!!r.passThrough} onChange={(e) => set({ passThrough: e.target.checked })} /> People may walk through this room between its doors (a passage)
+        </label>
       </div>
       <Field label="Name">
         <CommitInput value={r.name} onCommit={(x) => set({ name: String(x) })} />

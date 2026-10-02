@@ -13,7 +13,9 @@ const bearing = z.number().finite().min(0).lt(360);
 export const SideSchema = z.enum(["N", "S", "E", "W"]);
 export type Side = z.infer<typeof SideSchema>;
 
-export const DoorSchema = z.object({ x: finite, y: finite, side: SideSchema });
+/** A door on a room's wall. `side` is set for rectangle walls; `normal` (bearing pointing out of the room) for any wall, e.g. slanted ones. */
+export const DoorSchema = z.object({ x: finite, y: finite, side: SideSchema.optional(), normal: bearing.optional() });
+export type Door = z.infer<typeof DoorSchema>;
 
 export const BackgroundSchema = z.object({
   imageUrl: z.string().min(1),
@@ -57,7 +59,11 @@ export const RoomSchema = z.object({
   y: finite,
   w: z.number().positive(),
   h: z.number().positive(),
+  /** The main door. More doors go in `extraDoors`. */
   door: DoorSchema,
+  extraDoors: z.array(DoorSchema).default([]),
+  /** People may walk through this room between its doors (a passage). Default: no, so a second door does not create a shortcut. */
+  passThrough: z.boolean().optional(),
   aliases: z.array(z.string()).default([]),
   hours: z.string().default(""),
   access: z.enum(["public", "staff"]).default("public"),

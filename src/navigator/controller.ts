@@ -1,6 +1,7 @@
 import type { Bus, PosePayload, RoutePayload } from "@/bus";
 import { arrivedText, fmtTime, stepAction, stepSpeech, thenText, walkText, type Lang } from "@/core/instructions";
 import type { Intent, Target } from "@/core/intent";
+import { doorOutward } from "@/core/doors";
 import { nearestMarker } from "@/core/poseFromMarker";
 import { pointAt, nextStep } from "@/core/playback";
 import { alternatives, isRouteError, route as computeRoute, type Route, type RouteFrom, type RoutePrefs } from "@/core/route";
@@ -272,8 +273,8 @@ export class NavController {
   /** "I can't find a marker": approximate position at a room door (±4 m). */
   setLocationManually(p: Place): void {
     const r = p.kind === "room" ? this.v.rooms.find((x) => x.id === p.id) : undefined;
-    const x = r ? r.door.x : p.x;
-    const y = r ? r.door.y + (r.door.side === "N" ? 1.2 : -1.2) : p.y;
+    const x = r ? r.door.x + (r.door.side ? 0 : Math.sin((doorOutward(r.door) * Math.PI) / 180) * 1.2) : p.x;
+    const y = r ? r.door.y + (r.door.side === "N" ? 1.2 : r.door.side ? -1.2 : -Math.cos((doorOutward(r.door) * Math.PI) / 180) * 1.2) : p.y;
     this.setLocated();
     this.sim.teleport({ floor: p.floor, x, y, heading: 90, acc: 4, markerId: null });
     this.patch({ pickLoc: false });

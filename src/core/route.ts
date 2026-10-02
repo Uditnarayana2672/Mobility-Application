@@ -1,3 +1,4 @@
+import { doorNodeId, roomDoors } from "./doors";
 import { WALK, bearingOf, delta, dist } from "./geo";
 import { attachPoint, buildGraph, type GNode, type Graph } from "./graph";
 import { MinHeap } from "./heap";
@@ -83,6 +84,14 @@ export interface RouteError {
 
 export const isRouteError = (r: Route | RouteError): r is RouteError => "error" in r;
 
+/** A room-centre node may be walked through only if it is a lift/stairs room or marked as a passage; otherwise it is a dead end (a second door is not a shortcut). */
+function blocksThrough(v: Venue, nodeId: string, G: Graph): boolean {
+  const n = G.nodes[nodeId];
+  if (!n || n.kind !== "room" || !n.room) return false;
+  const r = v.rooms.find((x) => x.id === n.room);
+  return !!r && !r.kind && !r.passThrough;
+}
+
 function isRestricted(v: Venue, nodeId: string, G: Graph): boolean {
   const n = G.nodes[nodeId];
   if (!n || !n.room) return false;
@@ -139,6 +148,7 @@ export function route(v: Venue, from: RouteFrom, dest: RouteDest, prefsIn?: Part
       if (hop.type === "stairs" && prefs.avoidStairs) continue;
       if (hop.type === "lift" && prefs.avoidLifts) continue;
       if (hop.to !== goalId && isRestricted(v, hop.to, G)) continue;
+      if (hop.to !== goalId && hop.to !== startId && blocksThrough(v, hop.to, G)) continue;
       const nd = (D[u] as number) + hop.sec;
       if (D[hop.to] === undefined || nd < (D[hop.to] as number)) {
         D[hop.to] = nd;
@@ -198,9 +208,9 @@ function compile(
             into = name && name.length > 20 && rm?.short ? rm.short : name || null;
           } else if (!afterV && i > 0) {
             let bd = 7;
-            const destDoor = `${(v.rooms.find((r) => r.id === destRoom?.id) || { id: undefined }).id}:door`;
+            const destDoors = new Set(destRoom ? roomDoors(destRoom).map((_, di) => doorNodeId(destRoom.id, di)) : []);
             for (const n of v.nodes) {
-              if (n.kind === "door" && n.floor === a.floor && dist(n, a) < bd && n.id !== destDoor) {
+              if (n.kind === "door" && n.floor === a.floor && dist(n, a) < bd && !destDoors.has(n.id)) {
                 bd = dist(n, a);
                 landmark = (v.rooms.find((r) => r.id === n.room) || { name: undefined }).name;
               }

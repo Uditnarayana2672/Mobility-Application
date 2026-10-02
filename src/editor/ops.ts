@@ -1,6 +1,7 @@
 import { DICT_SIZE } from "@/core/aruco/dict";
 import { distToSegment } from "@/core/geo";
-import type { Background, Edge, Floor, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
+import { doorNodeId, nearestDoor, roomDoors } from "@/core/doors";
+import type { Background, Door, Edge, Floor, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
 import type { PoiKind } from "@/core/cats";
 
 /**
@@ -158,32 +159,40 @@ function splitEdge(v: Venue, floor: string, edgeIndex: number, pt: Pt): VNode {
 
 /* ------------------------------------------------------------------ rooms & doors */
 
-/** Create the door node + room-centre node for a room and link them (mutates `v`). */
+/** Create the door nodes + room-centre node for a room and link them; drops nodes of doors that no longer exist (mutates `v`). */
 function ensureRoomNodes(v: Venue, room: Room): void {
-  const doorId = `${room.id}:door`;
-  const d = findNode(v, doorId);
-  if (d) {
-    d.x = room.door.x;
-    d.y = room.door.y;
-  } else v.nodes.push({ id: doorId, floor: room.floor, x: room.door.x, y: room.door.y, kind: "door", room: room.id });
+  const doors = roomDoors(room);
+  const keep = new Set(doors.map((_, i) => doorNodeId(room.id, i)));
+  v.nodes = v.nodes.filter((n) => !(n.kind === "door" && n.room === room.id && !keep.has(n.id)));
+  const ids = new Set(v.nodes.map((n) => n.id));
+  v.edges = v.edges.filter((e) => ids.has(e.a) && ids.has(e.b));
   const c = findNode(v, room.id);
   if (c) {
     c.x = r2(room.x + room.w / 2);
     c.y = r2(room.y + room.h / 2);
   } else v.nodes.push({ id: room.id, floor: room.floor, x: r2(room.x + room.w / 2), y: r2(room.y + room.h / 2), kind: "room", room: room.id });
-  linkWalk(v, doorId, room.id);
+  doors.forEach((d, i) => {
+    const id = doorNodeId(room.id, i);
+    const n = findNode(v, id);
+    if (n) {
+      n.x = d.x;
+      n.y = d.y;
+    } else v.nodes.push({ id, floor: room.floor, x: d.x, y: d.y, kind: "door", room: room.id });
+    linkWalk(v, id, room.id);
+  });
 }
 
-/** True when the door node already has a walk link to something other than its own room node. */
-function doorLinked(v: Venue, room: Room): boolean {
-  const doorId = `${room.id}:door`;
+/** True when door `i` already has a walk link to something other than its own room node. */
+function doorLinked(v: Venue, room: Room, i = 0): boolean {
+  const doorId = doorNodeId(room.id, i);
   return v.edges.some((e) => e.type === "walk" && ((e.a === doorId && e.b !== room.id) || (e.b === doorId && e.a !== room.id)));
 }
 
-/** Link a room's door to the nearest corridor node or walk edge within `radius` (mutates `v`). Returns whether it linked. */
-function linkDoor(v: Venue, room: Room, radius: number): boolean {
-  const doorId = `${room.id}:door`;
-  const dp = { x: room.door.x, y: room.door.y };
+/** Link door `i` of a room to the nearest corridor node or walk edge within `radius` (mutates `v`). Returns whether it linked. */
+function linkDoor(v: Venue, room: Room, radius: number, i = 0): boolean {
+  const doorId = doorNodeId(room.id, i);
+  const d = roomDoors(room)[i]!;
+  const dp = { x: d.x, y: d.y };
   const node = nearestNode(v, room.floor, dp, radius, ["corridor"]);
   const edge = nearestWalkEdge(v, room.floor, dp, radius);
   const nodeD = node ? Math.hypot(node.x - dp.x, node.y - dp.y) : Infinity;
@@ -245,7 +254,7 @@ export function addRoom(v0: Venue, floor: string, a: Pt, b: Pt): { venue: Venue;
   if (w < min || h < min) return { error: `Too small: drag at least ${min} m × ${min} m` };
   const v = clone(v0);
   const id = roomId(v, floor);
-  const base = { id, floor, name: "New room", cat: "workspace" as const, x, y, w, h, aliases: [], hours: "9:00 – 19:00", access: "public" as const, short: null };
+  const base = { id, floor, name: "New room", cat: "workspace" as const, x, y, w, h, aliases: [], hours: "9:00 – 19:00", access: "public" as const, short: null, extraDoors: [] };
   const room: Room = { ...base, door: defaultDoor(v, base) };
   v.rooms.push(room);
   ensureRoomNodes(v, room);
@@ -253,32 +262,100 @@ export function addRoom(v0: Venue, floor: string, a: Pt, b: Pt): { venue: Venue;
   return { venue: v, id };
 }
 
-/** Move a room's door to the nearest point of its own edges. */
-export function setDoor(v0: Venue, rId: string, p: Pt): Venue | { error: string } {
+/** The point on a room edge nearest to `p`, as a door position (kept 0.5 m from the corners of straight walls). */
+function doorOnEdge(room: Room, hit: EdgeHit): Door {
+  const pt = hit.side === "N" || hit.side === "S" ? { x: snap(clamp(hit.point.x, room.x + 0.5, room.x + room.w - 0.5)), y: hit.point.y } : { x: hit.point.x, y: snap(clamp(hit.point.y, room.y + 0.5, room.y + room.h - 0.5)) };
+  return { x: r2(pt.x), y: r2(pt.y), side: hit.side };
+}
+
+/** Drop every walk link of door `i` except to its own room node. */
+function unlinkDoor(v: Venue, room: Room, i: number): void {
+  const doorId = doorNodeId(room.id, i);
+  v.edges = v.edges.filter((e) => !(e.type === "walk" && ((e.a === doorId && e.b !== room.id) || (e.b === doorId && e.a !== room.id))));
+}
+
+/** Move door `index` (0 = the main door) to the nearest point of its own room's edge. */
+export function setDoor(v0: Venue, rId: string, p: Pt, index = 0): Venue | { error: string } {
   const v = clone(v0);
   const room = v.rooms.find((r) => r.id === rId);
   if (!room) return { error: "No such room" };
   const hit = nearestRoomEdge(v, room.floor, p, Infinity, rId);
   if (!hit) return { error: "No edge found" };
-  const pt = hit.side === "N" || hit.side === "S" ? { x: snap(clamp(hit.point.x, room.x + 0.5, room.x + room.w - 0.5)), y: hit.point.y } : { x: hit.point.x, y: snap(clamp(hit.point.y, room.y + 0.5, room.y + room.h - 0.5)) };
-  room.door = { x: pt.x, y: pt.y, side: hit.side };
-  // Drop the old connection(s) from the door to the network; keep door<->room link.
-  const doorId = `${room.id}:door`;
-  v.edges = v.edges.filter((e) => !(e.type === "walk" && ((e.a === doorId && e.b !== room.id) || (e.b === doorId && e.a !== room.id))));
+  const door = doorOnEdge(room, hit);
+  if (index === 0) room.door = door;
+  else if (room.extraDoors[index - 1]) room.extraDoors[index - 1] = door;
+  else return { error: "No such door" };
+  unlinkDoor(v, room, index);
   ensureRoomNodes(v, room);
-  linkDoor(v, room, DOOR_LINK_RADIUS);
+  linkDoor(v, room, DOOR_LINK_RADIUS, index);
   return v;
 }
 
-/** Retry connecting a room's door to the walk network with a wide search radius ("Connect to corridor"). */
+/** Add another door to a room, on the wall nearest to `p`. */
+export function addDoor(v0: Venue, rId: string, p: Pt): { venue: Venue; index: number } | { error: string } {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return { error: "No such room" };
+  const hit = nearestRoomEdge(v, room.floor, p, Infinity, rId);
+  if (!hit) return { error: "No edge found" };
+  room.extraDoors = [...room.extraDoors, doorOnEdge(room, hit)];
+  const index = room.extraDoors.length;
+  ensureRoomNodes(v, room);
+  linkDoor(v, room, DOOR_LINK_RADIUS, index);
+  return { venue: v, index };
+}
+
+/** Remove door `index`. A room keeps at least one door; removing the main door promotes the next one. */
+export function deleteDoor(v0: Venue, rId: string, index: number): Venue | { error: string } {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return { error: "No such room" };
+  const doors = roomDoors(room);
+  if (doors.length < 2) return { error: "A room needs at least one door" };
+  if (index < 0 || index >= doors.length) return { error: "No such door" };
+  const rest = doors.filter((_, i) => i !== index);
+  // Door node ids are positional, so rebuild all of them and re-link by position.
+  doors.forEach((_, i) => unlinkDoor(v, room, i));
+  room.door = rest[0]!;
+  room.extraDoors = rest.slice(1);
+  ensureRoomNodes(v, room);
+  rest.forEach((_, i) => linkDoor(v, room, DOOR_LINK_RADIUS, i));
+  return v;
+}
+
+/** The door of a room (any of them) within `radius` of `p`, as its index. */
+export function doorNear(v: Venue, rId: string, p: Pt, radius: number): number | null {
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return null;
+  const n = nearestDoor(room, p);
+  return n.dist <= radius ? n.index : null;
+}
+
+/** Retry connecting a room's doors to the walk network with a wide search radius ("Connect to corridor"). */
 export function connectRoom(v0: Venue, rId: string, radius = 12): Venue | { error: string } {
   const v = clone(v0);
   const room = v.rooms.find((r) => r.id === rId);
   if (!room) return { error: "No such room" };
   ensureRoomNodes(v, room);
-  if (doorLinked(v, room)) return v;
-  if (!linkDoor(v, room, radius)) return { error: `No walk path within ${radius} m: draw a walk path near the door first` };
+  const n = roomDoors(room).length;
+  let any = false;
+  for (let i = 0; i < n; i++) {
+    if (doorLinked(v, room, i) || linkDoor(v, room, radius, i)) any = true;
+  }
+  if (!any) return { error: `No walk path within ${radius} m: draw a walk path near the door first` };
   return v;
+}
+
+/** After the room's rectangle changed, keep a door on the wall it was on, at the same place along it. */
+function refitDoor(v: Venue, room: Room, d: Door): Door {
+  const hit = nearestRoomEdge(v, room.floor, { x: d.x, y: d.y }, Infinity, room.id);
+  if (!hit) return d;
+  return {
+    ...d,
+    x: r2(hit.side === "N" || hit.side === "S" ? clamp(d.x, room.x, room.x + room.w) : hit.point.x),
+    y: r2(hit.side === "E" || hit.side === "W" ? clamp(d.y, room.y, room.y + room.h) : hit.point.y),
+    side: hit.side,
+  };
 }
 
 export function updateRoom(v0: Venue, rId: string, patch: Partial<Room>): Venue {
@@ -288,13 +365,9 @@ export function updateRoom(v0: Venue, rId: string, patch: Partial<Room>): Venue 
   Object.assign(room, patch);
   if (patch.kind) room.cat = "vertical";
   if (patch.x !== undefined || patch.y !== undefined || patch.w !== undefined || patch.h !== undefined) {
-    // Keep the door on its side and the nodes in sync after a resize/move.
-    const hit = nearestRoomEdge(v, room.floor, { x: room.door.x, y: room.door.y }, Infinity, rId);
-    if (hit) {
-      room.door = { x: hit.side === "N" || hit.side === "S" ? clamp(room.door.x, room.x, room.x + room.w) : hit.point.x, y: hit.side === "E" || hit.side === "W" ? clamp(room.door.y, room.y, room.y + room.h) : hit.point.y, side: hit.side };
-      room.door.x = r2(room.door.x);
-      room.door.y = r2(room.door.y);
-    }
+    // Keep the doors on their sides and the nodes in sync after a resize/move.
+    room.door = refitDoor(v, room, room.door);
+    room.extraDoors = room.extraDoors.map((d) => refitDoor(v, room, d));
     ensureRoomNodes(v, room);
   }
   return v;
@@ -304,11 +377,14 @@ export function moveRoom(v0: Venue, rId: string, dx: number, dy: number): Venue 
   const v = clone(v0);
   const room = v.rooms.find((r) => r.id === rId);
   if (!room) return v;
+  const before = v0.rooms.find((r) => r.id === rId)!;
   room.x = snap(room.x + dx);
   room.y = snap(room.y + dy);
-  const ddx = room.x - v0.rooms.find((r) => r.id === rId)!.x;
-  const ddy = room.y - v0.rooms.find((r) => r.id === rId)!.y;
-  room.door = { ...room.door, x: r2(room.door.x + ddx), y: r2(room.door.y + ddy) };
+  const ddx = room.x - before.x;
+  const ddy = room.y - before.y;
+  const shift = (d: Door): Door => ({ ...d, x: r2(d.x + ddx), y: r2(d.y + ddy) });
+  room.door = shift(room.door);
+  room.extraDoors = room.extraDoors.map(shift);
   ensureRoomNodes(v, room);
   return v;
 }
@@ -333,9 +409,12 @@ export function walkClick(v0: Venue, floor: string, chain: string | null, p: Pt)
   if (chain) linkWalk(v, chain, n.id);
   if (n.kind === "corridor") {
     for (const room of v.rooms) {
-      if (room.floor !== floor || Math.hypot(room.door.x - n.x, room.door.y - n.y) > 1.5) continue;
+      if (room.floor !== floor) continue;
+      const doors = roomDoors(room);
+      const near = doors.map((d, i) => (Math.hypot(d.x - n!.x, d.y - n!.y) <= 1.5 ? i : -1)).filter((i) => i >= 0);
+      if (!near.length) continue;
       ensureRoomNodes(v, room);
-      linkWalk(v, `${room.id}:door`, n.id);
+      for (const i of near) linkWalk(v, doorNodeId(room.id, i), n.id);
     }
   }
   return { venue: v, nodeId: n.id };

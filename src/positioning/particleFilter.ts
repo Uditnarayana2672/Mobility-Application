@@ -1,4 +1,5 @@
 import type { Venue } from "@/core/schema";
+import { roomDoors } from "@/core/doors";
 import { CORRIDOR_W, distToSegment } from "@/core/geo";
 import { bearingDelta, bearingToVector, normaliseBearing } from "@/shared/frame";
 
@@ -22,7 +23,7 @@ interface Rect {
 }
 interface RoomRect extends Rect {
   id: string;
-  door: { x: number; y: number };
+  doors: { x: number; y: number }[];
 }
 
 const DOOR_REACH_M = 1.6;
@@ -31,7 +32,7 @@ export function walkableFromVenue(v: Venue): Walkable {
   const corr = new Map<string, Rect[]>();
   const rooms = new Map<string, RoomRect[]>();
   for (const c of v.corridors) corr.set(c.floor, [...(corr.get(c.floor) ?? []), c]);
-  for (const r of v.rooms) rooms.set(r.floor, [...(rooms.get(r.floor) ?? []), { x: r.x, y: r.y, w: r.w, h: r.h, id: r.id, door: r.door }]);
+  for (const r of v.rooms) rooms.set(r.floor, [...(rooms.get(r.floor) ?? []), { x: r.x, y: r.y, w: r.w, h: r.h, id: r.id, doors: roomDoors(r) }]);
   // Venues drawn in the editor have corridors as walk-path edges (no corridor rectangles): walkable = within CORRIDOR_HALF_M of a walk edge.
   const segs = new Map<string, { a: { x: number; y: number }; b: { x: number; y: number }; half: number }[]>();
   const nodeById = new Map(v.nodes.map((n) => [n.id, n]));
@@ -56,7 +57,7 @@ export function walkableFromVenue(v: Venue): Walkable {
     const room = (rooms.get(floor) ?? []).find((r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h);
     return room ? room.id : null;
   };
-  const doorOf = (floor: string, id: string): { x: number; y: number } | undefined => rooms.get(floor)?.find((r) => r.id === id)?.door;
+  const doorsOf = (floor: string, id: string): { x: number; y: number }[] => rooms.get(floor)?.find((r) => r.id === id)?.doors ?? [];
   return {
     contains: (floor, x, y) => region(floor, x, y) !== null,
     distance: (floor, x, y) => {
@@ -77,8 +78,8 @@ export function walkableFromVenue(v: Venue): Walkable {
         if (cur === null) return false;
         if (cur !== prev) {
           if (cur !== "c" && prev !== "c") return false; // room to room: through a wall
-          const d = doorOf(floor, cur === "c" ? prev : cur);
-          if (!d || Math.min(Math.hypot(d.x - x, d.y - y), Math.hypot(d.x - px, d.y - py)) > DOOR_REACH_M) return false;
+          const ds = doorsOf(floor, cur === "c" ? prev : cur);
+          if (!ds.some((d) => Math.min(Math.hypot(d.x - x, d.y - y), Math.hypot(d.x - px, d.y - py)) <= DOOR_REACH_M)) return false;
         }
         prev = cur;
       }

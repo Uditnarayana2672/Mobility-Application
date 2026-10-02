@@ -32,7 +32,17 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
   - [x] Venue from `/api/venues/:id`, bundled fixture fallback
   - [x] Playwright smoke (`tests/e2e/nav.e2e.ts`): scan → "Cafeteria kahan hai?" → stairs vs lift → walk to F2 → "You have arrived at Cafeteria", dashboard mirrors it
   - [ ] Your by-hand pass on the laptop + a phone-width window (see "Phase 2 hand-test")
-- [ ] Phase 3 – real positioning (2D map inside immersive-ar; marker re-anchor; WebSocket dashboard)
+- [ ] **Phase 3 – real positioning on the phone + live dashboard over WebSocket** (session 4) — code done 2026-10-02; **waiting on your field tests (`docs/field-tests.md`) and the S1–S5 spikes**
+  - [x] `src/positioning/markers.ts`: detect → id → venue lookup → refined pose from marker size + intrinsics → device pose in the venue frame; gate on reprojection error, obliquity and distance; synthetic-projection tests (`tests/positioning-markers.test.ts`)
+  - [x] `corrector.ts` `PoseSmoother`: snap if > 1.5 m, else ease over 0.5 s
+  - [x] `XrPoseSource` (immersive-ar + dom-overlay, camera-access marker detection, `mapPose = markerTransform × xrPose`, heading from XR orientation, floor from marker + > 2.5 m vertical rule, tracking lost → stale + "scan a marker")
+  - [x] `PdrPoseSource` (getUserMedia marker scan, `StepDetector` + `HeadingIntegrator`, 300-particle filter on corridors + room doors, floor prompt by tap or lobby marker)
+  - [x] Off-route / reroute: live poses go through the same `NavController.onPose` → session → `computeRoute` path as the simulator
+  - [x] `WebSocketBus` (+ `CompositeBus`), server hub: roles, replay for late dashboards, heartbeat, "venue / campaigns published" push, JSONL walk recording, `GET /api/sessions/:venue[/last]`
+  - [x] Dashboard: server-link pill, source badge, last anchor (+ age), accuracy circle (already in the map), trail, multi-phone selector, "⏪ Replay last walk", "map published" banner
+  - [x] Phone `?debug=1` overlay (fps, tracking, reprojection error, reject reason, particle cloud mini-map); `?pose=sim|xr|pdr`, `?bus=bc|ws|both`
+  - [x] `docs/field-tests.md` (4 routes, tape checkpoints, tables)
+  - [ ] Your field tests on the POCO X5 Pro (numbers go in "Phase 3 field results" below)
 - [ ] Phase 4 – AR (chevrons, arrows, ads on walls, `/ads`)
 - [ ] Phase 5 – two-way voice + AI (LLM key on the server only)
 
@@ -73,12 +83,27 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
 | 2026-10-02 | Voice: "Cafeteria kahan hai?" resolves to `show` (place card, then you tap Directions) exactly as in the mock; "take me to the cafeteria" resolves to `goto` (straight to the route preview). Speech is queued (max 2 waiting, urgent lines cancel), voice picked by exact BCP-47 then language prefix, caption always shown; no hi/te voice → caption only. |
 | 2026-10-02 | Layout: mobile-first. Below 761 px the app is full screen (safe-area aware, no fake status bar); from 761 px it renders the phone frame next to the demo panel (inverse of the mock's media query). No CSS `zoom`: the frame height is `min(836px, 100vh - 28px)`. On a phone `?demo=1` adds a 🎬 button that opens the panel as a drawer. CSS is scoped under `.is-nav` / `.is-dash` so it cannot leak into other routes. |
 | 2026-10-02 | Deep links start from marker 1 like the mock; `#navf2` etc. use `fastForward(s)`, which feeds the session the poses it would have seen (silently) so it does not see a floor mismatch and fire an off-route. |
+| 2026-10-02 | **Phase 3 pose sources are chosen at runtime, not by spike result** (S1–S5 were still blank): phone + `navigator.xr` → `XrPoseSource`, phone without it → `PdrPoseSource`, desktop / `?demo=1` → simulator; `?pose=` forces one; "Use step counting instead" on the locate screen switches (the controller is rebuilt, the visitor lands back on the locate screen). Both sources share `LivePoseBase` and the `ControllerPoseSource` interface the controller now depends on (the simulator implements it too). |
+| 2026-10-02 | **Marker pose = homography decomposition + Levenberg–Marquardt refinement** (`src/positioning/refine.ts`, also tries the depth-mirrored twin). The plain decomposition was unusable with 1 px corner noise on a small marker (6 px reprojection error, > 1 m position error). Measured on synthetic 12 cm markers with the refinement: 0.3 px noise → median 0.01 m @ 1 m, 0.07 m @ 2 m, 0.25 m @ 3 m (p90 0.8 m @ 2 m: plane-pose ambiguity). So the gate rejects beyond **2.5 m** (≥ 70° oblique, > 2.5 px reprojection also rejected) and the claimed accuracy grows with distance² (`0.2 + 0.12·d²`, 0.25–1.5 m). Bigger markers help directly (A4 17 cm). |
+| 2026-10-02 | **XR alignment** = yaw + translation only (ARCore `local` is gravity aligned): `p_world = Rz(θ)·S·p_xr + τ` with `S = (x, −z, y)`, solved from one marker sighting (venue world is right-handed E/N/up; the venue frame y is south). A later marker is accepted only if its claimed accuracy ≤ the current dead-reckoned one (`0.3 + 0.03 m/metre walked`, cap 3 m) or tracking was lost. Same marker re-announced as a scan at most every 3 s. |
+| 2026-10-02 | **Floor in XR**: marker floor at anchor; then the nearest floor by height once the phone is > 2.5 m above/below its eye-height reference; a "yes, I'm on Floor N" tap re-bases the height (`forceFloor`). **Floor in PDR**: when the session reaches a lift/stairs the filter jumps to the next floor's connector point (`onConnector`), the session asks "Are you on Floor 2 now?", steps are ignored until answered or a lobby marker is seen. Live phones have `autoConfirm` off. |
+| 2026-10-02 | **Particle filter**: 300 particles, each with its own gyro-bias walk; a step that would cross a wall is blocked and the particle penalised (×0.02); corridor ↔ room only within 1.6 m of the room's door; resampling jitter never crosses a wall. Accuracy = `0.6 + 2·spread` (0.8–8 m). Deterministic with a seeded RNG in tests. |
+| 2026-10-02 | **Bus**: `Bus.on` callbacks now get `(payload, {deviceId, recvT})`; liveness uses the receive time (phone clocks are not trusted). WebSocket protocol `{type, payload, deviceId, t}` on `/ws?room=<venue>&role=device|viewer&device=<id>`: phones' messages go to viewers (not to other phones), a late dashboard gets each phone's last route / 30 events / pose, 15 s ping/pong heartbeat, server pushes `{type:"venue"|"campaigns"}` after a publish (`ApiOptions.onPublished` → `hub.notify`). Roles absent = plain room relay (old behaviour). Backoff: 0.5 s × 2ⁿ, cap 15 s, ×0.5–1 jitter; offline it keeps the last pose + route + 50 events. |
+| 2026-10-02 | **Which bus**: simulator → BroadcastChannel (same-browser dashboard, the stage backup) and a *listen-only* WebSocket (so it still gets "venue published"); a live phone → WebSocket only. Dashboard listens on both. `?bus=bc|ws|both` overrides. |
+| 2026-10-02 | **Recording**: every phone message (pose/route/event) is appended to `data/sessions/<venue>/<YYYYMMDDTHHMMSS>-<device>.jsonl` as `{recvT, msg}`; "Replay last walk" plays the latest file that contains a pose, with its original timing. |
+| 2026-10-02 | **Venue refresh on publish**: the phone refetches `/api/venues/:id` and calls `NavController.setVenue`: applied at once when idle, deferred until the navigation ends otherwise (the sources keep their alignment/cloud). `campaigns` notices are delivered on the bus but nothing consumes them until Phase 4. |
 
 ## Known issues
 
 - `/nav` and `/dashboard` are verified in headless Edge (desktop and a 390 px mobile-emulated context), not on a real phone: touch pan/pinch, real `speechSynthesis` voices for Hindi/Telugu and `SpeechRecognition` are untested. Headless Edge has no voices, so the smoke test exercises the caption-only path.
+- **Phase 3 is untested on a real phone.** Everything that needs the device is unverified: WebXR session start with the nav UI as DOM overlay, `camera-access` + camera texture orientation (the XR source toggles `flipY` after 90 frames without a detection), projection-matrix aspect vs camera size, `devicemotion` sign conventions for the step detector / gyro heading (copied from S4), getUserMedia scan and the assumed 65° horizontal FOV (or the S2-B calibrated value in localStorage `indore.s2.hfov`). The maths (marker pose, XR alignment, smoothing, particle filter, floor logic, bus, hub, recording, replay) is covered by unit and real-browser tests with synthetic inputs only.
+- Single-marker position error grows quickly with distance for small markers (see the Decisions log); expect ±0.3–0.5 m at 1 m and worse beyond 2 m with 12 cm stickers.
+- While the XR session runs the visitor app is the DOM overlay; the 3D canvas three.js adds is invisible behind the opaque map screens. Leaving the AR session (system gesture) stops positioning until "Restart AR".
+- A lift ride can leave ARCore with a wrong height; the floor then follows the "yes, I'm on Floor N" tap or the lobby marker, not the height.
+- The PDR stride is fixed at 0.7 m (not learned). The particle filter only knows rectangles (corridors, rooms, doors), not walls drawn in the editor.
+- Replay of a walk shows only the recorded phone's poses/route/events; the phone's HUD is not reproduced.
 - AR is a stub (📷 and `#arturn/#arad/#arf2` open "AR view arrives in Phase 4"). Ads on the arrived screen are the mock's static placeholder card.
-- Position still comes only from the simulator (or marker chips); real positioning is Phase 3. The dashboard talks to `/nav` through BroadcastChannel, so both must be in the same browser (WebSocketBus is Phase 3).
+- (Phase 3) Position comes from the simulator on a desktop / `?demo=1`, from AR or step counting on a phone; the dashboard listens on BroadcastChannel *and* the WebSocket, so the same-browser simulation still works.
 - The manual walker (WASD) has no wall collision; it is clamped to the floor plate only.
 - The venue fallback is the bundled `office-hq` only; another `?venue=` id needs the server.
 
@@ -106,8 +131,35 @@ npm run e2e          # real-browser tests (starts Vite + headless Edge/Chrome; s
 npm run convert:mock # regenerate public/venues/office-hq/*.json from docs/mock-ui (a golden test checks they match)
 ```
 
+Phase 3 URL switches on `/nav`: `?pose=sim|xr|pdr` (force the position source), `?bus=bc|ws|both`, `?debug=1` (overlay). REST also has `GET /api/sessions/:venue` (list), `/last`, `/:file`. Realtime: `wss://<host>/ws?room=<venue>&role=device|viewer&device=<id>`.
 Routes: `/` hub · `/nav` (`?demo=1`, `?venue=ID`, `#map|search|voice|place|preview|nav|navf2|arturn|arad|arf2`) · `/dashboard` · `/editor` · `/owner` · `/markers` (`?id=N`, `?draft=1`, `?venue=ID`) · `/legacy-editor` · `/spikes/*` · `/ads` (placeholder).
 REST: `GET /api/venues/:id` · `GET|PUT /api/venues/:id/draft` · `POST /api/venues/:id/publish` · `GET /api/venues/:id/versions` · same under `/api/campaigns/:id` · `POST /api/uploads` (raw image body) · `GET /uploads/<file>`.
+
+## Phase 3 field results (fill in after `docs/field-tests.md`)
+
+| Metric | Target | Measured |
+|---|---|---|
+| Median walking error (dot vs tape, no scan in the last 10 s) | ≤ 3 m | ___ m |
+| Worst walking error | — | ___ m |
+| Median error right after a marker scan | ≤ 0.5 m | ___ m |
+| Worst error right after a scan | — | ___ m |
+| Reliable scan distance (marker ___ cm) | ≥ 1.5 m | ___ m |
+| Floor change detected / confirmed correctly (R3 stairs, R4 lift) | 4 of 4 | ___ of 4 |
+| Source used (XR / PDR) | | ___ |
+| Dashboard lag (scan → log) | < 1 s | ___ s |
+| Battery over 10 min of AR | | ___ % → ___ % |
+
+Synthetic (computer) numbers, for reference: marker fix 0.01 m @ 1 m / 0.07 m @ 2 m median at 0.3 px corner noise; XR alignment recovers yaw within 0.01 rad and translation within 3 cm from one sighting; 50 steps of PDR with a drifting gyro stay inside the corridor.
+
+## Phase 3 hand-test (what the automated tests cannot judge)
+
+Automated: `tests/positioning-*.test.ts` (marker pose maths on synthetic projections, XR core, PDR core, particle filter, smoother), `tests/bus-ws.test.ts`, `tests/realtime.test.ts` (hub, replay, heartbeat, recording, publish notice), `tests/controller-live.test.ts`, `tests/runtime-config.test.ts`, and `tests/e2e/live.e2e.ts` (phone and dashboard in separate browser contexts, so everything travels over `/ws`: live mirror, late join, JSONL replay, venue-published push, live-phone UI).
+
+1. `npm run dev:lan`; laptop → `https://<ip>:8080/dashboard` ("server link: open"). Phone → `https://<ip>:8080/nav?debug=1` → tap the venue → **Start AR tracking** (grant camera) → aim at marker 1 from ~1.2 m: the dot appears, dashboard shows the scan, source badge XR, last anchor #1.
+2. Walk. The chip on the map says `AR · AR · ±x m`; the dashboard dot, trail and accuracy circle follow. Look at another marker: the dot eases (≤ 1.5 m) or snaps and the accuracy resets.
+3. No WebXR / S5 failed: `…/nav?pose=pdr&debug=1` → **Open camera to scan a marker**; walk (steps counted in the debug line, particle cloud on the mini-map); **📷 Scan marker** on the map re-anchors.
+4. Ask for the Cafeteria via stairs: "Are you on Floor 2 now?" → tap Yes (or scan the lobby marker).
+5. Dashboard: stop the phone → "Phone offline" → **⏪ Replay last walk**. Publish in `/editor` → phone toast "Map updated (vN)", dashboard banner.
 
 ## Phase 2 hand-test (what the automated tests cannot judge)
 

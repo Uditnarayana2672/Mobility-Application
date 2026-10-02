@@ -15,19 +15,20 @@ a laptop dashboard mirrors the phone live; advertisers place image/video ads on 
 src/core/      pure strict TS: schema v2 (zod), engine port (graph, A*, instructions, search, intent, validate), steps/heading, aruco/dict
 src/shared/    frame helpers, Hub, Placeholder
 src/spikes/    Phase 0 spike pages (S1–S5), ArUco detector/pose (aruco/), AR + camera helpers
-src/bus/       Bus interface + BroadcastChannelBus (pose/route/event payloads as in the mock); WebSocketBus = Phase 3
-src/navigator/ /nav: NavController (all logic, no React), session.ts (pure state machine), SimPoseSource, speech, intent resolver, React screens
+src/bus/       Bus interface + BroadcastChannelBus (same browser) + WebSocketBus/CompositeBus (phone <-> server <-> dashboards); pose/route/event + venue/campaigns notices
+src/navigator/ /nav: NavController (all logic, no React), session.ts (pure state machine), ControllerPoseSource + SimPoseSource, runtimeConfig (?pose/?bus/?debug), speech, intent resolver, React screens, LiveUi (locate/HUD/scan sheet/debug overlay)
+src/positioning/ real positioning: markers.ts (marker pose, gate, XR alignment), refine.ts (LM), corrector.ts (snap/ease), particleFilter.ts, xrCore/pdrCore (pure) + XrPoseSource/PdrPoseSource (browser glue), liveBase.ts
 src/dashboard/ /dashboard: laptop live view (mirrors /nav over the bus)
 src/ui/map/    reusable SVG map component (editor now; /nav and /dashboard later)
 src/editor/    /editor: ops.ts (pure venue edits), store.ts (history), tools.ts (state machines), components/, EditorPage.tsx
 src/markers/   /markers printable ArUco sheets
 src/owner/     /owner status + version history
 src/pages, src/components, src/hooks, src/lib   LEGACY Blueprint editor (route /legacy-editor), non-strict, frozen
-server/        REST (api.ts, store.ts) + ws relay (ws.ts) + Vite plugin (vite-plugin.ts) + prod server (index.ts)
+server/        REST (api.ts, store.ts, sessions.ts) + realtime hub (ws.ts: roles, replay, heartbeat, publish push, JSONL recording) + Vite plugin (vite-plugin.ts) + prod server (index.ts)
 tests/         Vitest unit + golden (tests/golden vs the docs/mock-ui engine); tests/e2e = real-browser tests (npm run e2e)
 scripts/       make-certs.mjs (mkcert), dev-lan.mjs
 certs/         mkcert output, gitignored
-data/          runtime files written by the server (drafts, published versions, uploads), gitignored
+data/          runtime files written by the server (drafts, published versions, uploads, sessions/*.jsonl walk recordings), gitignored
 public/venues/ seed venue + campaigns (office-hq), generated from the mock by `npm run convert:mock`
 ```
 Routes: `/` hub, `/nav` (`?demo=1`, hash deep links), `/dashboard`, `/editor`, `/owner`, `/markers`, `/spikes/*`, `/legacy-editor`; `/ads` is a placeholder until Phase 4.

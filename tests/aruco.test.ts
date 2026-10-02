@@ -84,6 +84,13 @@ describe("detector", () => {
       expect(Math.hypot(dets[0]!.corners[i]!.x - quad[i]!.x, dets[0]!.corners[i]!.y - quad[i]!.y)).toBeLessThan(3.5);
     }
   });
+  it("finds a marker that nearly fills the frame (border thicker than the medium window)", () => {
+    // 610 px square in an 800x760 image: cell ~102 px > w/8 = 100 px, so only the large window sees the border.
+    const big: Pt[] = [{ x: 95, y: 75 }, { x: 705, y: 75 }, { x: 705, y: 685 }, { x: 95, y: 685 }];
+    const dets = detectMarkers(render(21, 800, 760, big));
+    expect(dets.map((d) => d.id)).toEqual([21]);
+    for (let i = 0; i < 4; i++) expect(Math.hypot(dets[0]!.corners[i]!.x - big[i]!.x, dets[0]!.corners[i]!.y - big[i]!.y)).toBeLessThan(6);
+  });
   it("finds nothing in a blank image", () => {
     expect(detectMarkers({ data: new Uint8Array(640 * 400).fill(200), width: 640, height: 400 })).toEqual([]);
   });

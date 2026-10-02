@@ -19,8 +19,7 @@ export interface GrayImage {
 
 const CELLS = GRID + 2; // black border cell on each side
 
-/** Mean-adaptive threshold: 1 where the pixel is darker than its local mean by > c. */
-function adaptiveDark(img: GrayImage, win: number, c: number): Uint8Array {
+function integralImage(img: GrayImage): Float64Array {
   const { width: w, height: h, data } = img;
   const integral = new Float64Array((w + 1) * (h + 1));
   for (let y = 0; y < h; y++) {
@@ -30,6 +29,12 @@ function adaptiveDark(img: GrayImage, win: number, c: number): Uint8Array {
       integral[(y + 1) * (w + 1) + x + 1] = integral[y * (w + 1) + x + 1]! + row;
     }
   }
+  return integral;
+}
+
+/** Mean-adaptive threshold: 1 where the pixel is darker than its local mean by > c. */
+function adaptiveDark(img: GrayImage, integral: Float64Array, win: number, c: number): Uint8Array {
+  const { width: w, height: h, data } = img;
   const out = new Uint8Array(w * h);
   const r = win >> 1;
   for (let y = 0; y < h; y++) {
@@ -236,20 +241,60 @@ export interface DetectOptions {
   c?: number;
 }
 
-/** Detect markers in a grayscale image. Corners are the outer corners of the black border. */
-export function detectMarkers(img: GrayImage, opts: DetectOptions = {}): Detection[] {
+/** Box-filter downscale by an integer factor. */
+function downscale(img: GrayImage, k: number): GrayImage {
+  const w = Math.floor(img.width / k);
+  const h = Math.floor(img.height / k);
+  const out = new Uint8Array(w * h);
+  const area = k * k;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      for (let dy = 0; dy < k; dy++) {
+        const row = (y * k + dy) * img.width + x * k;
+        for (let dx = 0; dx < k; dx++) sum += img.data[row + dx]!;
+      }
+      out[y * w + x] = Math.round(sum / area);
+    }
+  }
+  return { data: out, width: w, height: h };
+}
+
+function detectAtScale(img: GrayImage, opts: DetectOptions): Detection[] {
   const { width: w, height: h } = img;
-  const windows = opts.windows ?? [Math.max(9, (w / 24) | 1), Math.max(21, (w / 8) | 1)];
+  // The border of a marker must be thinner than the window or it is flattened to "background": use small, medium and
+  // large windows so far markers (thin border) and close markers (fills the frame) are both seen.
+  const windows = opts.windows ?? [Math.max(9, (w / 24) | 1), Math.max(21, (w / 8) | 1), Math.max(41, (w / 3) | 1)];
   const found = new Map<number, Detection>();
   const minPx = Math.max(60, (w * h) / 5000);
-  const maxPx = (w * h) * 0.6;
+  const maxPx = w * h * 0.6;
+  const integral = integralImage(img);
   for (const win of windows) {
-    const bin = adaptiveDark(img, win, opts.c ?? 7);
+    const bin = adaptiveDark(img, integral, win, opts.c ?? 7);
     for (const blob of components(bin, w, h, minPx, maxPx)) {
       const quad = quadOf(blob, w);
       if (!quad) continue;
       const det = decode(img, quad);
       if (det && !found.has(det.id)) found.set(det.id, det);
+    }
+  }
+  return [...found.values()];
+}
+
+/**
+ * Detect markers in a grayscale image. Corners are the outer corners of the black border.
+ * The mean-adaptive threshold only sees borders thinner than its window, so a marker that fills the frame is found on
+ * a 2x downscaled copy (corners are mapped back to full resolution; the full-resolution result wins when both find it).
+ */
+export function detectMarkers(img: GrayImage, opts: DetectOptions = {}): Detection[] {
+  const found = new Map<number, Detection>();
+  for (const k of [1, 2]) {
+    if (k > 1 && img.width / k < 160) break;
+    const scaled = k === 1 ? img : downscale(img, k);
+    for (const d of detectAtScale(scaled, opts)) {
+      if (found.has(d.id)) continue;
+      const corners = d.corners.map((p) => ({ x: p.x * k, y: p.y * k })) as [Pt, Pt, Pt, Pt];
+      found.set(d.id, { id: d.id, corners });
     }
   }
   return [...found.values()];

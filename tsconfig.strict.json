@@ -29,6 +29,7 @@
     "src/shared",
     "src/ui",
     "src/editor",
+    "src/markers",
     "src/spikes",
     "server",
     "tests",

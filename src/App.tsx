@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import Hub from "./shared/Hub";
 import Placeholder from "./shared/Placeholder";
 
+const MarkersPage = lazy(() => import("./markers/MarkersPage"));
 const EditorPage = lazy(() => import("./editor/EditorPage"));
 const SpikesIndex = lazy(() => import("./spikes/SpikesIndex"));
 const S1 = lazy(() => import("./spikes/S1Page"));
@@ -33,7 +34,7 @@ const App = () => (
             <Route path="/editor" element={<EditorPage />} />
             <Route path="/nav" element={<Placeholder title="Visitor app" note="Phase 2: 2D map, search, navigation." />} />
             <Route path="/dashboard" element={<Placeholder title="Dashboard" note="Phase 3: live view of the phone." />} />
-            <Route path="/markers" element={<Placeholder title="Markers" note="Phase 1: printable marker sheets for the real venue. For the spike markers see /spikes/s2/markers." />} />
+            <Route path="/markers" element={<MarkersPage />} />
             <Route path="/ads" element={<Placeholder title="Ads" note="Phase 4: advertiser portal." />} />
             <Route path="/spikes" element={<SpikesIndex />} />
             <Route path="/spikes/s1" element={<S1 />} />

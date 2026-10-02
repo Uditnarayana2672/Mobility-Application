@@ -21,7 +21,17 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
   - [x] `/markers`: real ArUco images at true size, A6/A5/A4
   - [x] `/owner` (optional): status + version history
   - [ ] Your by-hand pass: trace your real office, print a marker and measure it
-- [ ] Phase 2 – 2D navigator + laptop simulation
+- [ ] **Phase 2 – 2D navigator + laptop simulation + dashboard** (session 3) — code done 2026-10-02; **waiting on your by-hand run of the demo script (checklist below)**
+  - [x] `/nav`: mobile-first full screen, phone frame + demo panel on desktop; city → locate → map → search → place → preview (stairs vs lift, Avoid stairs) → nav → floor prompt → arrived; hash deep links `#map #search #voice #place #preview #nav #navf2` (`#arturn #arad #arf2` = AR stub)
+  - [x] Map: floor switcher, labels by zoom, dot + heading cone + accuracy ring (grey when stale), route solid / dashed on other floors, lift/stairs pills, Explore (north-up) vs Navigate (heading-up, eased), recentre
+  - [x] `src/navigator/session.ts` pure state machine + synthetic-trace tests (15 m / 3 m announcements, floor prompt, arrival ≤3 m, off-route >5 m for 3 s)
+  - [x] Voice out (`speech.ts`: queue, en/hi/te, captions always, caption-only without a voice); voice in behind `IntentResolver` (rules now, LLM in Phase 5) + text fallback
+  - [x] `PoseSource` + `SimPoseSource` (1.3 m/s, ×1/×3, play/pause, WASD+QE manual, marker scans, floor-change pause, lose tracking, wrong turn); `?demo=1` panel with Reset
+  - [x] `src/bus`: `Bus` + `BroadcastChannelBus` (pose / route / event, payloads as in the mock); WebSocketBus stays Phase 3
+  - [x] `/dashboard`: connection pill, follow / trail / markers, stats, route progress (route re-computed from `{from, target, via}`), event log, built-in demo feed
+  - [x] Venue from `/api/venues/:id`, bundled fixture fallback
+  - [x] Playwright smoke (`tests/e2e/nav.e2e.ts`): scan → "Cafeteria kahan hai?" → stairs vs lift → walk to F2 → "You have arrived at Cafeteria", dashboard mirrors it
+  - [ ] Your by-hand pass on the laptop + a phone-width window (see "Phase 2 hand-test")
 - [ ] Phase 3 – real positioning (2D map inside immersive-ar; marker re-anchor; WebSocket dashboard)
 - [ ] Phase 4 – AR (chevrons, arrows, ads on walls, `/ads`)
 - [ ] Phase 5 – two-way voice + AI (LLM key on the server only)
@@ -54,7 +64,23 @@ Target: Indore Spaces office demo. Phone: **POCO X5 Pro**, Chrome on Android. Pl
 | 2026-10-02 | Detector fix found by the print test: the adaptive threshold flattened borders thicker than its window, so a marker filling the frame was missed. Now three windows (w/24, w/8, w/3) plus a 2× downscaled pass. |
 | 2026-10-02 | Docs 01–03 and mock-ui were outside the repo (`Indore map/artifacts/`); copied to `docs/`. The originals in `artifacts/` are untouched. |
 
+| 2026-10-02 | **Phase 2 architecture:** the app logic is a non-React `NavController` (`src/navigator/controller.ts`); React screens are thin views over it (`useSyncExternalStore`). Time only enters through `tick(dtSec)` and the pose stream, so tests drive whole walks deterministically (`tests/controller.test.ts`). |
+| 2026-10-02 | **Session = pure reducer** (`advance(state, input) → {state, events}`, no clock/DOM/language). Progress = pose snapped to the route's walk hops on the pose floor, window [-2 m, +15 m] around the current progress, monotonic; falls back to the whole route for forward jumps (marker scans). Events are structured; the controller turns them into text with core `stepSpeech`. Announce 15 m / 3 m once per step; arrive when ≤3 m of route remain on the destination floor; off-route = >5 m from the route (or wrong floor) for 3 s of *pose time*; stale poses are ignored (never reroute while tracking is lost). |
+| 2026-10-02 | Floor change: the session waits at the lift/stairs point (`connector` event), the simulator pauses 6 s (lift) / 4.8 s (stairs), divided by the speed multiplier, then flips the floor → `floorPrompt` ("Are you on Floor 2 now?"). The simulator is held until confirmed by tap, by a lobby marker, or auto after 3.4 s (demo switch, on by default). After a floor change the sim accuracy is ~1.4 m until a marker is seen. |
+| 2026-10-02 | **Ticker:** the simulation runs from a Worker `setInterval` (50 ms) because background tabs throttle main-thread timers and stop rAF, which froze the walk as soon as you looked at the dashboard tab. Falls back to `setInterval`. dt is wall-clock (capped 1.5 s). |
+| 2026-10-02 | Bus payloads copied from the mock. `BroadcastChannelBus` also mirrors the last pose/route to localStorage (best effort) so a dashboard opened late hydrates. The dashboard re-computes the route from `{from, target, via}` with the mock's via→prefs mapping (lift → avoidStairs, stairs → avoidLifts). |
+| 2026-10-02 | `RouteLines` draws runs on floors other than the user's floor **dashed and lighter** (the user's floor stays solid, travelled part grey). With no user (editor) everything is solid. `MapCanvas` got `followUser` (rAF-eased centre) and keeps its zoom across floor changes while following. |
+| 2026-10-02 | Voice: "Cafeteria kahan hai?" resolves to `show` (place card, then you tap Directions) exactly as in the mock; "take me to the cafeteria" resolves to `goto` (straight to the route preview). Speech is queued (max 2 waiting, urgent lines cancel), voice picked by exact BCP-47 then language prefix, caption always shown; no hi/te voice → caption only. |
+| 2026-10-02 | Layout: mobile-first. Below 761 px the app is full screen (safe-area aware, no fake status bar); from 761 px it renders the phone frame next to the demo panel (inverse of the mock's media query). No CSS `zoom`: the frame height is `min(836px, 100vh - 28px)`. On a phone `?demo=1` adds a 🎬 button that opens the panel as a drawer. CSS is scoped under `.is-nav` / `.is-dash` so it cannot leak into other routes. |
+| 2026-10-02 | Deep links start from marker 1 like the mock; `#navf2` etc. use `fastForward(s)`, which feeds the session the poses it would have seen (silently) so it does not see a floor mismatch and fire an off-route. |
+
 ## Known issues
+
+- `/nav` and `/dashboard` are verified in headless Edge (desktop and a 390 px mobile-emulated context), not on a real phone: touch pan/pinch, real `speechSynthesis` voices for Hindi/Telugu and `SpeechRecognition` are untested. Headless Edge has no voices, so the smoke test exercises the caption-only path.
+- AR is a stub (📷 and `#arturn/#arad/#arf2` open "AR view arrives in Phase 4"). Ads on the arrived screen are the mock's static placeholder card.
+- Position still comes only from the simulator (or marker chips); real positioning is Phase 3. The dashboard talks to `/nav` through BroadcastChannel, so both must be in the same browser (WebSocketBus is Phase 3).
+- The manual walker (WASD) has no wall collision; it is clamped to the floor plate only.
+- The venue fallback is the bundled `office-hq` only; another `?venue=` id needs the server.
 
 - Editor is verified in headless Edge, not on a phone/touch screen. Touch gestures on the map (pinch/pan) are implemented but untested on real hardware.
 - Large phone photos (up to 10 MB) are stored as uploaded; no client-side downscale. Very large PNGs can make the editor sluggish.
@@ -80,8 +106,20 @@ npm run e2e          # real-browser tests (starts Vite + headless Edge/Chrome; s
 npm run convert:mock # regenerate public/venues/office-hq/*.json from docs/mock-ui (a golden test checks they match)
 ```
 
-Routes: `/` hub · `/editor` · `/owner` · `/markers` (`?id=N`, `?draft=1`, `?venue=ID`) · `/legacy-editor` · `/spikes/*` · `/nav` `/dashboard` `/ads` (placeholders).
+Routes: `/` hub · `/nav` (`?demo=1`, `?venue=ID`, `#map|search|voice|place|preview|nav|navf2|arturn|arad|arf2`) · `/dashboard` · `/editor` · `/owner` · `/markers` (`?id=N`, `?draft=1`, `?venue=ID`) · `/legacy-editor` · `/spikes/*` · `/ads` (placeholder).
 REST: `GET /api/venues/:id` · `GET|PUT /api/venues/:id/draft` · `POST /api/venues/:id/publish` · `GET /api/venues/:id/versions` · same under `/api/campaigns/:id` · `POST /api/uploads` (raw image body) · `GET /uploads/<file>`.
+
+## Phase 2 hand-test (what the automated tests cannot judge)
+
+Automated: session/sim/controller/bus/speech/intent/venue-loader unit tests (all of Reception → Cafeteria incl. the floor change, wrong turn → reroute, tracking lost, every deep link, EN/Hinglish/Telugu captions) and `tests/e2e/nav.e2e.ts` (real browser: `/nav` + `/dashboard` side by side, walk to "You have arrived at Cafeteria").
+
+1. `npm run dev`. Open `https://localhost:8080/dashboard` on the big screen/second window, then `https://localhost:8080/nav?demo=1` in another tab or window of the **same browser**. Keep the dashboard visible: it should say "Waiting for a phone…".
+2. Tap the blue pin → marker chip **1** (or demo panel → Scan). Dashboard: "phone connected", dot at Reception, event "scan".
+3. Mic 🎤 → type or say "Cafeteria kahan hai?" (try Hinglish and తెలుగు first). Place card → **Directions**: stairs "Fastest" vs lift; toggle **Avoid stairs**.
+4. **Start** at ×3: listen for "In 15 metres…", "Now, turn right"; the banner/ETA, the dot turning the map (heading-up), the ◎ button after you pan; floor switcher, dashed route when you view Floor 2. "Taking the stairs…" → "Are you on Floor 2 now?" (auto-confirms in ~3 s) → "You have arrived at Cafeteria".
+5. Try: Pause/Play, **Next turn**, **Take wrong turn** (reroute after 3 s), **Lose tracking** (grey dot, no reroute), Manual mode (WASD/QE) wandering off the route, Mute (captions stay), a language with no installed voice (caption only).
+6. Resize the window below 761 px (or open on the phone via `npm run dev:lan`): full-screen layout; `?demo=1` shows 🎬 for the demo drawer. **Reset demo** reloads cleanly.
+7. Check the voices you actually have: Settings → Languages → Text-to-speech (Hindi/Telugu data may need installing) — that is a device matter, the app falls back to captions.
 
 ## Phase 1 hand-test (what the automated tests cannot judge)
 

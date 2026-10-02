@@ -118,22 +118,25 @@ interface RouteProps {
   route: Route | null;
   progress: number;
   floorId: string;
+  /** The floor the user is on. Route runs on any other floor are drawn dashed (a preview of where the route goes next). */
+  activeFloor?: string;
 }
 
-/** Route polyline: travelled part grey, remaining part blue, white casing. */
-export const RouteLines = memo(function RouteLines({ route, progress, floorId }: RouteProps) {
+/** Route polyline: travelled part grey, remaining part blue, white casing; dashed (and lighter) on floors other than the user's. */
+export const RouteLines = memo(function RouteLines({ route, progress, floorId, activeFloor }: RouteProps) {
   if (!route) return null;
   const done = routeRuns(route, 0, progress);
   const todo = routeRuns(route, progress, route.total);
+  const dashed = activeFloor !== undefined && activeFloor !== floorId;
   const draw = (runs: ReturnType<typeof routeRuns>, col: string, key: string) =>
     runs
       .filter((r) => r.floor === floorId)
       .map((run, i) => {
         const d = run.pts.map((p, j) => `${j ? "L" : "M"}${p.x} ${p.y}`).join(" ");
         return (
-          <g key={`${key}${i}`}>
+          <g key={`${key}${i}`} data-testid={dashed ? "route-dashed" : "route-solid"}>
             <path d={d} fill="none" stroke="#fff" strokeWidth={10} strokeLinecap="round" strokeLinejoin="round" {...NS} />
-            <path d={d} fill="none" stroke={col} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" {...NS} />
+            <path d={d} fill="none" stroke={dashed && col === "#2f5bea" ? "#6f8df0" : col} strokeWidth={6} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={dashed ? "2 11" : undefined} {...NS} />
           </g>
         );
       });

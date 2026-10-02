@@ -15,7 +15,9 @@ a laptop dashboard mirrors the phone live; advertisers place image/video ads on 
 src/core/      pure strict TS: schema v2 (zod), engine port (graph, A*, instructions, search, intent, validate), steps/heading, aruco/dict
 src/shared/    frame helpers, Hub, Placeholder
 src/spikes/    Phase 0 spike pages (S1–S5), ArUco detector/pose (aruco/), AR + camera helpers
-src/bus/       (Phase 2/3) Bus interface: BroadcastChannel + WebSocket
+src/bus/       Bus interface + BroadcastChannelBus (pose/route/event payloads as in the mock); WebSocketBus = Phase 3
+src/navigator/ /nav: NavController (all logic, no React), session.ts (pure state machine), SimPoseSource, speech, intent resolver, React screens
+src/dashboard/ /dashboard: laptop live view (mirrors /nav over the bus)
 src/ui/map/    reusable SVG map component (editor now; /nav and /dashboard later)
 src/editor/    /editor: ops.ts (pure venue edits), store.ts (history), tools.ts (state machines), components/, EditorPage.tsx
 src/markers/   /markers printable ArUco sheets
@@ -28,7 +30,7 @@ certs/         mkcert output, gitignored
 data/          runtime files written by the server (drafts, published versions, uploads), gitignored
 public/venues/ seed venue + campaigns (office-hq), generated from the mock by `npm run convert:mock`
 ```
-Routes: `/` hub, `/editor`, `/owner`, `/markers`, `/spikes/*`, `/legacy-editor`; `/nav /dashboard /ads` are placeholders until their phase.
+Routes: `/` hub, `/nav` (`?demo=1`, hash deep links), `/dashboard`, `/editor`, `/owner`, `/markers`, `/spikes/*`, `/legacy-editor`; `/ads` is a placeholder until Phase 4.
 
 ## Commands
 `npm run dev` · `npm run dev:lan` (phone URL + QR) · `npm run certs` · `npm run build && npm run serve` · `npm run typecheck` (tsc -b, project references) · `npm test` · `npm run e2e` · `npm run convert:mock`
@@ -42,5 +44,6 @@ Routes: `/` hub, `/editor`, `/owner`, `/markers`, `/spikes/*`, `/legacy-editor`;
 - No PWA / service worker. HTTPS everywhere (WebXR, camera, sensors need it).
 - Secrets (LLM key) live on the server only, never in the browser bundle.
 - Core logic is deterministic and unit-tested; AI never computes routes or positions.
+- Navigator logic lives in `NavController` / `session.ts`, not in components; time enters only through `tick(dt)` and the pose stream (tests drive it with a fake clock). Anything that must keep running in a background tab uses `startTicker` (Worker), not rAF or main-thread `setInterval`.
 - Commit in small steps; commit messages end with the Co-Authored-By line from the session.
 - Vitest is pinned to 2.x (repo is on Vite 5).

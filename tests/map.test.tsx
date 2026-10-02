@@ -94,6 +94,24 @@ describe("MapCanvas (server render)", () => {
     expect(f2).not.toContain('fill="url(#cone)"');
     expect(f2).toContain("Stairs"); // arrival pill on floor 2 too
   });
+  it("route is solid on the floor the user is on and dashed on the other floors", () => {
+    const r = route(V, { floor: "F1", x: 3, y: 17, heading: 90 }, { room: "F2-cafeteria" });
+    if (isRouteError(r)) throw new Error("no route");
+    const user = { floor: "F1", x: 3, y: 17, heading: 90, acc: 2 };
+    const onF1 = html({ route: r, user });
+    expect(onF1).toContain('data-testid="route-solid"');
+    expect(onF1).not.toContain('data-testid="route-dashed"');
+    const viewF2 = renderToStaticMarkup(<MapCanvas venue={V} floorId="F2" route={r} user={user} />);
+    expect(viewF2).toContain('data-testid="route-dashed"');
+    expect(viewF2).not.toContain('data-testid="route-solid"');
+    // no user (editor, previews): solid everywhere
+    expect(renderToStaticMarkup(<MapCanvas venue={V} floorId="F2" route={r} />)).toContain('data-testid="route-solid"');
+  });
+  it("a stale user is drawn grey", () => {
+    const h = html({ user: { floor: "F1", x: 3, y: 17, heading: 0, acc: 3, stale: true } });
+    expect(h).toContain("#8a94a6");
+    expect(h).not.toContain('fill="url(#cone)"');
+  });
   it("highlights the selected room", () => {
     expect(html({ selected: { type: "room", id: "F1-wsa" } })).toContain('stroke-width="3.5"');
   });

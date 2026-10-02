@@ -19,6 +19,8 @@ export interface MapCanvasProps {
   rotation?: number;
   /** Where the view anchor sits vertically (0..1). */
   anchorY?: number;
+  /** Keep the map centred on the user (eased every frame); a manual pan/zoom should call onUserMove, which the host answers by clearing this. */
+  followUser?: boolean;
   minScale?: number;
   maxScale?: number;
   /** Called on pointer down/move/up/hover in world coordinates. Return true from "down" to capture the gesture (no panning). */
@@ -76,14 +78,37 @@ export const MapCanvas = forwardRef<MapHandle, MapCanvasProps>(function MapCanva
     return () => ro.disconnect();
   }, [floor, lim, setView]);
 
-  // Refit when switching floors; keep rotation/anchor in sync with props.
+  // Refit when switching floors (except while following the user: keep the zoom); keep rotation/anchor in sync with props.
   const lastFloor = useRef(floorId);
   useEffect(() => {
     if (lastFloor.current !== floorId && floor) {
       lastFloor.current = floorId;
-      setView(fitView(viewRef.current, floor.w, floor.h, lim));
+      if (!propsRef.current.followUser) setView(fitView(viewRef.current, floor.w, floor.h, lim));
     }
   }, [floorId, floor, lim, setView]);
+
+  // Follow the user: ease the view centre towards the dot every frame (time-based, so it is smooth at any pose rate).
+  const followUser = !!props.followUser;
+  useEffect(() => {
+    if (!followUser || typeof requestAnimationFrame === "undefined") return;
+    let raf = 0;
+    let last = performance.now();
+    const frame = (now: number) => {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      const u = propsRef.current.user;
+      const cur = viewRef.current;
+      if (u && u.floor === propsRef.current.floorId) {
+        const k = 1 - Math.exp(-dt * 10);
+        const dx = u.x - cur.cx;
+        const dy = u.y - cur.cy;
+        if (Math.abs(dx) > 0.005 || Math.abs(dy) > 0.005) setView({ ...cur, cx: cur.cx + dx * k, cy: cur.cy + dy * k });
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [followUser, setView]);
   const shown: MapView = useMemo(() => ({ ...view, rot: rotation, anchorY: props.anchorY ?? view.anchorY }), [view, rotation, props.anchorY]);
   const shownRef = useRef(shown);
   shownRef.current = shown;
@@ -216,7 +241,7 @@ export const MapCanvas = forwardRef<MapHandle, MapCanvasProps>(function MapCanva
         <Defs />
         <g transform={worldTransform}>
           <StaticLayers venue={venue} floorId={floorId} layers={layers} selected={selected} />
-          <RouteLines route={route} progress={progress} floorId={floorId} />
+          <RouteLines route={route} progress={progress} floorId={floorId} activeFloor={user?.floor} />
           {user && user.floor === floorId && (
             <circle
               cx={user.x}

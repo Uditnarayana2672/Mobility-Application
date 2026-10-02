@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 
 const ROUTES: [string, string][] = [
   ["/spikes", "Phase 0 spikes (WebXR, markers, voice, motion)"],
-  ["/nav", "Visitor app (Phase 2+)"],
+  ["/nav", "Visitor app: 2D map, search, voice, simulation (?demo=1 for the panel)"],
   ["/editor", "Map editor"],
   ["/owner", "Owner portal: status + version history"],
-  ["/dashboard", "Laptop live view (Phase 3)"],
+  ["/dashboard", "Laptop live view of the phone (mirrors /nav)"],
   ["/markers", "Printable ArUco markers"],
   ["/ads", "Advertiser portal (Phase 4)"],
   ["/legacy-editor", "Old Blueprint editor (frozen)"],

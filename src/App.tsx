@@ -12,6 +12,8 @@ import Placeholder from "./shared/Placeholder";
 const OwnerPage = lazy(() => import("./owner/OwnerPage"));
 const MarkersPage = lazy(() => import("./markers/MarkersPage"));
 const EditorPage = lazy(() => import("./editor/EditorPage"));
+const NavPage = lazy(() => import("./navigator/NavPage"));
+const DashboardPage = lazy(() => import("./dashboard/DashboardPage"));
 const SpikesIndex = lazy(() => import("./spikes/SpikesIndex"));
 const S1 = lazy(() => import("./spikes/S1Page"));
 const S2 = lazy(() => import("./spikes/S2Page"));
@@ -33,8 +35,8 @@ const App = () => (
             <Route path="/" element={<Hub />} />
             <Route path="/legacy-editor" element={<Index />} />
             <Route path="/editor" element={<EditorPage />} />
-            <Route path="/nav" element={<Placeholder title="Visitor app" note="Phase 2: 2D map, search, navigation." />} />
-            <Route path="/dashboard" element={<Placeholder title="Dashboard" note="Phase 3: live view of the phone." />} />
+            <Route path="/nav" element={<NavPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/markers" element={<MarkersPage />} />
             <Route path="/owner" element={<OwnerPage />} />
             <Route path="/ads" element={<Placeholder title="Ads" note="Phase 4: advertiser portal." />} />

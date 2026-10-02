@@ -1,0 +1,52 @@
+/* Indore Spaces: laptop live dashboard (/dashboard). Ported from docs/mock-ui/dashboard.html + the bits of css/app.css it uses, scoped under .is-dash. */
+.is-dash {
+  --bg: #f3f5f9; --panel: #fff; --ink: #14213d; --muted: #5b6678; --line: #e1e6ee; --brand: #2f5bea; --brand-dark: #1e3fb8; --brand-soft: #e8eefe;
+  --teal: #0f9d8a; --amber: #e8890c; --amber-soft: #fff1d6; --red: #d93a3a; --red-soft: #fde4e4; --green: #2b9348; --green-soft: #dff3e5; --purple: #7c4dff;
+  --radius: 14px; --shadow: 0 6px 24px rgba(20, 33, 61, 0.09);
+  --font: 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Telugu', system-ui, -apple-system, sans-serif;
+  position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; overflow: hidden;
+}
+.is-dash *, .is-dash *::before, .is-dash *::after { box-sizing: border-box; }
+.is-dash button { font-family: inherit; }
+.is-dash .muted { color: var(--muted); } .is-dash .small { font-size: 12px; }
+.is-dash .row { display: flex; gap: 10px; align-items: center; } .is-dash .spacer { flex: 1; }
+.is-dash h3 { font-size: 16px; margin: 0 0 .4em; line-height: 1.2; }
+.is-dash h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 .4em; }
+.is-dash a { color: var(--brand); text-decoration: none; }
+
+.is-dash .topbar { display: flex; align-items: center; gap: 6px; padding: 0 18px; height: 54px; background: #0f1b3d; color: #fff; flex: none; }
+.is-dash .topbar .brand { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 8px; margin-right: 18px; color: #fff; }
+.is-dash .topbar .brand i { width: 26px; height: 26px; border-radius: 8px; background: linear-gradient(135deg, #5b8cff, #14b8a6); display: inline-block; }
+.is-dash .topbar a.nav { color: #c8d3f0; padding: 7px 12px; border-radius: 8px; font-weight: 500; }
+.is-dash .topbar a.nav:hover { background: rgba(255,255,255,.1); color: #fff; }
+.is-dash .topbar a.nav.on { background: rgba(255,255,255,.16); color: #fff; }
+.is-dash .topbar .right { margin-left: auto; font-size: 12px; color: #aab7d9; }
+
+.is-dash .dash { display: grid; grid-template-columns: 1fr 380px; flex: 1; min-height: 0; }
+.is-dash .mapcol { position: relative; background: #e9edf3; min-height: 0; }
+.is-dash .panel { background: #fff; border-left: 1px solid var(--line); overflow: auto; padding: 14px; }
+.is-dash .status { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; padding: 6px 12px; border-radius: 20px; background: #fff; box-shadow: var(--shadow); }
+.is-dash .status i { width: 10px; height: 10px; border-radius: 50%; background: #aab3c4; display: inline-block; }
+.is-dash .status.live i { background: #2b9348; animation: dash-blink 1.4s infinite; } .is-dash .status.stale i { background: var(--amber); }
+@keyframes dash-blink { 50% { opacity: .35; } }
+.is-dash .topleft { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; z-index: 5; pointer-events: none; }
+.is-dash .topleft > * { pointer-events: auto; }
+.is-dash .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.is-dash .stat { background: #f5f7fb; border-radius: 12px; padding: 10px 12px; }
+.is-dash .stat b { display: block; font-size: 20px; line-height: 1.15; } .is-dash .stat span { color: var(--muted); font-size: 11.5px; }
+.is-dash .pbar { height: 10px; border-radius: 6px; background: #e6eaf2; overflow: hidden; margin: 8px 0 4px; } .is-dash .pbar i { display: block; height: 100%; background: var(--teal); width: 0; transition: width .25s; }
+.is-dash .ev { padding: 5px 0; border-bottom: 1px dashed #eef1f6; font-size: 12.5px; display: flex; gap: 8px; } .is-dash .ev time { color: var(--muted); font-family: ui-monospace, Consolas, monospace; flex: none; }
+.is-dash .tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 5px; background: #eef1f6; color: #5b6678; flex: none; height: 16px; }
+.is-dash .tag.scan { background: var(--brand-soft); color: var(--brand); } .is-dash .tag.floor { background: #efe7ff; color: var(--purple); } .is-dash .tag.ad { background: var(--amber-soft); color: var(--amber); }
+.is-dash .tag.offroute, .is-dash .tag.reroute, .is-dash .tag.tracking { background: var(--red-soft); color: var(--red); } .is-dash .tag.arrive { background: var(--green-soft); color: var(--green); }
+.is-dash .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
+.is-dash .card.flat { box-shadow: none; }
+.is-dash .btn { font: inherit; border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 5px 10px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+.is-dash .btn:hover { background: #f5f7fb; } .is-dash .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; } .is-dash .btn.primary:hover { background: var(--brand-dark); }
+.is-dash .seg { display: inline-flex; background: #eef1f6; border-radius: 10px; padding: 3px; gap: 2px; box-shadow: var(--shadow); }
+.is-dash .seg button { border: 0; background: transparent; font: inherit; font-weight: 600; padding: 5px 12px; border-radius: 8px; cursor: pointer; color: #3a4660; }
+.is-dash .seg button.on { background: #fff; color: var(--brand); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.is-dash .status label, .is-dash label.status { font-weight: 600; cursor: pointer; }
+.is-dash .status input { accent-color: var(--brand); }
+
+@media (max-width: 900px) { .is-dash .dash { grid-template-columns: 1fr; grid-template-rows: 1fr 45%; } .is-dash .panel { border-left: 0; border-top: 1px solid var(--line); } }

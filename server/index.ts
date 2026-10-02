@@ -5,7 +5,7 @@ import path from "node:path";
 import qrcode from "qrcode-terminal";
 import { createApi } from "./api";
 import { lanIps, loadCerts } from "./net";
-import { attachWs } from "./ws";
+import { attachWs, type RealtimeHub } from "./ws";
 
 const root = process.cwd();
 const dist = path.join(root, "dist");
@@ -34,7 +34,8 @@ const MIME: Record<string, string> = {
   ".webp": "image/webp",
 };
 
-const api = createApi({ root });
+let hub: RealtimeHub | null = null;
+const api = createApi({ root, onPublished: (kind, id, version) => hub?.notify(id, kind, id, version) });
 
 const server = https.createServer(certs, (req, res) => {
   void api(req, res, () => {
@@ -49,7 +50,7 @@ const server = https.createServer(certs, (req, res) => {
   });
 });
 
-attachWs(server);
+hub = attachWs(server, { root });
 
 server.listen(port, "0.0.0.0", () => {
   const ip = lanIps()[0] ?? "localhost";

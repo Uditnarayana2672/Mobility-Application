@@ -1,6 +1,8 @@
-import type { Bus, BusMessage, BusPayload, BusSnapshot, BusType, PosePayload, RoutePayload } from "./types";
+import type { Bus, BusMessage, BusMeta, BusPayload, BusSnapshot, BusType, PosePayload, RoutePayload } from "./types";
 
 export const CHANNEL = "indore-spaces";
+/** Device id reported for everything that arrives over BroadcastChannel (one simulated phone). */
+export const LOCAL_DEVICE = "local";
 const LS_POSE = "is.live.pose";
 const LS_ROUTE = "is.live.route";
 
@@ -50,7 +52,7 @@ const newId = () => `${Date.now().toString(36)}-${(counter++).toString(36)}-${Ma
 export class BroadcastChannelBus implements Bus {
   private readonly ch: ChannelLike | null;
   private readonly store: BroadcastBusOptions["storage"];
-  private readonly listeners: { [K in BusType]: Set<(p: BusPayload<K>) => void> } = { pose: new Set(), route: new Set(), event: new Set() };
+  private readonly listeners: { [K in BusType]: Set<(p: BusPayload<K>, meta: BusMeta) => void> } = { pose: new Set(), route: new Set(), event: new Set(), venue: new Set(), campaigns: new Set() };
   private readonly seen = new Set<string>();
 
   constructor(opts: BroadcastBusOptions = {}) {
@@ -70,8 +72,8 @@ export class BroadcastChannelBus implements Bus {
     this.mirror(wire.msg);
   }
 
-  on<T extends BusType>(type: T, fn: (payload: BusPayload<T>) => void): () => void {
-    const set = this.listeners[type] as Set<(p: BusPayload<T>) => void>;
+  on<T extends BusType>(type: T, fn: (payload: BusPayload<T>, meta: BusMeta) => void): () => void {
+    const set = this.listeners[type] as unknown as Set<(p: BusPayload<T>, meta: BusMeta) => void>;
     set.add(fn);
     return () => set.delete(fn);
   }
@@ -104,11 +106,12 @@ export class BroadcastChannelBus implements Bus {
     if (!w || typeof w.id !== "string" || !w.msg || this.seen.has(w.id)) return;
     this.seen.add(w.id);
     if (this.seen.size > 300) this.seen.delete(this.seen.values().next().value as string);
-    const set = this.listeners[w.msg.type] as Set<(p: unknown) => void> | undefined;
+    const set = this.listeners[w.msg.type] as unknown as Set<(p: unknown, meta: BusMeta) => void> | undefined;
     if (!set) return;
+    const meta: BusMeta = { deviceId: LOCAL_DEVICE, recvT: Date.now() };
     for (const fn of [...set]) {
       try {
-        fn(w.msg.payload);
+        fn(w.msg.payload, meta);
       } catch (err) {
         console.error("bus listener failed", err);
       }
@@ -116,7 +119,7 @@ export class BroadcastChannelBus implements Bus {
   }
 
   private mirror(msg: BusMessage): void {
-    if (!this.store || msg.type === "event") return;
+    if (!this.store || (msg.type !== "pose" && msg.type !== "route")) return;
     try {
       this.store.setItem(msg.type === "pose" ? LS_POSE : LS_ROUTE, JSON.stringify(msg.payload));
     } catch {

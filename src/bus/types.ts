@@ -9,6 +9,10 @@ export interface BusUser {
   acc: number;
   stale: boolean;
   markerId: number | null;
+  /** Where the pose came from (sim / marker / manual / ar / steps). Absent on messages from older senders. */
+  source?: "sim" | "marker" | "manual" | "ar" | "steps";
+  /** Seconds since the last marker fix when this pose was sent; null = never anchored. */
+  anchorAgoSec?: number | null;
 }
 
 export interface PosePayload {
@@ -49,10 +53,25 @@ export interface EventPayload {
   at: number;
 }
 
+/** The server tells phones (and dashboards) that something they cached has been republished. */
+export interface ChangeNotice {
+  venue: string;
+  version: number;
+  at: number;
+}
+
 export type BusMessage =
   | { type: "pose"; payload: PosePayload }
   | { type: "route"; payload: RoutePayload | null }
-  | { type: "event"; payload: EventPayload };
+  | { type: "event"; payload: EventPayload }
+  | { type: "venue"; payload: ChangeNotice }
+  | { type: "campaigns"; payload: ChangeNotice };
+
+/** Who sent a message and when we received it (receive time: sender clocks are not trusted). */
+export interface BusMeta {
+  deviceId: string;
+  recvT: number;
+}
 
 export type BusType = BusMessage["type"];
 export type BusPayload<T extends BusType> = Extract<BusMessage, { type: T }>["payload"];
@@ -60,7 +79,7 @@ export type BusPayload<T extends BusType> = Extract<BusMessage, { type: T }>["pa
 export interface Bus {
   send<T extends BusType>(type: T, payload: BusPayload<T>): void;
   /** Subscribe to one message type; returns an unsubscribe function. */
-  on<T extends BusType>(type: T, fn: (payload: BusPayload<T>) => void): () => void;
+  on<T extends BusType>(type: T, fn: (payload: BusPayload<T>, meta: BusMeta) => void): () => void;
   close(): void;
 }
 

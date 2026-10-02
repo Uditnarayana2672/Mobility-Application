@@ -4,11 +4,14 @@ import { createReadStream, promises as fs } from "node:fs";
 import path from "node:path";
 import { parseCampaigns, parseVenue, type CampaignsFile, type ValidationResult, type Venue } from "../src/core/schema";
 import { validate } from "../src/core/validate";
+import { SessionStore } from "./sessions";
 import { DocStore, ID_RE, listVenueIds } from "./store";
 
 export interface ApiOptions {
   /** Repo root; spike results go to <root>/docs/spikes, venue/campaign/upload data to <root>/data, seeds from <root>/public/venues. */
   root: string;
+  /** Called after a venue / campaigns publish succeeded (the realtime hub turns it into a push to phones and dashboards). */
+  onPublished?: (kind: "venue" | "campaigns", venueId: string, version: number) => void;
 }
 
 export type Next = (err?: unknown) => void;
@@ -81,6 +84,7 @@ export function createApi(opts: ApiOptions) {
   const uploadsDir = path.join(root, "data", "uploads");
   const venues = new DocStore(root, "venue");
   const campaigns = new DocStore(root, "campaigns");
+  const sessions = new SessionStore(root);
 
   const checkId = (id: string | undefined, what: string): string => {
     if (!id || !ID_RE.test(id)) throw new HttpError(400, `bad ${what}`);
@@ -134,6 +138,7 @@ export function createApi(opts: ApiOptions) {
       const results = validate(parsed.data);
       if (results.some((r) => r.level === "fail")) return send(res, 422, { error: "validation failed", results });
       const stored = await venues.publish(id, parsed.data);
+      opts.onPublished?.("venue", id, stored.version);
       return send(res, 200, { ok: true, version: stored.version, publishedAt: stored.publishedAt, results });
     }
     return send(res, 404, { error: "unknown venue route" });
@@ -178,6 +183,7 @@ export function createApi(opts: ApiOptions) {
       if (!venue) results.push({ level: "fail", title: "Venue not published", detail: `Publish venue ${id} before its campaigns.` });
       if (results.length) return send(res, 422, { error: "validation failed", results });
       const stored = await campaigns.publish(id, parsed.data);
+      opts.onPublished?.("campaigns", id, stored.version);
       return send(res, 200, { ok: true, version: stored.version, publishedAt: stored.publishedAt });
     }
     return send(res, 404, { error: "unknown campaigns route" });
@@ -198,6 +204,18 @@ export function createApi(opts: ApiOptions) {
       const parts = url.pathname.slice("/api/".length).split("/").filter(Boolean);
 
       if (parts[0] === "health" && method === "GET") return send(res, 200, { ok: true, time: new Date().toISOString() });
+      if (parts[0] === "sessions" && method === "GET") {
+        const venue = checkId(parts[1], "venue id");
+        if (parts[2] === "last") {
+          const last = sessions.latest(venue);
+          return last ? send(res, 200, { file: last.info.file, device: last.info.device, startedAt: last.info.startedAt, lines: last.lines }) : send(res, 404, { error: "no recorded walk yet" });
+        }
+        if (parts[2]) {
+          const lines = sessions.read(venue, parts[2]);
+          return lines ? send(res, 200, { file: parts[2], lines }) : send(res, 404, { error: "no such recording" });
+        }
+        return send(res, 200, { sessions: sessions.list(venue) });
+      }
 
       if (parts[0] === "spikes" && parts.length === 2 && method === "POST") {
         const name = checkId(parts[1], "spike name");

@@ -38,4 +38,6 @@ export interface MapHandle {
   zoomBy(k: number): void;
   centerOn(x: number, y: number, scale?: number): void;
   screenToWorld(px: number, py: number): { x: number; y: number };
+  /** Current pixels-per-metre (for pixel-sized hit radii in world units). */
+  getScale(): number;
 }

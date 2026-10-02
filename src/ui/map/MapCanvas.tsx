@@ -27,8 +27,8 @@ export interface MapCanvasProps {
   onSelect?: (item: MapItem | null, world: { x: number; y: number }, ev: PointerEvent | ReactPointerEvent) => void;
   /** Called when the user pans or zooms by hand (e.g. to stop following). */
   onUserMove?: () => void;
-  /** Extra SVG drawn in world coordinates above the map (rubber bands, handles). */
-  children?: ReactNode;
+  /** Extra SVG drawn in world coordinates above the map (rubber bands, handles). A function receives the current view (for pixel-sized handles). */
+  children?: ReactNode | ((view: MapView) => ReactNode);
   className?: string;
   cursor?: string;
 }
@@ -95,6 +95,7 @@ export const MapCanvas = forwardRef<MapHandle, MapCanvasProps>(function MapCanva
       zoomBy: (k) => setView({ ...viewRef.current, scale: clamp(viewRef.current.scale * k, lim.minScale, lim.maxScale) }),
       centerOn: (x, y, scale) => setView({ ...viewRef.current, cx: x, cy: y, scale: scale ? clamp(scale, lim.minScale, lim.maxScale) : viewRef.current.scale }),
       screenToWorld: (px, py) => screenToWorld(shownRef.current, px, py),
+      getScale: () => shownRef.current.scale,
     }),
     [floor, lim, setView],
   );
@@ -227,7 +228,7 @@ export const MapCanvas = forwardRef<MapHandle, MapCanvasProps>(function MapCanva
               vectorEffect="non-scaling-stroke"
             />
           )}
-          {children}
+          {typeof children === "function" ? children(shown) : children}
           {fixed.map((e) =>
             fixedVisible(e, s, layers) ? (
               <g key={e.key} transform={fixedTransform(e, s, shown.rot)}>

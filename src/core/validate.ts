@@ -1,7 +1,7 @@
 import { DICT_SIZE } from "./aruco/dict";
 import { distToSegment } from "./geo";
 import { attachPoint, buildGraph, type Graph } from "./graph";
-import type { ValidationResult, Venue } from "./schema";
+import type { Room, ValidationResult, Venue } from "./schema";
 
 /**
  * Publish checklist. Ports the mock's checks (same titles/details on mock-shaped data) and generalises the ones that
@@ -28,19 +28,10 @@ export function validate(v: Venue): ValidationResult[] {
   if (dupRooms.length) add("fail", "Duplicate room IDs", [...new Set(dupRooms)].join(", "));
 
   // reachability
-  const G = buildGraph(v);
-  const seen = new Set<string>();
-  const start = startNode(v, G);
-  const stack: string[] = start ? [start] : [];
-  while (stack.length) {
-    const k = stack.pop() as string;
-    if (seen.has(k) || !G.adj[k]) continue;
-    seen.add(k);
-    for (const h of G.adj[k] as NonNullable<(typeof G.adj)[string]>) stack.push(h.to);
-  }
-  const unreachable = v.rooms.filter((r) => !seen.has(r.id));
+  const unreachable = unreachableRooms(v);
   if (!unreachable.length) add("pass", `All ${v.rooms.length} rooms reachable from the entrance`, "Every room has a door linked to the walk network.");
   else add("fail", `${unreachable.length} room(s) not reachable`, unreachable.map((r) => r.name).join(", ") + " — select the room and use “Connect to corridor”.");
+  const G = buildGraph(v);
 
   // vertical links
   const vert = v.edges.filter((e) => e.type !== "walk");
@@ -98,6 +89,21 @@ export function validate(v: Venue): ValidationResult[] {
   return out;
 }
 
+/** Rooms that cannot be reached from the entrance over the walk network (used by the checklist and the room inspector). */
+export function unreachableRooms(v: Venue): Room[] {
+  const G = buildGraph(v);
+  const seen = new Set<string>();
+  const start = startNode(v, G);
+  const stack: string[] = start ? [start] : [];
+  while (stack.length) {
+    const k = stack.pop() as string;
+    if (seen.has(k) || !G.adj[k]) continue;
+    seen.add(k);
+    for (const h of G.adj[k] as NonNullable<(typeof G.adj)[string]>) stack.push(h.to);
+  }
+  return v.rooms.filter((r) => !seen.has(r.id));
+}
+
 /** Where reachability starts: the main-entrance POI (snapped onto the walk network), else the first corridor node of the first floor. */
 function startNode(v: Venue, G: Graph): string | null {
   const first = v.floors[0];
@@ -107,7 +113,8 @@ function startNode(v: Venue, G: Graph): string | null {
     const id = attachPoint(G, entrance.floor, entrance.x, entrance.y, "entrance");
     if (id) return id;
   }
-  const n = v.nodes.find((x) => x.floor === first.id && x.kind === "corridor") ?? v.nodes.find((x) => x.floor === first.id) ?? v.nodes[0];
+  // Never start from a room/door node: that would make a room "reachable" from itself when there is no corridor at all.
+  const n = v.nodes.find((x) => x.floor === first.id && x.kind === "corridor") ?? v.nodes.find((x) => x.kind === "corridor");
   return n ? n.id : null;
 }
 

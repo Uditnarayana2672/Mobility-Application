@@ -1,0 +1,603 @@
+import { DICT_SIZE } from "@/core/aruco/dict";
+import { distToSegment } from "@/core/geo";
+import type { Background, Floor, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
+import type { PoiKind } from "@/core/cats";
+
+/**
+ * Pure venue editing operations. Each takes a venue and returns a NEW venue (never mutates its input);
+ * the editor commits the result as one undo step. All coordinates are metres.
+ */
+export const GRID = 0.5;
+export const NODE_SNAP = 1.0;
+export const EDGE_SNAP = 0.6;
+export const DOOR_LINK_RADIUS = 3;
+export const MIN_ROOM = 1.5;
+
+export interface Pt {
+  x: number;
+  y: number;
+}
+
+export const snap = (n: number, step = GRID): number => Math.round(Math.round(n / step) * step * 100) / 100;
+const r2 = (n: number): number => Math.round(n * 100) / 100;
+const clone = (v: Venue): Venue => structuredClone(v);
+
+/* ------------------------------------------------------------------ ids */
+
+function nextNum(ids: Iterable<string>, re: RegExp): number {
+  let max = 0;
+  for (const id of ids) {
+    const m = re.exec(id);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return max + 1;
+}
+
+export const nodeId = (v: Venue, floor: string): string => `${floor}:n${nextNum(v.nodes.map((n) => n.id), new RegExp(`^${floor}:n(\\d+)$`))}`;
+export const roomId = (v: Venue, floor: string): string => `${floor}-r${nextNum(v.rooms.map((r) => r.id), new RegExp(`^${floor}-r(\\d+)$`))}`;
+export const wallId = (v: Venue): string => `W${String(nextNum(v.walls.map((w) => w.id), /^W(\d+)$/)).padStart(2, "0")}`;
+export const poiId = (v: Venue): string => `P${String(nextNum(v.pois.map((p) => p.id), /^P(\d+)$/)).padStart(2, "0")}`;
+export const floorId = (v: Venue): string => `F${nextNum(v.floors.map((f) => f.id), /^F(\d+)$/)}`;
+/** Lowest free ArUco id, or null if the dictionary is exhausted. */
+export function markerId(v: Venue): number | null {
+  const used = new Set(v.markers.map((m) => m.id));
+  for (let i = 0; i < DICT_SIZE; i++) if (!used.has(i)) return i;
+  return null;
+}
+
+/* ------------------------------------------------------------------ geometry */
+
+const OUTWARD: Record<Side, number> = { N: 0, E: 90, S: 180, W: 270 };
+
+export interface EdgeHit {
+  room: Room;
+  side: Side;
+  /** Nearest point on the room edge. */
+  point: Pt;
+  dist: number;
+  /** Bearing pointing away from the room (the way a sticker on this wall faces). */
+  normal: number;
+  /** Edge endpoints (for sizing ad walls). */
+  a: Pt;
+  b: Pt;
+}
+
+function roomEdges(r: Room): { side: Side; a: Pt; b: Pt }[] {
+  return [
+    { side: "N", a: { x: r.x, y: r.y }, b: { x: r.x + r.w, y: r.y } },
+    { side: "S", a: { x: r.x, y: r.y + r.h }, b: { x: r.x + r.w, y: r.y + r.h } },
+    { side: "W", a: { x: r.x, y: r.y }, b: { x: r.x, y: r.y + r.h } },
+    { side: "E", a: { x: r.x + r.w, y: r.y }, b: { x: r.x + r.w, y: r.y + r.h } },
+  ];
+}
+
+function projectOnSegment(p: Pt, a: Pt, b: Pt): { pt: Pt; t: number } {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2));
+  return { pt: { x: a.x + t * dx, y: a.y + t * dy }, t };
+}
+
+/** Nearest room edge on a floor within maxD metres (optionally restricted to one room). */
+export function nearestRoomEdge(v: Venue, floor: string, p: Pt, maxD: number, onlyRoom?: string): EdgeHit | null {
+  let best: EdgeHit | null = null;
+  for (const room of v.rooms) {
+    if (room.floor !== floor || (onlyRoom && room.id !== onlyRoom)) continue;
+    for (const e of roomEdges(room)) {
+      const { pt } = projectOnSegment(p, e.a, e.b);
+      const d = Math.hypot(p.x - pt.x, p.y - pt.y);
+      if (d <= maxD && (!best || d < best.dist)) best = { room, side: e.side, point: pt, dist: d, normal: OUTWARD[e.side], a: e.a, b: e.b };
+    }
+  }
+  return best;
+}
+
+export const findNode = (v: Venue, id: string): VNode | undefined => v.nodes.find((n) => n.id === id);
+const hasEdge = (v: Venue, a: string, b: string): boolean => v.edges.some((e) => (e.a === a && e.b === b) || (e.a === b && e.b === a));
+function linkWalk(v: Venue, a: string, b: string): void {
+  if (a !== b && !hasEdge(v, a, b)) v.edges.push({ a, b, type: "walk" });
+}
+
+/** Nearest existing node on the floor within `radius`. */
+export function nearestNode(v: Venue, floor: string, p: Pt, radius: number, kinds?: VNode["kind"][]): VNode | null {
+  let best: { n: VNode; d: number } | null = null;
+  for (const n of v.nodes) {
+    if (n.floor !== floor || (kinds && !kinds.includes(n.kind))) continue;
+    const d = Math.hypot(n.x - p.x, n.y - p.y);
+    if (d <= radius && (!best || d < best.d)) best = { n, d };
+  }
+  return best ? best.n : null;
+}
+
+interface EdgeProj {
+  edgeIndex: number;
+  pt: Pt;
+  t: number;
+  dist: number;
+}
+
+/** Nearest walk edge between corridor nodes on the floor. */
+function nearestWalkEdge(v: Venue, floor: string, p: Pt, radius: number): EdgeProj | null {
+  let best: EdgeProj | null = null;
+  v.edges.forEach((e, i) => {
+    if (e.type !== "walk") return;
+    const a = findNode(v, e.a);
+    const b = findNode(v, e.b);
+    if (!a || !b || a.floor !== floor || b.floor !== floor || a.kind !== "corridor" || b.kind !== "corridor") return;
+    const { pt, t } = projectOnSegment(p, a, b);
+    const d = Math.hypot(p.x - pt.x, p.y - pt.y);
+    if (d <= radius && (!best || d < best.dist)) best = { edgeIndex: i, pt, t, dist: d };
+  });
+  return best;
+}
+
+/** Split walk edge `edgeIndex` with a new corridor node at pt; returns the new node (mutates `v`). */
+function splitEdge(v: Venue, floor: string, edgeIndex: number, pt: Pt): VNode {
+  const e = v.edges[edgeIndex]!;
+  const n: VNode = { id: nodeId(v, floor), floor, x: r2(pt.x), y: r2(pt.y), kind: "corridor" };
+  v.nodes.push(n);
+  v.edges.splice(edgeIndex, 1);
+  v.edges.push({ a: e.a, b: n.id, type: "walk" }, { a: n.id, b: e.b, type: "walk" });
+  return n;
+}
+
+/* ------------------------------------------------------------------ rooms & doors */
+
+/** Create the door node + room-centre node for a room and link them (mutates `v`). */
+function ensureRoomNodes(v: Venue, room: Room): void {
+  const doorId = `${room.id}:door`;
+  const d = findNode(v, doorId);
+  if (d) {
+    d.x = room.door.x;
+    d.y = room.door.y;
+  } else v.nodes.push({ id: doorId, floor: room.floor, x: room.door.x, y: room.door.y, kind: "door", room: room.id });
+  const c = findNode(v, room.id);
+  if (c) {
+    c.x = r2(room.x + room.w / 2);
+    c.y = r2(room.y + room.h / 2);
+  } else v.nodes.push({ id: room.id, floor: room.floor, x: r2(room.x + room.w / 2), y: r2(room.y + room.h / 2), kind: "room", room: room.id });
+  linkWalk(v, doorId, room.id);
+}
+
+/** True when the door node already has a walk link to something other than its own room node. */
+function doorLinked(v: Venue, room: Room): boolean {
+  const doorId = `${room.id}:door`;
+  return v.edges.some((e) => e.type === "walk" && ((e.a === doorId && e.b !== room.id) || (e.b === doorId && e.a !== room.id)));
+}
+
+/** Link a room's door to the nearest corridor node or walk edge within `radius` (mutates `v`). Returns whether it linked. */
+function linkDoor(v: Venue, room: Room, radius: number): boolean {
+  const doorId = `${room.id}:door`;
+  const dp = { x: room.door.x, y: room.door.y };
+  const node = nearestNode(v, room.floor, dp, radius, ["corridor"]);
+  const edge = nearestWalkEdge(v, room.floor, dp, radius);
+  const nodeD = node ? Math.hypot(node.x - dp.x, node.y - dp.y) : Infinity;
+  if (edge && edge.t > 0.02 && edge.t < 0.98 && edge.dist < nodeD - 0.01) {
+    const n = splitEdge(v, room.floor, edge.edgeIndex, edge.pt);
+    linkWalk(v, doorId, n.id);
+    return true;
+  }
+  if (node) {
+    linkWalk(v, doorId, node.id);
+    return true;
+  }
+  return false;
+}
+
+/** Nearest point of the floor's corridor network (walk edges between corridor nodes, else corridor nodes, else corridor rectangles). */
+function nearestNetworkPoint(v: Venue, floor: string, p: Pt): Pt | null {
+  let best: { pt: Pt; d: number } | null = null;
+  const consider = (pt: Pt) => {
+    const d = Math.hypot(p.x - pt.x, p.y - pt.y);
+    if (!best || d < best.d) best = { pt, d };
+  };
+  for (const e of v.edges) {
+    if (e.type !== "walk") continue;
+    const a = findNode(v, e.a);
+    const b = findNode(v, e.b);
+    if (a && b && a.floor === floor && b.floor === floor && a.kind === "corridor" && b.kind === "corridor") consider(projectOnSegment(p, a, b).pt);
+  }
+  if (!best) for (const n of v.nodes) if (n.floor === floor && n.kind === "corridor") consider(n);
+  if (!best) for (const c of v.corridors) if (c.floor === floor) consider({ x: c.x + c.w / 2, y: c.y + c.h / 2 });
+  return best ? (best as { pt: Pt }).pt : null;
+}
+
+/** Door on the side of the room that faces the nearest corridor (default: south wall, centred). */
+function defaultDoor(v: Venue, r: Omit<Room, "door">): Room["door"] {
+  const cx = r.x + r.w / 2;
+  const cy = r.y + r.h / 2;
+  const target = nearestNetworkPoint(v, r.floor, { x: cx, y: cy });
+  if (!target) return { x: snap(cx), y: r.y + r.h, side: "S" };
+  const dx = target.x - cx;
+  const dy = target.y - cy;
+  // Compare in room-relative units so a wide room still picks the side that actually faces the corridor.
+  if (Math.abs(dx) / (r.w / 2) > Math.abs(dy) / (r.h / 2)) {
+    const y = snap(clamp(target.y, r.y + 0.5, r.y + r.h - 0.5));
+    return dx > 0 ? { x: r.x + r.w, y, side: "E" } : { x: r.x, y, side: "W" };
+  }
+  const x = snap(clamp(target.x, r.x + 0.5, r.x + r.w - 0.5));
+  return dy > 0 ? { x, y: r.y + r.h, side: "S" } : { x, y: r.y, side: "N" };
+}
+/** Clamp n into [a, b]; if the range is empty (b < a) return its midpoint. */
+const clamp = (n: number, a: number, b: number): number => (b < a ? (a + b) / 2 : Math.max(a, Math.min(b, n)));
+
+export function addRoom(v0: Venue, floor: string, a: Pt, b: Pt): { venue: Venue; id: string } | { error: string } {
+  const x = snap(Math.min(a.x, b.x));
+  const y = snap(Math.min(a.y, b.y));
+  const w = snap(Math.abs(b.x - a.x));
+  const h = snap(Math.abs(b.y - a.y));
+  if (w < MIN_ROOM || h < MIN_ROOM) return { error: `Too small: drag at least ${MIN_ROOM} m × ${MIN_ROOM} m` };
+  const v = clone(v0);
+  const id = roomId(v, floor);
+  const base = { id, floor, name: "New room", cat: "workspace" as const, x, y, w, h, aliases: [], hours: "9:00 – 19:00", access: "public" as const, short: null };
+  const room: Room = { ...base, door: defaultDoor(v, base) };
+  v.rooms.push(room);
+  ensureRoomNodes(v, room);
+  linkDoor(v, room, DOOR_LINK_RADIUS);
+  return { venue: v, id };
+}
+
+/** Move a room's door to the nearest point of its own edges. */
+export function setDoor(v0: Venue, rId: string, p: Pt): Venue | { error: string } {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return { error: "No such room" };
+  const hit = nearestRoomEdge(v, room.floor, p, Infinity, rId);
+  if (!hit) return { error: "No edge found" };
+  const pt = hit.side === "N" || hit.side === "S" ? { x: snap(clamp(hit.point.x, room.x + 0.5, room.x + room.w - 0.5)), y: hit.point.y } : { x: hit.point.x, y: snap(clamp(hit.point.y, room.y + 0.5, room.y + room.h - 0.5)) };
+  room.door = { x: pt.x, y: pt.y, side: hit.side };
+  // Drop the old connection(s) from the door to the network; keep door<->room link.
+  const doorId = `${room.id}:door`;
+  v.edges = v.edges.filter((e) => !(e.type === "walk" && ((e.a === doorId && e.b !== room.id) || (e.b === doorId && e.a !== room.id))));
+  ensureRoomNodes(v, room);
+  linkDoor(v, room, DOOR_LINK_RADIUS);
+  return v;
+}
+
+/** Retry connecting a room's door to the walk network with a wide search radius ("Connect to corridor"). */
+export function connectRoom(v0: Venue, rId: string, radius = 12): Venue | { error: string } {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return { error: "No such room" };
+  ensureRoomNodes(v, room);
+  if (doorLinked(v, room)) return v;
+  if (!linkDoor(v, room, radius)) return { error: `No walk path within ${radius} m: draw a walk path near the door first` };
+  return v;
+}
+
+export function updateRoom(v0: Venue, rId: string, patch: Partial<Room>): Venue {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return v;
+  Object.assign(room, patch);
+  if (patch.kind) room.cat = "vertical";
+  if (patch.x !== undefined || patch.y !== undefined || patch.w !== undefined || patch.h !== undefined) {
+    // Keep the door on its side and the nodes in sync after a resize/move.
+    const hit = nearestRoomEdge(v, room.floor, { x: room.door.x, y: room.door.y }, Infinity, rId);
+    if (hit) {
+      room.door = { x: hit.side === "N" || hit.side === "S" ? clamp(room.door.x, room.x, room.x + room.w) : hit.point.x, y: hit.side === "E" || hit.side === "W" ? clamp(room.door.y, room.y, room.y + room.h) : hit.point.y, side: hit.side };
+      room.door.x = r2(room.door.x);
+      room.door.y = r2(room.door.y);
+    }
+    ensureRoomNodes(v, room);
+  }
+  return v;
+}
+
+export function moveRoom(v0: Venue, rId: string, dx: number, dy: number): Venue {
+  const v = clone(v0);
+  const room = v.rooms.find((r) => r.id === rId);
+  if (!room) return v;
+  room.x = snap(room.x + dx);
+  room.y = snap(room.y + dy);
+  const ddx = room.x - v0.rooms.find((r) => r.id === rId)!.x;
+  const ddy = room.y - v0.rooms.find((r) => r.id === rId)!.y;
+  room.door = { ...room.door, x: r2(room.door.x + ddx), y: r2(room.door.y + ddy) };
+  ensureRoomNodes(v, room);
+  return v;
+}
+
+/* ------------------------------------------------------------------ walk network */
+
+/**
+ * One click of the walk-path tool. Joins an existing node within 1 m, else splits a nearby corridor edge,
+ * else drops a new node on the 0.5 m grid; links it to the previous node of the chain and to door nodes within 1.5 m.
+ */
+export function walkClick(v0: Venue, floor: string, chain: string | null, p: Pt): { venue: Venue; nodeId: string } {
+  const v = clone(v0);
+  let n: VNode | null = nearestNode(v, floor, p, NODE_SNAP, ["corridor", "door"]);
+  if (!n) {
+    const edge = nearestWalkEdge(v, floor, p, EDGE_SNAP);
+    if (edge && edge.t > 0.02 && edge.t < 0.98) n = splitEdge(v, floor, edge.edgeIndex, edge.pt);
+  }
+  if (!n) {
+    n = { id: nodeId(v, floor), floor, x: snap(p.x), y: snap(p.y), kind: "corridor" };
+    v.nodes.push(n);
+  }
+  if (chain) linkWalk(v, chain, n.id);
+  if (n.kind === "corridor") {
+    for (const room of v.rooms) {
+      if (room.floor !== floor || Math.hypot(room.door.x - n.x, room.door.y - n.y) > 1.5) continue;
+      ensureRoomNodes(v, room);
+      linkWalk(v, `${room.id}:door`, n.id);
+    }
+  }
+  return { venue: v, nodeId: n.id };
+}
+
+export function moveNode(v0: Venue, id: string, p: Pt): Venue {
+  const v = clone(v0);
+  const n = findNode(v, id);
+  if (!n || n.kind !== "corridor") return v; // door/room nodes follow their room
+  n.x = snap(p.x);
+  n.y = snap(p.y);
+  return v;
+}
+
+/* ------------------------------------------------------------------ vertical links */
+
+export const LIFT_SEC = { base: 30, perFloor: 14 };
+export const STAIRS_SEC = { up: 18, down: 12 };
+
+export function addVerticalLinks(v0: Venue, type: "lift" | "stairs", roomIds: string[]): { venue: Venue; added: number } | { error: string } {
+  const v = clone(v0);
+  const rooms = roomIds.map((id) => v.rooms.find((r) => r.id === id));
+  if (rooms.some((r) => !r)) return { error: "Unknown room" };
+  const rs = rooms as Room[];
+  if (new Set(rs.map((r) => r.floor)).size !== rs.length) return { error: "Pick rooms on different floors" };
+  if (rs.length < 2) return { error: "Pick at least two rooms" };
+  const idx = (f: string) => v.floors.findIndex((x) => x.id === f);
+  let added = 0;
+  for (let i = 0; i < rs.length; i++) {
+    for (let j = i + 1; j < rs.length; j++) {
+      const a = rs[i]!;
+      const b = rs[j]!;
+      const lo = idx(a.floor) < idx(b.floor) ? a : b;
+      const hi = lo === a ? b : a;
+      const span = idx(hi.floor) - idx(lo.floor);
+      if (type === "stairs" && span !== 1) return { error: "Stairs connect adjacent floors only: use a lift for longer rides" };
+      if (v.edges.some((e) => e.type !== "walk" && ((e.a === lo.id && e.b === hi.id) || (e.a === hi.id && e.b === lo.id)))) continue;
+      const up = type === "lift" ? LIFT_SEC.base + LIFT_SEC.perFloor * span : STAIRS_SEC.up * span;
+      const down = type === "lift" ? up : STAIRS_SEC.down * span;
+      v.edges.push({ a: lo.id, b: hi.id, type, len: 6 * span, upSec: up, downSec: down });
+      added++;
+    }
+  }
+  for (const r of rs) {
+    r.kind = type;
+    r.cat = "vertical";
+  }
+  return { venue: v, added };
+}
+
+/* ------------------------------------------------------------------ markers, walls, POIs */
+
+export function addMarker(v0: Venue, floor: string, p: Pt): { venue: Venue; id: number } | { error: string } {
+  const id = markerId(v0);
+  if (id === null) return { error: `All ${DICT_SIZE} printable marker IDs are used` };
+  const v = clone(v0);
+  const hit = nearestRoomEdge(v, floor, p, 3);
+  const pos = hit ? hit.point : p;
+  const m: Marker = { id, floor, name: `Marker ${id}`, x: snap(pos.x), y: snap(pos.y), z: 1.4, normal: hit ? hit.normal : 0, sizeM: 0.12, note: "" };
+  v.markers.push(m);
+  return { venue: v, id };
+}
+
+export function addWall(v0: Venue, floor: string, p: Pt): { venue: Venue; id: string } {
+  const v = clone(v0);
+  const hit = nearestRoomEdge(v, floor, p, 3);
+  const id = wallId(v);
+  let w: Wall;
+  if (hit) {
+    // 3 m slot centred on the click, kept inside the edge.
+    const len = Math.hypot(hit.b.x - hit.a.x, hit.b.y - hit.a.y);
+    const half = Math.min(1.5, len / 2);
+    const horizontal = hit.side === "N" || hit.side === "S";
+    const c = horizontal ? clamp(hit.point.x, hit.a.x + half, hit.b.x - half) : clamp(hit.point.y, hit.a.y + half, hit.b.y - half);
+    w = horizontal
+      ? { id, floor, label: "New blank wall", x1: snap(c - half), y1: hit.a.y, x2: snap(c + half), y2: hit.a.y, normal: hit.normal, bottom: 1, height: 1.6, approved: false }
+      : { id, floor, label: "New blank wall", x1: hit.a.x, y1: snap(c - half), x2: hit.a.x, y2: snap(c + half), normal: hit.normal, bottom: 1, height: 1.6, approved: false };
+  } else {
+    w = { id, floor, label: "New blank wall", x1: snap(p.x - 1.5), y1: snap(p.y), x2: snap(p.x + 1.5), y2: snap(p.y), normal: 0, bottom: 1, height: 1.6, approved: false };
+  }
+  v.walls.push(w);
+  return { venue: v, id };
+}
+
+export function addPoi(v0: Venue, floor: string, p: Pt, kind: PoiKind, label: string): { venue: Venue; id: string } {
+  const v = clone(v0);
+  const id = poiId(v);
+  const poi: Poi = { id, floor, kind, name: label, x: snap(p.x), y: snap(p.y) };
+  v.pois.push(poi);
+  return { venue: v, id };
+}
+
+export function updateMarker(v0: Venue, id: number, patch: Partial<Marker>): Venue {
+  const v = clone(v0);
+  const m = v.markers.find((x) => x.id === id);
+  if (m) Object.assign(m, patch);
+  return v;
+}
+
+export function updateWall(v0: Venue, id: string, patch: Partial<Wall>): Venue {
+  const v = clone(v0);
+  const w = v.walls.find((x) => x.id === id);
+  if (w) Object.assign(w, patch);
+  return v;
+}
+
+export function updatePoi(v0: Venue, id: string, patch: Partial<Poi>): Venue {
+  const v = clone(v0);
+  const p = v.pois.find((x) => x.id === id);
+  if (p) Object.assign(p, patch);
+  return v;
+}
+
+export function moveItem(v0: Venue, type: "marker" | "wall" | "poi", id: string, p: Pt): Venue {
+  const v = clone(v0);
+  if (type === "marker") {
+    const m = v.markers.find((x) => String(x.id) === id);
+    if (m) (m.x = snap(p.x)), (m.y = snap(p.y));
+  } else if (type === "poi") {
+    const q = v.pois.find((x) => x.id === id);
+    if (q) (q.x = snap(p.x)), (q.y = snap(p.y));
+  } else {
+    const w = v.walls.find((x) => x.id === id);
+    if (w) {
+      const cx = (w.x1 + w.x2) / 2;
+      const cy = (w.y1 + w.y2) / 2;
+      const dx = snap(p.x) - cx;
+      const dy = snap(p.y) - cy;
+      w.x1 = r2(w.x1 + dx);
+      w.x2 = r2(w.x2 + dx);
+      w.y1 = r2(w.y1 + dy);
+      w.y2 = r2(w.y2 + dy);
+    }
+  }
+  return v;
+}
+
+/* ------------------------------------------------------------------ delete */
+
+export type Deletable = { type: "room" | "marker" | "wall" | "poi" | "node"; id: string };
+
+export function deleteItem(v0: Venue, item: Deletable): Venue {
+  const v = clone(v0);
+  switch (item.type) {
+    case "room": {
+      const ids = new Set(v.nodes.filter((n) => n.room === item.id || n.id === item.id).map((n) => n.id));
+      v.rooms = v.rooms.filter((r) => r.id !== item.id);
+      v.nodes = v.nodes.filter((n) => !ids.has(n.id));
+      v.edges = v.edges.filter((e) => !ids.has(e.a) && !ids.has(e.b));
+      break;
+    }
+    case "marker":
+      v.markers = v.markers.filter((m) => String(m.id) !== item.id);
+      break;
+    case "wall":
+      v.walls = v.walls.filter((w) => w.id !== item.id);
+      break;
+    case "poi":
+      v.pois = v.pois.filter((p) => p.id !== item.id);
+      break;
+    case "node":
+      v.nodes = v.nodes.filter((n) => n.id !== item.id);
+      v.edges = v.edges.filter((e) => e.a !== item.id && e.b !== item.id);
+      break;
+  }
+  return v;
+}
+
+/* ------------------------------------------------------------------ floors, background, scale */
+
+export function addFloor(v0: Venue): { venue: Venue; id: string } {
+  const v = clone(v0);
+  const id = floorId(v);
+  const last = v.floors[v.floors.length - 1];
+  const floor: Floor = { id, name: `Floor ${v.floors.length + 1}`, short: String(v.floors.length + 1), elevation: (last?.elevation ?? 0) + (last?.height ?? 4), height: last?.height ?? 3, w: last?.w ?? 60, h: last?.h ?? 36 };
+  v.floors.push(floor);
+  return { venue: v, id };
+}
+
+export function updateFloor(v0: Venue, id: string, patch: Partial<Omit<Floor, "id" | "background">>): Venue {
+  const v = clone(v0);
+  const f = v.floors.find((x) => x.id === id);
+  if (f) Object.assign(f, patch);
+  return v;
+}
+
+export function updateVenueMeta(v0: Venue, patch: Partial<Pick<Venue, "name" | "type" | "city" | "address">>): Venue {
+  return { ...clone(v0), ...patch };
+}
+
+/** Recompute the venue-level calibrated flag: every floor with a photo must be calibrated. */
+function syncScale(v: Venue): void {
+  const withBg = v.floors.filter((f) => f.background);
+  const allCal = withBg.every((f) => f.background!.calibrated);
+  v.scale = { ...v.scale, metersPerUnit: 1, calibrated: allCal, reference: withBg.length ? withBg.map((f) => `${f.name}: ${f.background!.reference ?? "not calibrated"}`).join("; ") : "Drawn in metres (no photo)" };
+}
+
+/** Attach a photo to a floor, fitted inside the floor plate (scale is a guess until calibrated). */
+export function setBackground(v0: Venue, floor: string, img: { imageUrl: string; widthPx: number; heightPx: number }): Venue {
+  const v = clone(v0);
+  const f = v.floors.find((x) => x.id === floor);
+  if (!f) return v;
+  const scale = Math.min(f.w / img.widthPx, f.h / img.heightPx);
+  f.background = { ...img, opacity: 0.55, transform: { x: 0, y: 0, scale: r4(scale), rotationDeg: 0 }, calibrated: false };
+  syncScale(v);
+  return v;
+}
+const r4 = (n: number): number => Math.round(n * 10000) / 10000;
+
+export function updateBackground(v0: Venue, floor: string, patch: Partial<Pick<Background, "opacity">> & { transform?: Partial<Background["transform"]> }): Venue {
+  const v = clone(v0);
+  const bg = v.floors.find((x) => x.id === floor)?.background;
+  if (!bg) return v;
+  if (patch.opacity !== undefined) bg.opacity = Math.max(0, Math.min(1, patch.opacity));
+  if (patch.transform) {
+    const before = bg.transform.scale;
+    bg.transform = { ...bg.transform, ...patch.transform };
+    // Changing the scale by hand invalidates an earlier calibration.
+    if (patch.transform.scale !== undefined && patch.transform.scale !== before) {
+      bg.calibrated = false;
+      delete bg.reference;
+    }
+  }
+  syncScale(v);
+  return v;
+}
+
+export function removeBackground(v0: Venue, floor: string): Venue {
+  const v = clone(v0);
+  const f = v.floors.find((x) => x.id === floor);
+  if (f) delete f.background;
+  syncScale(v);
+  return v;
+}
+
+/**
+ * Calibrate a floor photo: the user drew a line from a to b (world metres under the CURRENT image scale) over something
+ * measured as `metres` in real life. The image is scaled about point `a` so that line becomes exactly `metres` long.
+ * Drawn geometry is never rescaled (coordinates are always metres).
+ */
+export function calibrateBackground(v0: Venue, floor: string, a: Pt, b: Pt, metres: number): Venue | { error: string } {
+  const drawn = Math.hypot(b.x - a.x, b.y - a.y);
+  if (!(metres > 0) || drawn < 1e-6) return { error: "Enter a length greater than zero and draw a longer line" };
+  const v = clone(v0);
+  const bg = v.floors.find((x) => x.id === floor)?.background;
+  if (!bg) return { error: "Upload a floor photo first" };
+  const k = metres / drawn;
+  bg.transform = { ...bg.transform, scale: r4(bg.transform.scale * k), x: r4(a.x + k * (bg.transform.x - a.x)), y: r4(a.y + k * (bg.transform.y - a.y)) };
+  bg.calibrated = true;
+  bg.reference = `drew ${drawn.toFixed(2)} m, set to ${metres} m`;
+  syncScale(v);
+  return v;
+}
+
+/* ------------------------------------------------------------------ misc */
+
+export { distToSegment };
+
+/** A venue with one empty floor, no photos (so metric by construction). Keeps id/name/city of `base` when given. */
+export function blankVenue(base?: Pick<Venue, "id" | "name" | "type" | "city" | "address" | "version">): Venue {
+  return {
+    schemaVersion: 2,
+    id: base?.id ?? "office-hq",
+    name: base?.name ?? "New venue",
+    type: base?.type ?? "Office / Tech park",
+    city: base?.city ?? "Indore",
+    address: base?.address ?? "",
+    version: base?.version ?? 1,
+    status: "draft",
+    scale: { metersPerUnit: 1, calibrated: true, reference: "Drawn in metres (no photo)" },
+    floors: [{ id: "F1", name: "Floor 1", short: "1", elevation: 0, height: 3, w: 60, h: 36 }],
+    corridors: [],
+    rooms: [],
+    nodes: [],
+    edges: [],
+    markers: [],
+    walls: [],
+    pois: [],
+  };
+}

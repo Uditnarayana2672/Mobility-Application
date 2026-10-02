@@ -26,6 +26,8 @@
   "include": [
     "src/core",
     "src/bus",
+    "src/navigator",
+    "src/dashboard",
     "src/shared",
     "src/ui",
     "src/editor",

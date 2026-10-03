@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
   "id": "airport",
-  "name": "Airport",
+  "name": "Kempegowda Airport",
   "type": "Airport",
   "city": "Bengaluru",
-  "address": "Kempegowda International Airport Bengaluru - Terminal 2",
+  "address": "Kempegowda International Airport, Terminal 2",
   "version": 1,
   "status": "published",
   "scale": {

@@ -24,6 +24,10 @@ export const CATS = {
   retail: { label: "Shop", fill: "#f6e3f3", stroke: "#c779bb", icon: "🛍️" },
   lounge: { label: "Lounge", fill: "#e8e0f7", stroke: "#9b82d6", icon: "🛋️" },
   baggage: { label: "Baggage reclaim", fill: "#e6e9ee", stroke: "#8c98a8", icon: "🛄" },
+  // Malls and bus stations
+  entertainment: { label: "Entertainment", fill: "#fde2e8", stroke: "#e07a93", icon: "🎬" },
+  platform: { label: "Bus platform", fill: "#d9ecf9", stroke: "#5fa6d6", icon: "🚌" },
+  ticket: { label: "Tickets & passes", fill: "#fff0c4", stroke: "#e3bd4c", icon: "🎟️" },
 } as const satisfies Record<string, CatInfo>;
 
 export type CatId = keyof typeof CATS;

@@ -1,0 +1,30 @@
+[
+  {
+    "id": "airport",
+    "name": "Kempegowda Airport",
+    "type": "Airport",
+    "floors": 3,
+    "icon": "✈️"
+  },
+  {
+    "id": "phoenix-citadel",
+    "name": "Phoenix Citadel Mall",
+    "type": "Shopping mall",
+    "floors": 3,
+    "icon": "🛍️"
+  },
+  {
+    "id": "majestic-bus-stand",
+    "name": "Majestic Bus Stand",
+    "type": "Bus station",
+    "floors": 2,
+    "icon": "🚌"
+  },
+  {
+    "id": "office-hq",
+    "name": "Demo Office · Tower A",
+    "type": "Office / Tech park",
+    "floors": 2,
+    "icon": "🏢"
+  }
+]

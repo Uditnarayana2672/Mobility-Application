@@ -9,7 +9,7 @@ GitHub Pages only hosts files. It cannot run `npm run serve`, so the site is a *
 |---|---|
 | `/` | First page: **Designer** or **Indore Maps** |
 | `/designer` | The original Blueprint designer on an empty sheet (it has an **Indore Maps** button; the old `/legacy-editor` address redirects here) |
-| `/nav?venue=airport` | What **Indore Maps** opens: the airport visitor map (on a laptop with `&demo=1`, the demo controls and walker) |
+| `/nav?venue=airport` | What **Indore Maps** opens: the first screen of the visitor app, a list of every place (Kempegowda Airport, Phoenix Citadel Mall, Majestic Bus Stand, Demo Office); tap one to open its map. On a laptop it opens with `&demo=1` (demo controls and walker) |
 | `/maps` | The list of every tool (`/nav`, `/editor`, `/dashboard`, …), linked from inside the app |
 
 ## One-time setup (about 2 minutes, in the GitHub website)
@@ -25,7 +25,7 @@ GitHub Pages on a free account needs the repository to be **public**.
 | Visitor map, search, routing, typed destinations, "I want a coffee" word matching | Editor Publish, drafts, uploads (`/editor` can open but not save) |
 | Camera view, marker scan, step counting, AR arrows (HTTPS is provided by Pages) | Local Whisper / Piper (the phone's own voice and the browser's recogniser are used instead) |
 | Phone's own voice for directions | Live dashboard from other phones (`/ws`), ads, owner page |
-| Venues: `airport`, `office-hq` (demo), `pg-home` | Place recognition by sight (needs a survey index from the server) |
+| Venues: `airport`, `phoenix-citadel`, `majestic-bus-stand`, `office-hq` (demo) | Place recognition by sight (needs a survey index from the server) |
 
 Open a venue directly: `…/Mobility-Application/nav?venue=airport` (then tap the blue pin). Use `?auto=0` if the location prompt gets in the way.
 
@@ -44,11 +44,22 @@ Everything in `public/venues` becomes public on the website (room names and size
 
 For the full app (editor, local voice, dashboard, place recognition) keep using `npm run dev:lan` or `npm run build && npm run serve` on the laptop, or any machine that can run Node.
 
-## The airport venue
-`public/venues/airport/venue.json` is made from the Blueprint drawing in `public/maps/blr-kia-t2.json` by `npm run convert:airport` (drawing scale 1 px = 0.5 m, as the file says). It keeps what a passenger looks for and leaves out the rest:
+## The places on the map
+The list on the first screen is `public/venues/index.json` (plus anything the laptop server has published). Each place is a venue file made from a drawing in the Blueprint designer's format (`public/maps/*.json`) by `npm run convert:venues`, which also rewrites `index.json`. To add a place: put its drawing in `public/maps`, add one line to the list at the top of `scripts/convert-venues.ts`, run `npm run convert:venues`, push.
+
+| Place | Drawing | Notes |
+|---|---|---|
+| Kempegowda Airport (`airport`) | `blr-kia-t2.json` (yours) | 3 floors, scale 1 px = 0.5 m as the file says |
+| Phoenix Citadel Mall (`phoenix-citadel`) | `phoenix-citadel-indore.json` | 3 floors, 54 places. **Illustrative**: brands (Marks & Spencer, H&M, Westside, Shoppers Stop, Lifestyle, Mango, INOX, Punjab Grill, TimeZone and so on) follow public descriptions of the mall; positions and the generic stores are invented |
+| Majestic Bus Stand (`majestic-bus-stand`) | `majestic-bus-stand.json` | 2 floors, 24 platforms (1-10 BMTC city buses, 11-18 KSRTC intercity/interstate, 19-24 KSRTC Terminal 2), ticket counters, cloak room, waiting hall. **Illustrative** layout |
+
+The mall and bus drawings are produced by `npm run make:blueprints` (`scripts/make-blueprints.ts`); edit the coordinates there, or open the JSON in the designer, then run `npm run convert:venues`. Replace them with the real floor plans whenever you have them: save the designer's export over the same file name and convert again.
+
+### What the converter keeps (airport example)
+It keeps what a passenger looks for and leaves out the rest:
 
 | Kept as places | Not imported one by one |
 |---|---|
-| 24 gates, 6 check-in islands + ticketing + bag drop, security / emigration / immigration / customs zones, baggage reclaim halls, 5 lounges, 12 eateries, 16 shops, 30 toilets (named by where they are), lifts and escalators (linked between floors), 29 points of interest and 14 entrances (ATM, currency, info, taxi, prayer, baby care, charging, trolleys, water, medical) | 84 check-in counters, 16 security lanes, 24 immigration / emigration counters, baggage belts (their numbers are search words of the reclaim hall), staff-only areas, the separation wall |
+| 24 gates, 6 check-in islands + ticketing + bag drop, security / emigration / immigration / customs zones, baggage reclaim halls, 5 lounges, 12 eateries, 16 shops, 30 toilets (named by where they are), lifts and escalators (linked between floors), 29 points of interest and 14 entrances | 84 check-in counters, 16 security lanes, 24 immigration / emigration counters, baggage belts (their numbers are search words of the reclaim hall), staff-only areas, the separation wall |
 
-The drawing's own connection list is used to join corridors (check-in hall to security to the airside plaza; the departure entries join the forecourt to the hall). Security and reclaim halls can be walked through; every other place is a destination only. To change the airport, edit the drawing in the designer, save it over `public/maps/blr-kia-t2.json`, run `npm run convert:airport`, and push.
+The drawing's own connection list is used to join corridors (check-in hall to security to the airside plaza; the departure entries join the forecourt to the hall). Security zones and reclaim halls can be walked through; every other place is a destination only.

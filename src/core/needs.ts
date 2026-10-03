@@ -205,6 +205,33 @@ export const NEEDS: Need[] = [
     poiKinds: ["babycare"],
   },
   {
+    id: "ticket",
+    label: "a ticket counter",
+    re: /\b(ticket|tickets|booking|reservation|reserve|bus\s*pass|season\s*pass)\b/i,
+    names: ["ticket", "reservation", "pass"],
+    cats: ["ticket"],
+  },
+  {
+    id: "movie",
+    label: "the cinema",
+    re: /\b(movie|movies|cinema|film|films|inox|multiplex)\b/i,
+    names: ["cinema", "inox", "multiplex", "insignia"],
+  },
+  {
+    id: "entertainment",
+    label: "entertainment",
+    re: /\b(game|games|gaming|arcade|play|fun|kids)\b/i,
+    names: ["game", "gaming", "fun", "timezone"],
+    cats: ["entertainment"],
+  },
+  {
+    id: "waiting",
+    label: "a waiting area",
+    re: /\b(wait|waiting|sit\s*down|seat|seats|sit)\b/i,
+    names: ["waiting"],
+    cats: ["lounge"],
+  },
+  {
     id: "charging",
     label: "a charging point",
     re: /\b(charge|charging|charger|power\s*socket)\b/i,

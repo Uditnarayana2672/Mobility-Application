@@ -185,6 +185,12 @@ const AIRPORT_ROOM: Record<string, { cat: Cat; tag: string }> = {
   baggage: { cat: "baggage", tag: "baggage" },
   checkin: { cat: "checkin", tag: "checkin" },
   security: { cat: "security", tag: "security" },
+  // malls and bus stations
+  entertainment: { cat: "entertainment", tag: "entertainment" },
+  platform: { cat: "platform", tag: "platform" },
+  ticket: { cat: "ticket", tag: "ticket" },
+  waiting: { cat: "lounge", tag: "waiting" },
+  service: { cat: "reception", tag: "info" },
 };
 const VERTICAL = new Set(["elevator", "stairs", "escalator"]);
 const insideBox = (inner: Box, outer: Box): boolean => {
@@ -214,12 +220,16 @@ function airportClass(e: BpElement, air: { cat: Cat; tag: string }, name: string
   const tags = [air.tag];
   if (e.type === "eatery" && (e.tags?.includes("coffee") || /coffee|cafe|café|tea\b/i.test(name))) tags.push("coffee");
   if (e.type === "lounge" || /sleep|pod|spa/i.test(name)) tags.push("rest");
-  if (e.type === "shop" && /pharmacy|chemist/i.test(name)) tags.push("firstaid");
-  return { cat: air.cat, tags };
+  if (e.type === "shop" && /pharmacy|chemist|medical/i.test(name)) tags.push("firstaid");
+  if (e.type === "waiting") tags.push("rest");
+  if (e.type === "service") tags.push("reception");
+  // a drawing can add need tags itself, written "need:baggage"
+  for (const t of e.tags ?? []) if (t.startsWith("need:")) tags.push(t.slice(5));
+  return { cat: air.cat, tags: [...new Set(tags)] };
 }
 
 /** Extra search words for an airport area: gents / ladies, the airlines of a check-in island, the belt numbers of a reclaim hall. */
-function airportAliases(e: BpElement, els: BpElement[]): string[] {
+function airportAliases(e: BpElement, els: BpElement[], name = e.name): string[] {
   const out: string[] = [];
   if (e.type === "toilet") {
     if (e.tags?.includes("male")) out.push("gents", "men's toilet");
@@ -236,6 +246,11 @@ function airportAliases(e: BpElement, els: BpElement[]): string[] {
     for (const o of els) if (o !== e && o.type === "baggage" && insideBox(rectOf(o), rectOf(e))) out.push(o.name.toLowerCase());
   }
   if (e.type === "gate") out.push("boarding gate");
+  if (e.type === "platform") {
+    out.push(name.toLowerCase().replace(/platform/, "bay"));
+    for (const t of e.tags ?? []) if (!t.startsWith("need:")) out.push(t.toLowerCase());
+  }
+  if (e.type === "ticket" || e.type === "service") out.push(...(e.tags ?? []).filter((t) => !t.startsWith("need:")).map((t) => t.toLowerCase()));
   return out;
 }
 
@@ -395,7 +410,7 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
       const air = AIRPORT_ROOM[e.type];
       const cl = air ? airportClass(e, air, name) : classify(`${name} ${vertical ? e.type : ""}`);
       if (air && (air.cat === "security" || air.cat === "baggage")) v = ops.updateRoom(v, res.id, { passThrough: true });
-      v = ops.updateRoom(v, res.id, { name, cat: cl.cat, tags: cl.tags.length ? cl.tags : undefined, aliases: [...new Set([name.toLowerCase(), ...(air ? airportAliases(e, els) : [])])] });
+      v = ops.updateRoom(v, res.id, { name, cat: cl.cat, tags: cl.tags.length ? cl.tags : undefined, aliases: [...new Set([name.toLowerCase(), ...(air ? airportAliases(e, els, name) : [])])] });
       made.set(e.id, res.id);
       stats.rooms++;
       if (vertical) lifts.push({ id: res.id, floor, x: cx, y: cy, type: e.type === "elevator" ? "lift" : "stairs" });

@@ -260,7 +260,6 @@ export default function MapScreen({ ctl, s }: P) {
       {showTop && (
         <div className="map-top">
           <div className="searchpill" data-testid="search-pill" onClick={(e) => { if (!(e.target as HTMLElement).closest(".mic")) ctl.openSearch(""); }}>
-            <span>🔍</span>
             <b>Search rooms, food, washrooms…</b>
             <button className="mic" aria-label="voice" data-testid="btn-mic" onClick={(e) => { e.stopPropagation(); ctl.openVoice(); }}>🎤</button>
           </div>

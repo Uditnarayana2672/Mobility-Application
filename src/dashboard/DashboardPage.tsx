@@ -11,7 +11,7 @@ import { MapCanvas, type UserPose } from "@/ui/map";
 import "./dashboard.css";
 
 const LIVE_MS = 2500;
-const SOURCE_BADGE: Record<string, string> = { sim: "SIM", marker: "MARKER", manual: "MANUAL", ar: "XR", steps: "PDR" };
+const SOURCE_BADGE: Record<string, string> = { sim: "SIM", marker: "MARKER", manual: "MANUAL", ar: "XR", steps: "PDR", vision: "SIGHT" };
 const deviceName = (id: string) => (id === LOCAL_DEVICE ? "simulated phone" : id);
 const MAX_EVENTS = 60;
 const MAX_TRAIL = 400;

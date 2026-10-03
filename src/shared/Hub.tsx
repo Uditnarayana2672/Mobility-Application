@@ -8,6 +8,7 @@ const ROUTES: [string, string][] = [
   ["/dashboard", "Laptop live view of the phone (mirrors /nav)"],
   ["/markers", "Printable ArUco markers"],
   ["/ads", "Advertiser portal: wall slots, creatives and live KPIs"],
+  ["/survey", "Survey walk: record pictures to recognise places by sight"],
   ["/preflight", "Stage checklist: certificate, sensors, WebXR, voices, server and live marker"],
   ["/legacy-editor", "Old Blueprint editor (frozen)"],
 ];

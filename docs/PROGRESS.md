@@ -322,3 +322,16 @@ Automated: `tests/geom.test.ts`, `doors.test.ts`, `objects.test.tsx`, `polygon-r
 
 ## Architecture v2 (plan only, 2026-10-03)
 - `docs/04-architecture-v2.md`: Blueprint look as a skin + importer (not as the data model), auto venue detection (GPS fence / QR), auto-locate (markers, then image recognition, then one-tap guesses), AI only at the edges (STT, constrained intent, TTS, image embeddings), AR director = rules + perception. Phases P1–P8, effort, acceptance, open questions. No code changed.
+
+## Architecture v2 — implemented (2026-10-03), branch `enhancements`
+Guide: `docs/05-using-architecture-v2.md`. Phases, each its own commit with unit + browser tests:
+- **Local speech**: Whisper (STT) and Piper (TTS, en/hi/te) on the server (`server/speech`, `/api/stt`, `/api/tts`, `npm run setup:speech`); phone side records 16 kHz WAV and plays the Piper audio, falling back to the phone's own voice. Route phrases are prefetched when navigation starts.
+- **Voice intents**: `core/needs.ts` (coffee → pantry etc., en/hi/te + room `tags`), plus a local sentence-embedding ranker (`server/semantic.ts`) behind `/api/assistant` when no cloud model is set.
+- **Blueprint importer** (`editor/blueprintImport.ts`) and **Blueprint map skin** (`ui/map/blueprintSkin.tsx`).
+- **Venue registry + GPS building detection** (`Venue.geo`, `/api/registry`, `core/geofence.ts`, `navigator/autoVenue.ts`).
+- **Automatic locate** (camera opens itself, one-tap guesses, resume last position).
+- **AR finish**: compass fusion that learns the map north, AR director rules, and a fix: heading did not follow the gyro between steps (`pf.setHeading` was never called).
+- **Place recognition**: survey walk page, DINOv2 index with a leave-one-out self-test, on-device matcher with a two-answer vote; switches on only when the self-test passes.
+- Decisions: models are local files under `data/models` (git-ignored); every AI feature has a rule-based fallback; vision is gated by its own measured accuracy; Telugu STT is experimental.
+- Found and fixed on the way: corridor width lost when an edge was split; survey "Build index" stayed disabled; oversized audio upload hung (now 413).
+- Hand-tests still to do: see section 4 of `docs/05-using-architecture-v2.md`.

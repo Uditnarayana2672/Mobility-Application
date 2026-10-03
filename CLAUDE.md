@@ -53,3 +53,5 @@ Copy `.env.example` to `.env` for the optional free-form assistant (`OPENAI_API_
 - Navigator logic lives in `NavController` / `session.ts`, not in components; time enters only through `tick(dt)` and the pose stream (tests drive it with a fake clock). Anything that must keep running in a background tab uses `startTicker` (Worker), not rAF or main-thread `setInterval`.
 - Commit in small steps; commit messages end with the Co-Authored-By line from the session.
 - Vitest is pinned to 2.x (repo is on Vite 5).
+
+New in v2 (see docs/05-using-architecture-v2.md): src/speech (local STT/TTS client), src/vision (place recognition), src/survey (survey walk page), src/core/{needs,geofence}.ts, src/positioning/{compass,locator}.ts, src/ar/director.ts, src/ui/map/blueprintSkin.tsx, src/editor/blueprintImport.ts, server/{speech,vision,semantic}. Models live in data/models (git-ignored; `npm run setup:speech`).

@@ -318,11 +318,14 @@ export class NavController {
   private onPose(p: Pose): void {
     if (!this.located) {
       // The simulator warms up before the first (tapped) scan; a live source has nothing until it has seen a marker: ignore all but that fix.
-      if (!this.live || p.source !== "marker" || p.markerId === null) return;
+      const byMarker = p.source === "marker" && p.markerId !== null;
+      const bySight = p.source === "vision" && p.acc <= 3.5;
+      if (!this.live || !(byMarker || bySight)) return;
       this.setLocated();
       this.patch({ user: p });
       const m = this.v.markers.find((x) => x.id === p.markerId);
-      if (this.live && m) this.toast(`✅ Marker ${m.id} recognised · ${this.fl(m.floor)} · ±${p.acc.toFixed(1)} m`);
+      if (this.live && m && byMarker) this.toast(`✅ Marker ${m.id} recognised · ${this.fl(m.floor)} · ±${p.acc.toFixed(1)} m`);
+      else if (bySight) this.toast(`👁 Recognised by sight · near ${nearName(this.v, p)} · ±${p.acc.toFixed(1)} m`);
       if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
     } else if (this.live && p.source === "marker" && p.markerId !== null && this.st.scanning) {
       this.patch({ scanning: false });

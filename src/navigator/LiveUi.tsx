@@ -142,7 +142,7 @@ export function LiveLocate({ rt, ctl, s, hints }: Props & { hints?: LocateHints 
   );
 }
 
-const SOURCE_LABEL: Record<string, string> = { sim: "SIM", marker: "MARKER", manual: "MANUAL", ar: "AR", steps: "STEPS" };
+const SOURCE_LABEL: Record<string, string> = { sim: "SIM", marker: "MARKER", manual: "MANUAL", ar: "AR", steps: "STEPS", vision: "SIGHT" };
 
 /** Small chip on the map: where the dot comes from and how sure it is; re-scan / restart buttons for the live sources. */
 export function LiveHud({ rt, ctl, s }: Props) {
@@ -239,6 +239,7 @@ export function DebugOverlay({ rt, ctl, s }: Props) {
       <div>tracking: {d?.tracking ?? s.sim.mode}</div>
       <div>reproj: {n(d?.reprojPx)} px · oblique: {n(d?.obliqueDeg, 0)}° · det: {d?.detections ?? 0}</div>
       <div>reject: {d?.reject ?? "–"}</div>
+      {d?.vision && <div>vision: {d.vision}</div>}
       <div>last anchor: {d?.anchorAgeSec === null || d === null ? "–" : `${n(d?.anchorAgeSec, 0)} s ago`} · marker {s.user?.markerId ?? "–"}</div>
       <div>
         pose: {s.user ? `${s.user.floor} ${s.user.x.toFixed(1)}, ${s.user.y.toFixed(1)} · ${Math.round(s.user.heading)}° · ±${s.user.acc.toFixed(1)}` : "–"}

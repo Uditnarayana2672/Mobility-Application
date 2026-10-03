@@ -1,12 +1,16 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
 import { createReadStream, promises as fs } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { parseCampaigns, parseVenue, type CampaignsFile, type ValidationResult, type Venue } from "../src/core/schema";
 import { validate } from "../src/core/validate";
 import type { AssistantRequest } from "../src/core/assistant";
 import { AssistantService } from "./assistant";
 import { LocalSemanticRanker } from "./semantic";
+import { NodeEmbedder, type PictureEmbedder } from "./vision/embed";
+import { MAX_FRAME_BYTES, SurveyStore } from "./vision/survey";
+import { VPR_MODEL } from "../src/vision/vpr";
 import type { AssistantProvider } from "./assistant-provider";
 import { SessionStore } from "./sessions";
 import { createLocalSpeech, type SpeechService } from "./speech";
@@ -26,6 +30,8 @@ export interface ApiOptions {
   speech?: SpeechService;
   /** Local free-form place ranker (default: a MiniLM embedding model on this machine, loaded in the background). `null` turns it off. */
   semantic?: Pick<LocalSemanticRanker, "rank" | "ready"> & { warm?(): void } | null;
+  /** Image-embedding model for the survey index (default: DINOv2-small on this machine). */
+  embedder?: PictureEmbedder;
 }
 
 export type Next = (err?: unknown) => void;
@@ -117,6 +123,17 @@ export function createApi(opts: ApiOptions) {
   const semantic = opts.semantic === undefined ? (process.env.VITEST ? null : new LocalSemanticRanker(root)) : opts.semantic;
   if (opts.semantic === undefined && warm) (semantic as LocalSemanticRanker | null)?.warm();
   const assistant = new AssistantService(root, opts.assistantProvider, semantic);
+  const survey = new SurveyStore(root);
+  const embedder: PictureEmbedder = opts.embedder ?? new NodeEmbedder(root);
+  const building = new Map<string, Promise<unknown>>();
+  const modelsDir = path.join(root, "data", "models", "hf");
+  const ortDir = ((): string => {
+    try {
+      return path.dirname(createRequire(import.meta.url).resolve("onnxruntime-web")); // its dist/ folder
+    } catch {
+      return path.join(root, "node_modules", "onnxruntime-web", "dist");
+    }
+  })();
   let speechService: SpeechService | null = opts.speech ?? null;
   const speech = (): SpeechService => (speechService ??= createLocalSpeech(root, { warm }));
   if (warm && !opts.speech) speech();
@@ -150,6 +167,93 @@ export function createApi(opts: ApiOptions) {
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.setHeader("Accept-Ranges", "bytes");
     createReadStream(file).pipe(res);
+  }
+
+  /** The image model's files for the phone (so it works offline once downloaded). Only the one model, fetched from its hub on first use. */
+  async function serveModel(rel: string, res: ServerResponse): Promise<void> {
+    const clean = rel.replace(/^\/+/, "");
+    if (!clean.startsWith(`${VPR_MODEL}/`) || clean.includes("..") || !/^[\w./-]+$/.test(clean)) throw new HttpError(404, "not found");
+    const file = path.join(modelsDir, clean);
+    let data: Buffer | null = null;
+    try {
+      data = await fs.readFile(file);
+    } catch {
+      const [org, name, ...rest] = clean.split("/");
+      const r = await fetch(`https://huggingface.co/${org}/${name}/resolve/main/${rest.join("/")}`, { redirect: "follow" });
+      if (!r.ok) throw new HttpError(404, "not found");
+      data = Buffer.from(await r.arrayBuffer());
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, data);
+    }
+    res.statusCode = 200;
+    res.setHeader("Content-Type", clean.endsWith(".json") ? "application/json" : "application/octet-stream");
+    res.setHeader("Cache-Control", "public, max-age=604800");
+    res.end(data);
+  }
+
+  async function serveOrt(name: string, res: ServerResponse): Promise<void> {
+    if (!/^ort-wasm-simd-threaded(\.[a-z]+)?\.(mjs|wasm)$/.test(name)) throw new HttpError(404, "not found");
+    let data: Buffer;
+    try {
+      data = await fs.readFile(path.join(ortDir, name));
+    } catch {
+      throw new HttpError(404, "not found");
+    }
+    res.statusCode = 200;
+    res.setHeader("Content-Type", name.endsWith(".wasm") ? "application/wasm" : "text/javascript; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=604800");
+    res.end(data);
+  }
+
+  async function surveyRoutes(parts: string[], method: string, url: URL, req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const venue = checkId(parts[1], "venue id");
+    const sub = parts[2];
+    if (!sub && method === "GET") {
+      const frames = await survey.list(venue);
+      const idx = await survey.index(venue);
+      const floors: Record<string, number> = {};
+      for (const f of frames) floors[f.floor] = (floors[f.floor] ?? 0) + 1;
+      return send(res, 200, { count: frames.length, floors, index: idx ? { builtAt: idx.builtAt, items: idx.items.length, model: idx.model, eval: idx.eval } : null, building: building.has(venue) });
+    }
+    if (!sub && method === "DELETE") {
+      await survey.clear(venue);
+      return send(res, 200, { ok: true });
+    }
+    if (sub === "frames" && method === "POST") {
+      const type = (req.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase();
+      if (type !== "image/jpeg") throw new HttpError(415, "content-type must be image/jpeg");
+      const q = url.searchParams;
+      const meta = { floor: q.get("floor") ?? "", x: Number(q.get("x")), y: Number(q.get("y")), heading: Number(q.get("heading")), acc: Number(q.get("acc") ?? 1) };
+      if (!meta.floor || meta.floor.length > 32) throw new HttpError(400, "floor is required");
+      const body = await readBuffer(req, MAX_FRAME_BYTES + 1024);
+      try {
+        const f = await survey.add(venue, body, meta);
+        return send(res, 200, { ok: true, id: f.id });
+      } catch (e) {
+        throw new HttpError(400, e instanceof Error ? e.message : "bad picture");
+      }
+    }
+    if (sub === "build" && method === "POST") {
+      if (building.has(venue)) throw new HttpError(409, "an index is already being built for this venue");
+      const job = survey.build(venue, embedder).finally(() => building.delete(venue));
+      building.set(venue, job);
+      const file = await job;
+      return send(res, 200, { ok: true, items: file.items.length, eval: file.eval });
+    }
+    if (sub === "index" && method === "GET") {
+      const idx = await survey.index(venue);
+      return idx ? send(res, 200, idx) : send(res, 404, { error: "no index built for this venue" });
+    }
+    if (sub === "frame" && parts[3] && method === "GET") {
+      const jpg = await survey.picture(venue, parts[3]);
+      if (!jpg) throw new HttpError(404, "not found");
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.end(jpg);
+      return;
+    }
+    return send(res, 404, { error: "unknown survey route" });
   }
 
   async function venueRoutes(parts: string[], method: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -258,13 +362,20 @@ export function createApi(opts: ApiOptions) {
     const isApi = url.pathname.startsWith("/api/");
     const isUpload = url.pathname.startsWith("/uploads/");
     const isMedia = url.pathname.startsWith("/media/");
-    if (!isApi && !isUpload && !isMedia) return next();
+    const isModel = url.pathname.startsWith("/models/");
+    const isOrt = url.pathname.startsWith("/ort/");
+    if (!isApi && !isUpload && !isMedia && !isModel && !isOrt) return next();
     const method = req.method ?? "GET";
 
     try {
       if (isUpload) {
         if (method !== "GET" && method !== "HEAD") throw new HttpError(405, "method not allowed");
         return await serveUpload(decodeURIComponent(url.pathname.slice("/uploads/".length)), res);
+      }
+      if (isModel || isOrt) {
+        if (method !== "GET" && method !== "HEAD") throw new HttpError(405, "method not allowed");
+        const rest = decodeURIComponent(url.pathname.slice(isModel ? "/models/".length : "/ort/".length));
+        return await (isModel ? serveModel(rest, res) : serveOrt(rest, res));
       }
       if (isMedia) {
         if (method !== "GET" && method !== "HEAD") throw new HttpError(405, "method not allowed");
@@ -372,6 +483,7 @@ export function createApi(opts: ApiOptions) {
         return send(res, 200, { ok: true, url: `/media/${name}`, bytes: buf.length, contentType: type });
       }
 
+      if (parts[0] === "survey" && parts.length >= 2) return await surveyRoutes(parts, method, url, req, res);
       if (parts[0] === "venues") return await venueRoutes(parts, method, req, res);
       if (parts[0] === "campaigns" && parts.length >= 2) return await campaignRoutes(parts, method, req, res);
 

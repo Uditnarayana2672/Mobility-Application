@@ -101,6 +101,9 @@ export function SubBar(p: SubBarProps) {
               <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to="/markers?draft=1" target="_blank" onClick={() => setMenu(false)}>
                 Open marker sheet
               </Link>
+              <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to={`/survey?venue=${encodeURIComponent(v.id)}`} target="_blank" onClick={() => setMenu(false)}>
+                Survey walk (recognise places by sight)
+              </Link>
               <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to="/legacy-editor" onClick={() => setMenu(false)}>
                 Legacy Blueprint editor
               </Link>

@@ -1,15 +1,22 @@
 import type { Venue } from "@/core/schema";
-import type { PoseDebug } from "@/navigator/poseSource";
+import type { Pose, PoseDebug } from "@/navigator/poseSource";
 import { detectMarkers } from "@/spikes/aruco/detect";
 import type { Intrinsics } from "@/spikes/aruco/pose";
 import { LivePoseBase } from "./liveBase";
 import { devicePoseFromMarker } from "./markers";
+import { createBrowserEmbedder } from "@/vision/embedBrowser";
+import { VprLocator, visionModeFromQuery } from "@/vision/VprLocator";
 import { cameraCompassHeading } from "./compass";
 import { PdrPoseCore } from "./pdrCore";
 
 const HFOV_KEY = "indore.s2.hfov";
 const SCAN_EVERY_MS = 130;
 const RESCAN_MS = 3000;
+const VISION_EVERY_MS = 1000;
+const VISION_AFTER_MARKER_MS = 8000;
+const VISION_MIN_CONFIDENCE = 0.5;
+/** A recognised picture's heading replaces the gyro heading only when it is this close to it (otherwise the gyro is believed). */
+const VISION_HEADING_TRUST_DEG = 35;
 
 const hfov = (): number => {
   try {
@@ -61,6 +68,9 @@ export class PdrPoseSource extends LivePoseBase {
   private fps = 0;
   private fpsT = 0;
   private lastError: string | null = null;
+  private lastPose: Pose | null = null;
+  private vpr: VprLocator | null = null;
+  private visionTimer = 0;
 
   constructor(venue: Venue) {
     super(venue);
@@ -148,6 +158,22 @@ export class PdrPoseSource extends LivePoseBase {
       this.video = video;
       this.canvas = document.createElement("canvas");
       this.scanTimer = window.setInterval(() => this.scanOnce(), SCAN_EVERY_MS);
+      // Place recognition: loads this venue's index (if it has one) and, if it is allowed, the image model, then looks once a second.
+      if (!this.vpr) {
+        const id = this.venue.id;
+        this.vpr = new VprLocator(
+          {
+            fetchIndex: async () => {
+              const r = await fetch(`/api/survey/${encodeURIComponent(id)}/index`, { cache: "no-store" });
+              return r.ok ? await r.json() : null;
+            },
+            makeEmbedder: () => createBrowserEmbedder(),
+          },
+          visionModeFromQuery(typeof location === "undefined" ? "" : location.search),
+        );
+        void this.vpr.start();
+      }
+      this.visionTimer = window.setInterval(() => void this.visionOnce(), VISION_EVERY_MS);
       this.lastError = null;
     } catch (e) {
       this.lastError = e instanceof Error ? e.message : String(e);
@@ -157,6 +183,8 @@ export class PdrPoseSource extends LivePoseBase {
   stopCamera(): void {
     if (this.scanTimer) window.clearInterval(this.scanTimer);
     this.scanTimer = 0;
+    if (this.visionTimer) window.clearInterval(this.visionTimer);
+    this.visionTimer = 0;
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     if (this.video) this.video.srcObject = null;
@@ -165,6 +193,37 @@ export class PdrPoseSource extends LivePoseBase {
   get scanning(): boolean {
     return this.stream !== null;
   }
+
+  /** One look with place recognition: what does the camera see, and where in the building is that? */
+  private async visionOnce(): Promise<void> {
+    const v = this.video;
+    const vpr = this.vpr;
+    if (!vpr?.ready || !v || v.videoWidth === 0) return;
+    // A marker fix a moment ago is better than a guess from the picture.
+    if (this.anchorAtMs !== null && performance.now() - this.anchorAtMs < VISION_AFTER_MARKER_MS) return;
+    const W = 224;
+    const H = Math.max(1, Math.round((W * v.videoHeight) / v.videoWidth));
+    const c = (this.visionCanvas ??= document.createElement("canvas"));
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    ctx.drawImage(v, 0, 0, W, H);
+    const px = ctx.getImageData(0, 0, W, H).data;
+    const fix = await vpr.frame(px, W, H, performance.now());
+    if (!fix || fix.confidence < VISION_MIN_CONFIDENCE) return;
+    const cur = this.lastPose;
+    if (cur) {
+      // Already located: only correct a clear disagreement, or a position that is much less sure than this one.
+      const off = cur.floor !== fix.floor ? Infinity : Math.hypot(cur.x - fix.x, cur.y - fix.y);
+      if (!(off > Math.max(2, cur.acc) || cur.acc > fix.acc + 1)) return;
+    }
+    const gyro = this.core.currentHeading;
+    const useHeading = fix.heading !== null && (!cur || Math.abs(((fix.heading - gyro + 540) % 360) - 180) < VISION_HEADING_TRUST_DEG);
+    this.core.anchor({ floor: fix.floor, x: fix.x, y: fix.y, heading: useHeading ? fix.heading! : gyro, acc: fix.acc, markerId: null }, true, "vision");
+  }
+
+  private visionCanvas: HTMLCanvasElement | null = null;
 
   private scanOnce(): void {
     const v = this.video;
@@ -215,7 +274,10 @@ export class PdrPoseSource extends LivePoseBase {
   tick(dtSec: number): void {
     if (!this.running) return;
     const p = this.core.tick(dtSec);
-    if (p) this.emit(p);
+    if (p) {
+      this.lastPose = p;
+      this.emit(p);
+    }
   }
   applyFix(p: { floor: string; x: number; y: number; heading: number; acc: number; markerId: number | null }): void {
     this.core.anchor(p);
@@ -241,6 +303,7 @@ export class PdrPoseSource extends LivePoseBase {
       cloud: this.core.cloud(),
       detections: this.detections,
       fps: this.fps,
+      vision: this.vpr ? `${this.vpr.state}${this.vpr.detail ? ` (${this.vpr.detail})` : ""}${this.vpr.lastSimilarity !== null ? ` · sim ${this.vpr.lastSimilarity.toFixed(2)}` : ""}` : undefined,
     };
   }
 }

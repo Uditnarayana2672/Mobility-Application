@@ -38,6 +38,8 @@
     "src/ar",
     "src/ads",
     "src/speech",
+    "src/vision",
+    "src/survey",
     "src/preflight",
     "server",
     "tests",

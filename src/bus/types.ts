@@ -10,7 +10,7 @@ export interface BusUser {
   stale: boolean;
   markerId: number | null;
   /** Where the pose came from (sim / marker / manual / ar / steps). Absent on messages from older senders. */
-  source?: "sim" | "marker" | "manual" | "ar" | "steps";
+  source?: "sim" | "marker" | "manual" | "ar" | "steps" | "vision";
   /** Seconds since the last marker fix when this pose was sent; null = never anchored. */
   anchorAgoSec?: number | null;
 }

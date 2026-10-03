@@ -15,6 +15,8 @@ export interface PdrOptions {
   northOffsetDeg?: number | null;
 }
 export const DEFAULT_PDR = { strideM: 0.7, particles: 300 };
+/** After a recognition fix the pose is labelled "vision" for this long, then it is plain step counting again. */
+const VISION_BADGE_SEC = 6;
 
 export interface MarkerAnchor {
   floor: string;
@@ -46,6 +48,7 @@ export class PdrPoseCore {
   private stride: number;
   private readonly fusion: CompassFusion;
   private lastCompass: number | null = null;
+  private visionLeft = 0;
 
   constructor(
     venue: Venue,
@@ -84,6 +87,11 @@ export class PdrPoseCore {
     this.pf.setWalkable(this.walk);
   }
 
+  /** Heading the gyro currently believes (map bearing). */
+  get currentHeading(): number {
+    return this.heading.bearing;
+  }
+
   get located(): boolean {
     return this.anchored;
   }
@@ -92,7 +100,7 @@ export class PdrPoseCore {
   }
 
   /** A marker fix (camera) or a manual position: re-seed the cloud and the gyro heading. */
-  anchor(a: MarkerAnchor, silent = false): void {
+  anchor(a: MarkerAnchor, silent = false, via?: "vision"): void {
     const before = this.raw;
     // A precise fix says which way the camera faces on the map; the compass said which way on Earth: that difference is the map's north.
     if (this.lastCompass !== null && this.fusion.steady()) this.fusion.learn(this.lastCompass, a.heading, a.markerId !== null && a.acc <= 1 ? 1 : 0.15);
@@ -101,6 +109,7 @@ export class PdrPoseCore {
     this.anchored = true;
     this.anchorAcc = a.acc;
     this.anchorMarker = a.markerId;
+    this.visionLeft = via === "vision" ? VISION_BADGE_SEC : 0;
     this.stepsSince = 0;
     this.held = false;
     const after = { floor: a.floor, x: a.x, y: a.y, heading: a.heading };
@@ -148,10 +157,11 @@ export class PdrPoseCore {
   tick(dtSec: number): Pose | null {
     if (!this.anchored || !this.raw) return null;
     const d = this.smoother.update(this.raw, dtSec);
+    if (this.visionLeft > 0) this.visionLeft = Math.max(0, this.visionLeft - dtSec);
     const scan = this.pendingScan;
     this.pendingScan = null;
     const acc = this.stepsSince === 0 ? this.anchorAcc : Math.max(this.anchorAcc, this.pf.estimate().acc);
-    return { floor: d.floor, x: d.x, y: d.y, heading: d.heading, acc: scan !== null ? this.anchorAcc : acc, stale: false, markerId: scan !== null ? scan : this.anchorMarker, source: scan !== null ? "marker" : "steps" };
+    return { floor: d.floor, x: d.x, y: d.y, heading: d.heading, acc: scan !== null ? this.anchorAcc : acc, stale: false, markerId: scan !== null ? scan : this.anchorMarker, source: scan !== null ? "marker" : this.visionLeft > 0 ? "vision" : "steps" };
   }
 
   cloud(): { floor: string; x: number; y: number }[] {

@@ -311,3 +311,14 @@ Automated: `tests/geom.test.ts`, `doors.test.ts`, `objects.test.tsx`, `polygon-r
 4. **D**: click a wall to add a door, click a door to remove it, Shift+click moves the nearest one. Tick "People may walk through this room" for a passage.
 5. **F**: pick Bed / Table / Chair / Toilet / Shower… above the map, click to place; drag it, drag a corner square to resize, the orange dot to rotate; label and size in the right panel.
 6. Publish, then open `/nav` (or the phone): outlines, doors and furniture show; routes use any door.
+
+## Camera guide on phones without WebXR (step-counting source)
+- Cause of "camera AR not working": a phone whose Chrome has `navigator.xr` but no ARCore fell to step counting, and the AR view then drew the *simulated* room (fake sky/floor), never the camera.
+- Now: the AR view puts the real rear camera behind a transparent canvas (`see-through` mode in `CanvasArRenderer`), with tilt from `deviceorientation`, floor chevrons / turn arrows / destination pin, and a big compass arrow (`guideFor` in `ArScreen`) that always points to the next ~3 m of the route.
+- "Where do you want to go?" lives in the AR view (chips + 🎤). `NavController.guideTo()` plans, starts navigating and stays in AR; a voice "go to X" asked from the AR view does the same (no map preview).
+- Choosing a start room by hand on a phone puts the visitor 1.2 m inside it facing its door (heading is only as good as that: stand that way, or scan a marker to correct).
+- XR support is detected on the locate screen; without ARCore it switches to the plain camera by itself (not when `?pose=xr` is forced).
+- Not measured yet (needs the phone): arrow alignment vs. the real corridor, heading drift over a walk. Fill in under field results.
+
+## Architecture v2 (plan only, 2026-10-03)
+- `docs/04-architecture-v2.md`: Blueprint look as a skin + importer (not as the data model), auto venue detection (GPS fence / QR), auto-locate (markers, then image recognition, then one-tap guesses), AI only at the edges (STT, constrained intent, TTS, image embeddings), AR director = rules + perception. Phases P1–P8, effort, acceptance, open questions. No code changed.

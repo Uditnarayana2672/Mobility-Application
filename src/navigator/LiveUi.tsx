@@ -19,11 +19,17 @@ export function LiveLocate({ rt }: Props) {
   useEffect(() => {
     if (rt.kind !== "xr") return;
     let live = true;
-    void XrPoseSource.supported().then((ok) => live && setSupported(ok));
+    void XrPoseSource.supported().then((ok) => {
+      if (!live) return;
+      setSupported(ok);
+      // The browser has WebXR but the phone cannot do AR (no ARCore): go straight to the plain camera + step counting,
+      // unless ?pose=xr was asked for on purpose.
+      if (!ok && !new URLSearchParams(window.location.search).has("pose")) rt.switchKind("pdr");
+    });
     return () => {
       live = false;
     };
-  }, [rt.kind]);
+  }, [rt]);
 
   useEffect(() => () => rt.pdr?.stopCamera(), [rt]);
 

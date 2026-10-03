@@ -207,6 +207,15 @@
 .is-nav .ar-offer p { margin: 0; }
 .is-nav .ar-offer-close { position: absolute; z-index: 2; right: 24px; top: 28px; width: 34px; height: 34px; border: 0; border-radius: 50%; background: rgba(255,255,255,.9); font-size: 24px; cursor: pointer; }
 
+/* camera guide (step-counting phones: the real camera behind the arrows) */
+.is-nav .ar-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; z-index: 0; }
+.is-nav #s-ar.see-through #arcv { z-index: 1; }
+.is-nav .ar-where { background: rgba(15, 27, 61, .82); backdrop-filter: blur(6px); color: #fff; border-radius: 18px; padding: 10px 12px; }
+.is-nav .ar-where-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; font-size: 15px; }
+.is-nav .ar-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.is-nav .ar-chips .qchip { flex: 0 0 auto; white-space: nowrap; }
+.is-nav .ar-dest { background: rgba(15, 27, 61, .78); color: #fff; border-radius: 14px; padding: 6px 8px 6px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+
 /* overlays */
 .is-nav .ov { position: absolute; inset: 0; z-index: 50; display: none; }
 .is-nav .ov.on { display: block; }

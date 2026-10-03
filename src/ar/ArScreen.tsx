@@ -1,17 +1,45 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { stepAction } from "@/core/instructions";
-import type { Campaign, CampaignsFile } from "@/core/schema";
+import { pointAt } from "@/core/playback";
+import type { Route } from "@/core/route";
+import type { Campaign, CampaignsFile, Venue } from "@/core/schema";
 import type { NavController, NavState } from "@/navigator/controller";
+import type { Pose } from "@/navigator/poseSource";
 import type { NavRuntime } from "@/navigator/useNav";
-import { CanvasArRenderer } from "./CanvasArRenderer";
+import { CanvasArRenderer, relativeTurn, type GuideArrow } from "./CanvasArRenderer";
 import { loadCampaigns, recordAdMetric } from "./campaigns";
 import { buildSceneModel, type ArSceneModel } from "./sceneModel";
 import { WebXrSceneRenderer } from "./WebXrRenderer";
 
 interface Props { rt: NavRuntime; ctl: NavController; s: NavState }
 
+/** The big compass arrow: which way to turn to face the point ~3 m ahead on the route. */
+export function guideFor(route: Route | null, user: Pose, progressM: number): GuideArrow | null {
+  if (!route) return null;
+  const remaining = Math.max(0, route.total - progressM);
+  const look = pointAt(route, Math.min(route.total, progressM + 3));
+  if (look.vertical || look.floor !== user.floor) return { relDeg: 0, title: "Use the stairs / lift", sub: `${route.destName} · ${Math.round(remaining)} m` };
+  const close = Math.hypot(look.x - user.x, look.y - user.y) < 0.4;
+  const bearing = close ? look.bearing : ((Math.atan2(look.x - user.x, -(look.y - user.y)) * 180) / Math.PI + 360) % 360;
+  const rel = relativeTurn(user.heading, bearing);
+  const abs = Math.abs(rel);
+  const title = abs < 20 ? "Straight ahead" : abs > 135 ? "Turn around" : rel > 0 ? "Turn right" : "Turn left";
+  return { relDeg: rel, title, sub: `${route.destName} · ${Math.round(remaining)} m` };
+}
+
+/** Places a visitor can ask to be guided to (staff-only rooms left out). */
+function destinations(v: Venue, floor: string | undefined): { id: string; name: string }[] {
+  return v.rooms
+    .filter((r) => r.access !== "staff")
+    .sort((a, b) => Number(b.floor === floor) - Number(a.floor === floor))
+    .map((r) => ({ id: r.id, name: r.name }));
+}
+
 export default function ArScreen({ rt, ctl, s }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const [camErr, setCamErr] = useState<string | null>(null);
+  const seeThrough = rt.kind === "pdr";
   const canvasRenderer = useRef<CanvasArRenderer | null>(null);
   const webRenderer = useRef<WebXrSceneRenderer | null>(null);
   const latest = useRef<ArSceneModel | null>(null);
@@ -73,6 +101,19 @@ export default function ArScreen({ rt, ctl, s }: Props) {
     return () => window.clearTimeout(nudge);
   }, [active]);
 
+  // Step-counting phones: the real rear camera is the picture behind the arrows (WebXR phones get theirs from the XR session).
+  useEffect(() => {
+    if (!active || !seeThrough || !rt.pdr || !video.current) return;
+    setCamErr(null);
+    const pdr = rt.pdr;
+    let live = true;
+    pdr.startCamera(video.current).catch((e: unknown) => live && setCamErr(e instanceof Error ? e.message : String(e)));
+    return () => {
+      live = false;
+      pdr.stopCamera();
+    };
+  }, [active, seeThrough, rt.pdr]);
+
   useEffect(() => ctl.onArOpen(() => {
     webRenderer.current?.setActive(true);
     canvasRenderer.current?.activateMedia();
@@ -83,12 +124,19 @@ export default function ArScreen({ rt, ctl, s }: Props) {
     let raf = 0;
     const draw = (now: number) => {
       const model = latest.current;
-      if (model && s.user && canvasRenderer.current) canvasRenderer.current.draw({ model, venue: s.venue, pose: s.user, timeSec: now / 1000 });
+      if (model && s.user && canvasRenderer.current) {
+        canvasRenderer.current.draw({
+          model, venue: s.venue, pose: s.user, timeSec: now / 1000,
+          seeThrough,
+          pitchDownDeg: rt.pdr?.pitchDownDeg,
+          guide: seeThrough ? guideFor(s.route, s.user, progress) : null,
+        });
+      }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [active, rt.kind, s.user, s.venue]);
+  }, [active, rt.kind, rt.pdr, seeThrough, s.user, s.venue, s.route, progress]);
 
   useEffect(() => {
     if (!active) return;
@@ -124,16 +172,40 @@ export default function ArScreen({ rt, ctl, s }: Props) {
   const next = s.snap?.next;
   const tracking = !s.user ? "Waiting for location" : s.user.stale ? "Tracking lost" : `Tracking · ±${s.user.acc.toFixed(1)} m`;
   return (
-    <section className={`scr ${active ? "on" : ""} ${rt.kind === "xr" ? "xr" : ""}`} id="s-ar" data-testid="screen-ar">
+    <section className={`scr ${active ? "on" : ""} ${rt.kind === "xr" ? "xr" : ""} ${seeThrough ? "see-through" : ""}`} id="s-ar" data-testid="screen-ar">
+      {seeThrough && <video ref={video} className="ar-video" playsInline muted data-testid="ar-video" />}
       <canvas ref={canvas} id="arcv" data-testid="ar-canvas" data-visible-ads={scene?.adQuads.length ?? 0} data-campaign-version={campaignFile.version} onPointerUp={tapScene} style={{ pointerEvents: "auto", opacity: rt.kind === "xr" ? 0.001 : 1 }} />
       <div className="ar-top">
         {next && s.route ? (
-          <div className="ar-pill" data-testid="ar-instruction">
-            <span className="ico">{next.step.kind === "turn" ? (next.step.dir === "left" ? "↰" : "↱") : next.step.kind === "vertical" ? "↕" : "📍"}</span>
-            <span><span className="d">{Math.round(next.remaining)} m</span><br /><span className="a">{stepAction(next.step, s.lang)}</span></span>
+          <>
+            <div className="ar-pill" data-testid="ar-instruction">
+              <span className="ico">{next.step.kind === "turn" ? (next.step.dir === "left" ? "↰" : "↱") : next.step.kind === "vertical" ? "↕" : "📍"}</span>
+              <span><span className="d">{Math.round(next.remaining)} m</span><br /><span className="a">{stepAction(next.step, s.lang)}</span></span>
+            </div>
+            {rt.kind !== "sim" && (
+              <div className="ar-dest" data-testid="ar-dest">
+                <span>→ <b>{s.route.destName}</b></span>
+                <button className="pbtn sm" data-testid="ar-stop" onClick={() => { ctl.endNav(); ctl.showAr(); }}>Change</button>
+              </div>
+            )}
+          </>
+        ) : rt.kind === "sim" ? (
+          <div className="ar-pill"><span className="ico">⌖</span><span className="a">Move the phone slowly to look around</span></div>
+        ) : (
+          <div className="ar-where" data-testid="ar-where">
+            <div className="ar-where-head">
+              <b>Where do you want to go?</b>
+              <button className="pbtn sm primary" data-testid="ar-say" onClick={() => ctl.openVoice()}>🎤 Say it</button>
+            </div>
+            <div className="ar-chips">
+              {destinations(s.venue, s.user?.floor).map((d) => (
+                <button key={d.id} className="qchip" data-testid="ar-dest-chip" data-id={d.id} onClick={() => ctl.guideTo({ room: d.id })}>{d.name}</button>
+              ))}
+            </div>
           </div>
-        ) : <div className="ar-pill"><span className="ico">⌖</span><span className="a">Move the phone slowly to look around</span></div>}
-        <div className={`trk ${s.user?.stale ? "bad" : s.user && s.user.acc > 2 ? "mid" : ""}`}><i />{tracking}{rt.kind === "xr" ? " · same XR session" : " · simulated camera"}</div>
+        )}
+        <div className={`trk ${s.user?.stale ? "bad" : s.user && s.user.acc > 2 ? "mid" : ""}`}><i />{tracking}{rt.kind === "xr" ? " · same XR session" : seeThrough ? " · live camera" : " · simulated camera"}</div>
+        {camErr && <div className="live-err" data-testid="ar-cam-err">Camera: {camErr}. Allow camera access for this site in Chrome (🔒 next to the address), then reopen this view.</div>}
       </div>
       {lookUp && <button className="lookup show" data-testid="look-up" onClick={() => setLookUp(false)}>⚠ Look up and check your surroundings</button>}
       {rt.kind === "xr" && !rt.xr?.active && <div className="lookup show">AR tracking stopped. Return to the map and restart AR.</div>}

@@ -84,6 +84,11 @@ function ExploreSheet({ ctl, s }: P) {
       <div className="muted small" style={{ marginBottom: 6 }}>
         Near {nearName(s.venue, u)} · {u.markerId !== null ? `anchored by ${u.markerId}` : "approximate position"}
       </div>
+      {s.poseKind !== "sim" && (
+        <button className="pbtn primary block" style={{ margin: "2px 0 8px" }} data-testid="btn-camera-guide" onClick={() => ctl.showAr()}>
+          📷 Camera guide — say where to go
+        </button>
+      )}
       <div className="qlist">
         {quick.map((q, i) => {
           const p = placeOf(s.venue, q.target)!;

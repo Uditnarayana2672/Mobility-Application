@@ -6,11 +6,29 @@ import type { Venue } from "@/core/schema";
 interface CamPoint { x: number; y: number; z: number }
 interface ScreenPoint { x: number; y: number }
 
+/** A screen-space compass arrow: where to turn to face the next point of the route. */
+export interface GuideArrow {
+  /** Degrees to turn right (negative = left) to face the target, -180..180. */
+  relDeg: number;
+  title: string;
+  sub: string;
+}
+
 export interface CanvasFrame {
   model: ArSceneModel;
   venue: Venue;
   pose: Pose;
   timeSec: number;
+  /** A real camera picture is behind the canvas: draw only the guidance, on a transparent canvas. */
+  seeThrough?: boolean;
+  /** How far the camera looks below the horizon (deg). Only used with seeThrough; the simulator keeps its fixed tilt. */
+  pitchDownDeg?: number;
+  guide?: GuideArrow | null;
+}
+
+/** Signed turn from the phone's heading to a bearing, -180..180 (positive = right). */
+export function relativeTurn(headingDeg: number, bearingDeg: number): number {
+  return ((((bearingDeg - headingDeg) % 360) + 540) % 360) - 180;
 }
 
 /** Pinhole canvas renderer ported from docs/mock-ui/js/ar.js for the laptop/PDR fallback. */
@@ -22,6 +40,8 @@ export class CanvasArRenderer {
   private focal = 400;
   private eyeZ = 1.45;
   private pose: Pose | null = null;
+  /** null = the simulator's fixed small downward tilt. */
+  private pitch: number | null = null;
   private hits: { id: string; poly: ScreenPoint[] }[] = [];
   private resizeObserver: ResizeObserver | null = null;
   private media = new Map<string, HTMLImageElement | HTMLVideoElement>();
@@ -64,31 +84,37 @@ export class CanvasArRenderer {
 
   draw(frame: CanvasFrame): void {
     const { model, venue, pose, timeSec } = frame;
+    const seeThrough = frame.seeThrough === true;
     this.pose = pose;
+    this.pitch = seeThrough ? (frame.pitchDownDeg ?? 6) : null;
     this.eyeZ = model.floorElevation + 1.45;
     this.hits = [];
     this.g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    const horizon = this.h * 0.47;
-    const sky = this.g.createLinearGradient(0, 0, 0, horizon);
-    sky.addColorStop(0, "#26313f");
-    sky.addColorStop(1, "#8794a2");
-    this.g.fillStyle = sky;
-    this.g.fillRect(0, 0, this.w, horizon);
-    const floor = this.g.createLinearGradient(0, horizon, 0, this.h);
-    floor.addColorStop(0, "#9da6b0");
-    floor.addColorStop(1, "#46505c");
-    this.g.fillStyle = floor;
-    this.g.fillRect(0, horizon, this.w, this.h - horizon);
-
     const plate = venue.floors.find((f) => f.id === model.floor);
-    if (plate) {
-      for (let x = 0; x <= plate.w; x += 2) this.line({ x, y: 0, z: model.floorElevation }, { x, y: plate.h, z: model.floorElevation }, "rgba(255,255,255,.10)");
-      for (let y = 0; y <= plate.h; y += 2) this.line({ x: 0, y, z: model.floorElevation }, { x: plate.w, y, z: model.floorElevation }, "rgba(255,255,255,.10)");
+    if (seeThrough) {
+      this.g.clearRect(0, 0, this.w, this.h);
+    } else {
+      const horizon = this.h * 0.47;
+      const sky = this.g.createLinearGradient(0, 0, 0, horizon);
+      sky.addColorStop(0, "#26313f");
+      sky.addColorStop(1, "#8794a2");
+      this.g.fillStyle = sky;
+      this.g.fillRect(0, 0, this.w, horizon);
+      const floor = this.g.createLinearGradient(0, horizon, 0, this.h);
+      floor.addColorStop(0, "#9da6b0");
+      floor.addColorStop(1, "#46505c");
+      this.g.fillStyle = floor;
+      this.g.fillRect(0, horizon, this.w, this.h - horizon);
+      if (plate) {
+        for (let x = 0; x <= plate.w; x += 2) this.line({ x, y: 0, z: model.floorElevation }, { x, y: plate.h, z: model.floorElevation }, "rgba(255,255,255,.10)");
+        for (let y = 0; y <= plate.h; y += 2) this.line({ x: 0, y, z: model.floorElevation }, { x: plate.w, y, z: model.floorElevation }, "rgba(255,255,255,.10)");
+      }
     }
 
     for (const c of model.chevrons) this.chevron(c.at, c.bearing, c.opacity * (0.72 + 0.28 * Math.sin(timeSec * 5 - c.distanceM)));
     const wallTop = model.floorElevation + (plate?.height ?? 3);
-    const panels = venue.rooms.filter((room) => room.floor === model.floor).flatMap((room) => {
+    // The simulator draws its own walls; over a real camera the real walls are already in the picture.
+    const panels = seeThrough ? [] : venue.rooms.filter((room) => room.floor === model.floor).flatMap((room) => {
       return polygonEdges(roomPolygon(room)).map((e) => [e.a.x, e.a.y, e.b.x, e.b.y] as const);
     }).sort((a, b) => Math.hypot((b[0] + b[2]) / 2 - pose.x, (b[1] + b[3]) / 2 - pose.y) - Math.hypot((a[0] + a[2]) / 2 - pose.x, (a[1] + a[3]) / 2 - pose.y));
     for (const [x1, y1, x2, y2] of panels) this.poly([
@@ -105,7 +131,8 @@ export class CanvasArRenderer {
     }
     if (model.destinationPin) this.pin(model.destinationPin.at, `📍 ${model.destinationPin.label}`);
 
-    for (const ad of model.adQuads) {
+    // Over a real picture an ad pinned to a wall only looks right when the position is accurate.
+    for (const ad of seeThrough && pose.acc > 1.5 ? [] : model.adQuads) {
       const pts = ad.corners.map((p) => this.project(p));
       if (pts.some((p) => p === null)) continue;
       const poly = pts as ScreenPoint[];
@@ -128,11 +155,55 @@ export class CanvasArRenderer {
       if (ad.distanceM < 8) this.label("Tap for offer", { ...ad.centre, z: ad.corners[3].z - 0.25 }, "rgba(255,255,255,.94)", "#14213d");
     }
 
+    if (seeThrough) {
+      if (frame.guide) this.guideArrow(frame.guide);
+      return;
+    }
     const vignette = this.g.createRadialGradient(this.w / 2, this.h / 2, this.h * 0.25, this.w / 2, this.h / 2, this.h * 0.72);
     vignette.addColorStop(0, "rgba(0,0,0,0)");
     vignette.addColorStop(1, "rgba(0,0,0,.42)");
     this.g.fillStyle = vignette;
     this.g.fillRect(0, 0, this.w, this.h);
+  }
+
+  /** The always-correct hint: a big arrow that turns with the phone, plus what to do in words. */
+  private guideArrow(a: GuideArrow): void {
+    const g = this.g;
+    const cx = this.w / 2;
+    const cy = this.h * 0.66;
+    g.save();
+    g.translate(cx, cy);
+    g.rotate((a.relDeg * Math.PI) / 180);
+    g.shadowColor = "rgba(0,0,0,.55)";
+    g.shadowBlur = 14;
+    g.beginPath();
+    for (const [x, y] of [[0, -58], [42, 4], [15, 4], [15, 50], [-15, 50], [-15, 4], [-42, 4]] as const) (x === 0 && y === -58 ? g.moveTo(x, y) : g.lineTo(x, y));
+    g.closePath();
+    g.fillStyle = Math.abs(a.relDeg) < 25 ? "rgba(52,211,153,.94)" : "rgba(34,211,238,.94)";
+    g.fill();
+    g.shadowBlur = 0;
+    g.lineWidth = 4;
+    g.strokeStyle = "#fff";
+    g.stroke();
+    g.restore();
+    g.font = "800 17px system-ui,sans-serif";
+    const tw = Math.max(g.measureText(a.title).width, 0) + 28;
+    g.fillStyle = "rgba(15,27,61,.82)";
+    g.beginPath();
+    g.roundRect(cx - tw / 2, cy + 74, tw, 34, 17);
+    g.fill();
+    g.fillStyle = "#fff";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText(a.title, cx, cy + 91);
+    if (a.sub) {
+      g.font = "700 13px system-ui,sans-serif";
+      g.fillStyle = "rgba(255,255,255,.95)";
+      g.shadowColor = "rgba(0,0,0,.8)";
+      g.shadowBlur = 6;
+      g.fillText(a.sub, cx, cy + 124);
+      g.shadowBlur = 0;
+    }
   }
 
   private resize(): void {
@@ -158,7 +229,11 @@ export class CanvasArRenderer {
     const dx = p.x - pose.x;
     const dy = p.y - pose.y;
     const forward = dx * fx + dy * fy;
-    return { x: dx * rx + dy * ry, y: p.z - this.eyeZ + forward * 0.105, z: forward };
+    const up = p.z - this.eyeZ;
+    if (this.pitch === null) return { x: dx * rx + dy * ry, y: up + forward * 0.105, z: forward };
+    // Real phone: rotate about the right axis by the measured downward tilt.
+    const t = (this.pitch * Math.PI) / 180;
+    return { x: dx * rx + dy * ry, y: up * Math.cos(t) + forward * Math.sin(t), z: forward * Math.cos(t) - up * Math.sin(t) };
   }
 
   private project(p: MapPoint3): ScreenPoint | null {

@@ -273,6 +273,17 @@ export class NavController {
   /** "I can't find a marker": approximate position at a room door (±4 m). */
   setLocationManually(p: Place): void {
     const r = p.kind === "room" ? this.v.rooms.find((x) => x.id === p.id) : undefined;
+    if (this.live && r) {
+      // A phone has no simulator: put the visitor just inside the room, facing its door, so the camera arrows start pointing the right way.
+      const out = doorOutward(r.door);
+      const back = ((out + 180) * Math.PI) / 180;
+      this.setLocated();
+      this.sim.teleport({ floor: r.floor, x: r.door.x + Math.sin(back) * 1.2, y: r.door.y - Math.cos(back) * 1.2, heading: out, acc: 3, markerId: null });
+      this.patch({ pickLoc: false });
+      this.toast(`📍 Starting in ${r.name}. Stand just inside, facing its door.`);
+      if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
+      return;
+    }
     const x = r ? r.door.x + (r.door.side ? 0 : Math.sin((doorOutward(r.door) * Math.PI) / 180) * 1.2) : p.x;
     const y = r ? r.door.y + (r.door.side === "N" ? 1.2 : r.door.side ? -1.2 : -Math.cos((doorOutward(r.door) * Math.PI) / 180) * 1.2) : p.y;
     this.setLocated();
@@ -482,6 +493,20 @@ export class NavController {
     this.leaveAr();
     this.showPlace({ room });
     this.preview();
+  }
+
+  /** Camera guidance in one step: route to `t`, start walking, stay in (or go to) the AR view. */
+  guideTo(t: Target): void {
+    if (!this.fromPose()) {
+      this.toast(MSG.needLocation[this.st.lang]());
+      return;
+    }
+    if (this.st.mode === "nav") this.endNav();
+    this.showPlace(t);
+    this.preview();
+    if (this.st.mode === "preview") this.startNav();
+    else this.closePlace();
+    this.showAr();
   }
 
   /* ------------------------------------------------------------------ place + preview */
@@ -745,8 +770,11 @@ export class NavController {
         if (!from) return MSG.needLocation[lang]();
         const rr = computeRoute(this.v, from, res.target, this.st.prefs);
         if (isRouteError(rr)) return rr.error === "restricted" ? MSG.restricted[lang](rr.name ?? res.name) : MSG.noRoute[lang]();
-        this.later(1500, () => {
+        // Asked from the camera view: skip the map preview and start guiding right there.
+        const inAr = this.st.screen === "ar";
+        this.later(inAr ? 900 : 1500, () => {
           this.closeOverlay();
+          if (inAr) return this.guideTo(res.target);
           if (this.st.mode === "nav") this.endNav();
           this.showPlace(res.target);
           this.preview();

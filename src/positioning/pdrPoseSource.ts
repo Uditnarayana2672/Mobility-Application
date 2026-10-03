@@ -77,6 +77,15 @@ export class PdrPoseSource extends LivePoseBase {
       this.fpsT = now;
     }
   };
+  /** How far the camera looks below the horizon (deg): 0 = level, 90 = at the floor. Phone upright in portrait = beta 90. */
+  private pitchDown = 6;
+  get pitchDownDeg(): number {
+    return this.pitchDown;
+  }
+  private onOrient = (e: DeviceOrientationEvent): void => {
+    if (e.beta === null || e.beta === undefined) return;
+    this.pitchDown = Math.max(-60, Math.min(90, 90 - e.beta));
+  };
   async startSensors(): Promise<void> {
     if (this.motionOn) return;
     try {
@@ -85,6 +94,7 @@ export class PdrPoseSource extends LivePoseBase {
         const res = await DME.requestPermission();
         if (res !== "granted") throw new Error("motion permission denied");
       }
+      window.addEventListener("deviceorientation", this.onOrient);
       window.addEventListener("devicemotion", this.onMotion);
       this.motionOn = true;
     } catch (e) {
@@ -93,6 +103,7 @@ export class PdrPoseSource extends LivePoseBase {
   }
   private stopSensors(): void {
     window.removeEventListener("devicemotion", this.onMotion);
+    window.removeEventListener("deviceorientation", this.onOrient);
     this.motionOn = false;
   }
 

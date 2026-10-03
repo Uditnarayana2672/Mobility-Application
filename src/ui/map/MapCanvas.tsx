@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import type { Route } from "@/core/route";
 import type { Venue } from "@/core/schema";
 import { buildFixedItems, fixedTransform, fixedVisible } from "./fixedItems";
+import { MapDecor, BP, type MapTheme } from "./blueprintSkin";
 import { Defs, RouteLines, StaticLayers } from "./layers";
 import { DEFAULT_LAYERS, type MapHandle, type MapItem, type MapLayers, type PointerPhase, type UserPose } from "./types";
 import { DEFAULT_VIEW, clamp, fitView, panFrom, screenToWorld, zoomAt, type MapView } from "./viewMath";
@@ -10,6 +11,10 @@ export interface MapCanvasProps {
   venue: Venue;
   floorId: string;
   layers?: Partial<MapLayers>;
+  /** "blueprint" (default): architectural plan look. "classic": the flat colour look. */
+  theme?: MapTheme;
+  /** North arrow and scale bar (blueprint theme). Default on. */
+  decor?: boolean;
   selected?: MapItem | null;
   route?: Route | null;
   /** Route length already travelled (m); the travelled part is drawn grey. */
@@ -42,7 +47,7 @@ const TYPES = new Set(["room", "marker", "wall", "poi", "node", "edge", "object"
  * Pan (drag), pinch / wheel zoom, controlled `rotation`; the venue, route and user dot are plain props.
  */
 export const MapCanvas = forwardRef<MapHandle, MapCanvasProps>(function MapCanvas(props, ref) {
-  const { venue, floorId, selected = null, route = null, progress = 0, user = null, rotation = 0, anchorY = 0.5, minScale = 2, maxScale = 60, children, className, cursor } = props;
+  const { venue, floorId, selected = null, route = null, progress = 0, user = null, rotation = 0, anchorY = 0.5, minScale = 2, maxScale = 60, children, className, cursor, theme = "blueprint", decor = true } = props;
   const layers = useMemo<MapLayers>(() => ({ ...DEFAULT_LAYERS, ...props.layers }), [props.layers]);
   const floor = venue.floors.find((f) => f.id === floorId) ?? venue.floors[0];
   const box = useRef<HTMLDivElement>(null);
@@ -232,15 +237,15 @@ export const MapCanvas = forwardRef<MapHandle, MapCanvasProps>(function MapCanva
       <svg
         width="100%"
         height="100%"
-        style={{ display: "block", touchAction: "none", userSelect: "none", background: "#e9edf3" }}
+        style={{ display: "block", touchAction: "none", userSelect: "none", background: theme === "blueprint" ? BP.sea : "#e9edf3" }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
         onPointerCancel={onUp}
       >
-        <Defs />
+        <Defs theme={theme} />
         <g transform={worldTransform}>
-          <StaticLayers venue={venue} floorId={floorId} layers={layers} selected={selected} />
+          <StaticLayers venue={venue} floorId={floorId} layers={layers} selected={selected} theme={theme} />
           <RouteLines route={route} progress={progress} floorId={floorId} activeFloor={user?.floor} />
           {user && user.floor === floorId && (
             <circle
@@ -263,6 +268,7 @@ export const MapCanvas = forwardRef<MapHandle, MapCanvasProps>(function MapCanva
           )}
         </g>
       </svg>
+      {theme === "blueprint" && decor && <MapDecor scale={s} rotation={shown.rot} northOffsetDeg={venue.northOffsetDeg} />}
     </div>
   );
 });

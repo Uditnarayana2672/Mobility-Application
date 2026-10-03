@@ -171,7 +171,7 @@ describe("furniture tool + handles", () => {
 });
 
 describe("furniture on the map", () => {
-  const html = (v: Venue, layers?: { objects: boolean }) => renderToStaticMarkup(<MapCanvas venue={v} floorId="F1" layers={layers} />);
+  const html = (v: Venue, layers?: { objects: boolean }) => renderToStaticMarkup(<MapCanvas venue={v} floorId="F1" layers={layers} theme="classic" />);
   it("draws items with their icon, rotation and data attributes; the layer can be switched off", () => {
     let v = ops.addObject(seed(), "F1", { x: 10, y: 10 }, "bed", "Bed A").venue;
     v = ops.updateObject(v, "O01", { rotation: 30 });

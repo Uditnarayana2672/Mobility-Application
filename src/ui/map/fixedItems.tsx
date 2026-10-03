@@ -83,6 +83,28 @@ export function buildFixedItems(c: FixedContext): FixedItem[] {
     });
   }
 
+  if (layers.dims) {
+    for (const r of v.rooms.filter((x) => x.floor === floorId)) {
+      const lp = roomLabelPoint(r);
+      items.push({
+        key: `rd-${r.id}`,
+        x: lp.x,
+        y: lp.y,
+        dy: 29,
+        availW: roomLabelWidth(r),
+        availH: r.h,
+        needW: 54,
+        needH: 56,
+        layer: "dims",
+        children: (
+          <text textAnchor="middle" fontSize={9.5} fontWeight={600} fill="#6f8199" stroke="#fff" strokeWidth={3} paintOrder="stroke" style={{ pointerEvents: "none" }}>
+            {`${Math.round(r.w * 10) / 10} × ${Math.round(r.h * 10) / 10} m`}
+          </text>
+        ),
+      });
+    }
+  }
+
   if (layers.pois) {
     for (const p of v.pois.filter((x) => x.floor === floorId)) {
       const k = poiKindOf(p.kind) ?? { icon: "📍", label: "" };

@@ -10,9 +10,11 @@ export interface MapLayers {
   walknet: boolean;
   /** Furniture and fixtures. */
   objects: boolean;
+  /** Room sizes (w × h m) under the names. */
+  dims: boolean;
 }
 
-export const DEFAULT_LAYERS: MapLayers = { underlay: false, grid: false, doors: true, labels: true, pois: true, markers: false, walls: false, walknet: false, objects: true };
+export const DEFAULT_LAYERS: MapLayers = { underlay: false, grid: false, doors: true, labels: true, pois: true, markers: false, walls: false, walknet: false, objects: true, dims: false };
 
 export type ItemType = "room" | "marker" | "wall" | "poi" | "node" | "edge" | "object";
 

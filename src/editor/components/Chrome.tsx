@@ -142,6 +142,7 @@ const LAYERS: [keyof MapLayers, string][] = [
   ["underlay", "Floor photo"],
   ["grid", "Grid"],
   ["walknet", "Walk network"],
+  ["dims", "Sizes"],
   ["objects", "Furniture"],
   ["markers", "Markers"],
   ["walls", "Ad walls"],

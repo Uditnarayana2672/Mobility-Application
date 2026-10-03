@@ -169,7 +169,7 @@ export function VoiceOverlay({ ctl, s }: P) {
       <div className="sheet" style={{ paddingBottom: 22 }}>
         <div className="handle" />
         <div className="row" style={{ marginBottom: 8 }}>
-          <div style={{ fontWeight: 800, fontSize: 16 }}>Ask Indore Spaces</div>
+          <div style={{ fontWeight: 800, fontSize: 16 }}>Ask Dora.AI</div>
           <span className="spacer" />
           <div className="seg2">
             {LANG_BTNS.map(([l, label]) => (

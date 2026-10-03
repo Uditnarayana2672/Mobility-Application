@@ -1,4 +1,6 @@
-# Welcome to your Lovable project
+# Dora.AI
+
+Indoor maps and camera-guided wayfinding: say where you want to go and follow the arrows. Run it with `npm run dev:lan`; deploy notes are in `docs/06-github-pages.md`, the feature guide in `docs/05-using-architecture-v2.md`.
 
 ## Project info
 

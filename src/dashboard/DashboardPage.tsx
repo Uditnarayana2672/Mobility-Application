@@ -339,7 +339,7 @@ function Dash({ venue }: { venue: Venue }) {
   return (
     <div className="is-dash" data-testid="dash-root">
       <div className="topbar">
-        <Link className="brand" to="/"><i />Indore Spaces</Link>
+        <Link className="brand" to="/"><i />Dora.AI</Link>
         <Link className="nav" to="/nav">Visitor app</Link>
         <Link className="nav" to="/editor">Map editor</Link>
         <Link className="nav" to="/markers">Marker sheet</Link>

@@ -1,4 +1,4 @@
-/* Indore Spaces: laptop live dashboard (/dashboard). Ported from docs/mock-ui/dashboard.html + the bits of css/app.css it uses, scoped under .is-dash. */
+/* Dora.AI: laptop live dashboard (/dashboard). Ported from docs/mock-ui/dashboard.html + the bits of css/app.css it uses, scoped under .is-dash. */
 .is-dash {
   --bg: #f3f5f9; --panel: #fff; --ink: #14213d; --muted: #5b6678; --line: #e1e6ee; --brand: #2f5bea; --brand-dark: #1e3fb8; --brand-soft: #e8eefe;
   --teal: #0f9d8a; --amber: #e8890c; --amber-soft: #fff1d6; --red: #d93a3a; --red-soft: #fde4e4; --green: #2b9348; --green-soft: #dff3e5; --purple: #7c4dff;

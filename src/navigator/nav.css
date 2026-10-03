@@ -1,4 +1,4 @@
-/* Indore Spaces: visitor app (/nav). Ported from docs/mock-ui/css/phone.css, scoped under .is-nav.
+/* Dora.AI: visitor app (/nav). Ported from docs/mock-ui/css/phone.css, scoped under .is-nav.
    Mobile-first: full screen on a phone. From 761px up it renders inside a phone frame next to the demo panel. */
 .is-nav {
   --p-brand: #2f5bea; --p-ink: #14213d; --p-muted: #667085; --p-line: #e5e9f0;
@@ -68,7 +68,7 @@
   .is-nav .statusbar { display: flex; position: absolute; top: 0; left: 0; right: 0; height: 44px; z-index: 55; justify-content: space-between; align-items: center; padding: 6px 26px 0; font-size: 13px; font-weight: 700; pointer-events: none; color: #14213d; }
   .is-nav .statusbar.light { color: #fff; }
 }
-/* Indore Spaces — visitor app (phone) styles */
+/* Dora.AI — visitor app (phone) styles */
 
 
 

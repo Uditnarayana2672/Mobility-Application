@@ -38,7 +38,7 @@ export function SubBar(p: SubBarProps) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2">
       <Link to="/" className="mr-1 text-sm font-bold text-blue-700">
-        Indore Spaces
+        Dora.AI
       </Link>
       <span className="text-base font-extrabold">{v.name}</span>
       <Badge kind={p.hasDraft ? "warn" : "ok"}>{p.hasDraft ? `v${v.version} + draft` : `v${v.version} published`}</Badge>

@@ -17,7 +17,7 @@ export default function Hub() {
   return (
     <div className="min-h-screen bg-neutral-950 p-6 text-neutral-100">
       <div className="mx-auto max-w-xl space-y-3">
-        <h1 className="text-2xl font-bold">Indore Spaces</h1>
+        <h1 className="text-2xl font-bold">Dora.AI</h1>
         <ul className="space-y-2">
           {ROUTES.map(([to, label]) => (
             <li key={to}>

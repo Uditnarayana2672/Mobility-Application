@@ -1,4 +1,5 @@
 import { isRouteError, route, type RouteFrom, type RoutePrefs } from "./route";
+import { resolveNeed } from "./needs";
 import { search, type SearchHit } from "./search";
 import type { Venue } from "./schema";
 
@@ -72,6 +73,17 @@ export function matchIntent(v: Venue, text: string, ctx?: IntentContext): Intent
   const query = t.replace(RE.nearest, " ").replace(RE.go, " ").replace(RE.whereIs, " ").replace(/\b(the|a|an|mujhe|please|kripya|dayachesi|ka|ko|hai|undi)\b/gi, " ").replace(/(?:కు|కి)/g, " ").replace(/\s+/g, " ").trim();
   const results = search(v, query);
   const best = results.find((r) => r.score >= 55) ?? results[0];
+  // No clear place name in the sentence: maybe a need ("I want a coffee", "I'm hungry", "I need to sleep").
+  // (A sentence that already says "where is …" / "take me to …" about a weakly matched place keeps its old meaning.)
+  const asksPlace = RE.go.test(t) || RE.whereIs.test(t) || RE.nearest.test(t);
+  if (!best || best.score < 35 || (best.score < 70 && !asksPlace)) {
+    const need = resolveNeed(v, t, ctx);
+    if (need) {
+      const it = need.intent;
+      const asWhere = RE.whereIs.test(t) && !RE.go.test(t) && it.type === "goto";
+      return { intent: asWhere ? { type: "show", target: it.target, name: it.name } : it, confidence: need.confidence };
+    }
+  }
   if (!best || best.score < 35) return { intent: { type: "unknown" }, confidence: Math.min(0.34, (best?.score ?? 0) / 100) };
 
   if (RE.nearest.test(t) && ctx?.from) {

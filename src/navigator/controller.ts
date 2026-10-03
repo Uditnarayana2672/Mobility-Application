@@ -593,6 +593,8 @@ export class NavController {
     this.sim.hold(false);
     this.sim.setRoute(r);
     this.pubRoute(r);
+    // A local (networked) voice needs a second to make a sentence: prepare the "now" lines of this route so they start at once.
+    this.speech.prefetch?.([...r.steps.map((st) => stepSpeech(st, this.st.lang, 0)), arrivedText(r.destName, this.st.lang)], this.st.lang);
     this.patch({ screen: "map", mode: "nav", route: r, snap: snapshot(created.state), follow: true, viewFloor: u.floor, walked: 0, floorPrompt: null, arrived: null });
     this.focusOn({ floor: u.floor, x: u.x, y: u.y, scale: 15 });
     this.ev("nav", `Navigation started → ${r.destName} (${fmtTime(r.time)}, via ${r.via ?? "same floor"})`);

@@ -6,8 +6,13 @@ import { parseCampaigns, parseVenue, type CampaignsFile, type ValidationResult, 
 import { validate } from "../src/core/validate";
 import type { AssistantRequest } from "../src/core/assistant";
 import { AssistantService } from "./assistant";
+import { LocalSemanticRanker } from "./semantic";
 import type { AssistantProvider } from "./assistant-provider";
 import { SessionStore } from "./sessions";
+import { createLocalSpeech, type SpeechService } from "./speech";
+import { MAX_TTS_CHARS } from "./speech/tts";
+import { STT_RATE } from "./speech/stt";
+import { decodeWav, resample } from "../src/speech/wav";
 import { DocStore, ID_RE, listVenueIds } from "./store";
 
 export interface ApiOptions {
@@ -17,12 +22,17 @@ export interface ApiOptions {
   onPublished?: (kind: "venue" | "campaigns", venueId: string, version: number) => void;
   onReset?: (venueId: string) => void;
   assistantProvider?: AssistantProvider;
+  /** Local speech engines (Whisper + Piper). Default: created lazily from <root>/data/models. */
+  speech?: SpeechService;
+  /** Local free-form place ranker (default: a MiniLM embedding model on this machine, loaded in the background). `null` turns it off. */
+  semantic?: Pick<LocalSemanticRanker, "rank" | "ready"> & { warm?(): void } | null;
 }
 
 export type Next = (err?: unknown) => void;
 
 const MAX_JSON = 5 * 1024 * 1024;
 const MAX_UPLOAD = 10 * 1024 * 1024;
+const MAX_AUDIO = 2 * 1024 * 1024;
 const MAX_MEDIA = 30 * 1024 * 1024;
 const UPLOAD_TYPES: Record<string, string> = { "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp" };
 const UPLOAD_MIME: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
@@ -102,7 +112,14 @@ export function createApi(opts: ApiOptions) {
   const venues = new DocStore(root, "venue");
   const campaigns = new DocStore(root, "campaigns");
   const sessions = new SessionStore(root);
-  const assistant = new AssistantService(root, opts.assistantProvider);
+  // The local models load in the background when the server starts (not under tests, and not with LOCAL_AI_WARM=0).
+  const warm = !process.env.VITEST && process.env.LOCAL_AI_WARM !== "0";
+  const semantic = opts.semantic === undefined ? (process.env.VITEST ? null : new LocalSemanticRanker(root)) : opts.semantic;
+  if (opts.semantic === undefined && warm) (semantic as LocalSemanticRanker | null)?.warm();
+  const assistant = new AssistantService(root, opts.assistantProvider, semantic);
+  let speechService: SpeechService | null = opts.speech ?? null;
+  const speech = (): SpeechService => (speechService ??= createLocalSpeech(root, { warm }));
+  if (warm && !opts.speech) speech();
 
   const checkId = (id: string | undefined, what: string): string => {
     if (!id || !ID_RE.test(id)) throw new HttpError(400, `bad ${what}`);
@@ -256,6 +273,34 @@ export function createApi(opts: ApiOptions) {
       const parts = url.pathname.slice("/api/".length).split("/").filter(Boolean);
 
       if (parts[0] === "health" && method === "GET") return send(res, 200, { ok: true, time: new Date().toISOString() });
+      if (parts[0] === "speech" && parts[1] === "status" && method === "GET") return send(res, 200, speech().status());
+      if (parts[0] === "stt" && parts.length === 1 && method === "POST") {
+        const lang = url.searchParams.get("lang");
+        if (lang !== "en" && lang !== "hi" && lang !== "te") throw new HttpError(400, "lang must be en, hi or te");
+        if (Number(req.headers["content-length"] ?? 0) > MAX_AUDIO) throw new HttpError(413, `audio larger than ${MAX_AUDIO} bytes`);
+        const body = await readBuffer(req, MAX_AUDIO);
+        let pcm;
+        try {
+          pcm = decodeWav(body);
+        } catch (e) {
+          throw new HttpError(415, e instanceof Error ? e.message : "audio must be a WAV file");
+        }
+        const out = await speech().stt.transcribe(resample(pcm.samples, pcm.rate, STT_RATE), lang);
+        return send(res, 200, { text: out.text, ms: out.ms, lang });
+      }
+      if (parts[0] === "tts" && parts.length === 1 && method === "GET") {
+        const lang = url.searchParams.get("lang");
+        const text = url.searchParams.get("text") ?? "";
+        if (lang !== "en" && lang !== "hi" && lang !== "te") throw new HttpError(400, "lang must be en, hi or te");
+        if (!text.trim() || text.length > MAX_TTS_CHARS) throw new HttpError(400, `text must be 1..${MAX_TTS_CHARS} characters`);
+        if (!speech().tts.languages().includes(lang)) throw new HttpError(503, `no ${lang} voice installed (run: npm run setup:speech)`);
+        const wav = await speech().tts.synth(text, lang);
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "audio/wav");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        res.end(wav);
+        return;
+      }
       if (parts[0] === "assistant" && method === "POST") {
         const body = await readJsonBody(req) as Partial<AssistantRequest> | undefined;
         const venueId = checkId(body?.venueId, "venue id");

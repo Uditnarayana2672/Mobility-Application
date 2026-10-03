@@ -37,6 +37,7 @@
     "src/positioning",
     "src/ar",
     "src/ads",
+    "src/speech",
     "src/preflight",
     "server",
     "tests",

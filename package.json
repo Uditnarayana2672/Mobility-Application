@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "dev:lan": "node scripts/dev-lan.mjs",
     "certs": "node scripts/make-certs.mjs",
+    "setup:speech": "tsx scripts/setup-speech.mjs",
     "serve": "tsx server/index.ts",
     "typecheck": "tsc -b tsconfig.app.json",
     "test": "vitest run",
@@ -19,6 +20,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "@huggingface/transformers": "^4.3.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",

@@ -19,6 +19,8 @@ export interface SpeechOut {
   onCaption(fn: (c: Caption) => void): () => void;
   /** Is there a voice that can speak this language on this device? */
   canSpeak(lang: Lang): boolean;
+  /** Optional: get these lines ready (a networked voice synthesises them ahead of time). */
+  prefetch?(texts: string[], lang: Lang): void;
 }
 
 /** The slice of the Web Speech API we use (lets tests inject a fake). */

@@ -320,6 +320,9 @@ function RoomProps({ venue: v, id, commit, select }: PanelProps & { id: string }
       <Field label="Search aliases (comma-separated; Hinglish / Telugu welcome)">
         <CommitInput value={r.aliases.join(", ")} onCommit={(x) => set({ aliases: String(x).split(",").map((a) => a.trim()).filter(Boolean) })} />
       </Field>
+      <Field label="Good for (needs, comma-separated: coffee, food, water, washroom, rest, meeting, work, print, balcony, exit)">
+        <CommitInput value={(r.tags ?? []).join(", ")} onCommit={(x) => set({ tags: String(x).split(",").map((a) => a.trim().toLowerCase()).filter(Boolean) })} />
+      </Field>
       <h4 className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-500">Position and size (m)</h4>
       <div className="grid grid-cols-4 gap-1">
         {(["x", "y", "w", "h"] as const).map((k) => (

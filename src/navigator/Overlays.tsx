@@ -7,6 +7,8 @@ import type { NavController, NavState } from "./controller";
 import { EXAMPLES } from "./messages";
 import { floorName, placeOf } from "./places";
 import { listenOnce, recognitionSupported } from "./recognizer";
+import { NO_CAPS, speechCaps, type SpeechCaps } from "@/speech/client";
+import { recordLocal, type Listener } from "@/speech/recorder";
 
 type P = { ctl: NavController; s: NavState };
 
@@ -98,35 +100,64 @@ export function VoiceOverlay({ ctl, s }: P) {
   const [partial, setPartial] = useState("");
   const [status, setStatus] = useState("Tap to speak");
   const stopRef = useRef<() => void>(() => undefined);
+  const busy = useRef(false);
   const chat = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (chat.current) chat.current.scrollTop = 1e6;
   }, [s.chat]);
   useEffect(() => () => stopRef.current(), []);
-  const supported = useMemo(() => recognitionSupported(), []);
+  const [caps, setCaps] = useState<SpeechCaps>(NO_CAPS);
+  useEffect(() => {
+    let live = true;
+    void speechCaps().then((c) => live && setCaps(c));
+    return () => {
+      live = false;
+    };
+  }, []);
+  // The local Whisper server first (nothing leaves the building); the browser's own recogniser only if the server has none.
+  const supported = caps.stt || recognitionSupported();
   const send = (t: string) => {
     if (t.trim()) void ctl.askText(t);
   };
   const startMic = () => {
     if (!supported) {
-      setStatus("Speech recognition isn’t available in this browser — type or tap an example.");
+      setStatus("Speech recognition isn’t available here — type or tap an example.");
       return;
     }
-    if (listening) return;
+    if (listening || busy.current) return;
+    busy.current = true;
     ctl.cancelSpeech();
     setPartial("");
-    const l = listenOnce(s.lang, () => {
+    const onStart = () => {
       setListening(true);
       setStatus("Listening… release to send");
-    }, setPartial);
+    };
+    const l: Listener = caps.stt
+      ? recordLocal(s.lang, {
+          onStart,
+          onPhase: (p) => {
+            if (p === "transcribing") {
+              setListening(false);
+              setStatus(caps.sttState === "ready" ? "Understanding…" : "Loading the local speech model (first time only)…");
+            }
+          },
+        })
+      : listenOnce(s.lang, onStart, setPartial);
     stopRef.current = l.stop;
     void l.result.then((r) => {
+      busy.current = false;
       setListening(false);
       if (r.ok) {
         setPartial(r.text);
         setStatus("Tap to speak");
         send(r.text);
-      } else setStatus(r.reason === "denied" ? "Microphone permission denied — type instead." : r.reason === "no-speech" ? "Couldn’t hear that — try again or type." : "Couldn’t hear that — try typing.");
+      } else
+        setStatus(
+          r.reason === "denied" ? "Microphone permission denied — type instead."
+          : r.reason === "no-speech" ? "Couldn’t hear that — try again or type."
+          : caps.stt ? "The local speech server didn’t answer — type instead."
+          : "Couldn’t hear that — try typing.",
+        );
     });
   };
   const stopMic = () => {
@@ -186,7 +217,7 @@ export function VoiceOverlay({ ctl, s }: P) {
             <button key={e} className="mchip" style={{ background: "#eef2fd", borderColor: "#d5def8", color: "#2f5bea" }} onClick={() => send(e)}>{e}</button>
           ))}
         </div>
-        <div className="small muted" style={{ marginTop: 4 }}>Hold the mic to talk. Rules run first; free-form questions use the server assistant when online. {LANGS[s.lang].speech}</div>
+        <div className="small muted" style={{ marginTop: 4 }}>Hold the mic to talk. {caps.stt ? "Speech is understood on this machine (nothing is sent to a cloud service)." : "Using the browser’s speech recognition."} {LANGS[s.lang].speech}</div>
       </div>
     </div>
   );

@@ -65,6 +65,8 @@ export const RoomSchema = z.object({
   /** People may walk through this room between its doors (a passage). Default: no, so a second door does not create a shortcut. */
   passThrough: z.boolean().optional(),
   aliases: z.array(z.string()).default([]),
+  /** What this place is good for, as need ids (coffee, food, water, washroom, rest, meeting, …): "I want a coffee" finds a room tagged `coffee`. */
+  tags: z.array(z.string()).optional(),
   hours: z.string().default(""),
   access: z.enum(["public", "staff"]).default("public"),
   short: z.string().nullish(),

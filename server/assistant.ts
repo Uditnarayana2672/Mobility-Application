@@ -5,6 +5,7 @@ import type { Target } from "../src/core/intent";
 import { getRoute, placeInfo, searchPlaces, whereAmI } from "../src/core/assistantTools";
 import type { Venue } from "../src/core/schema";
 import { OpenAiResponsesProvider, type AssistantProvider, type AssistantTool } from "./assistant-provider";
+import { chooseTarget, type LocalSemanticRanker } from "./semantic";
 
 const LANG_NAME = { en: "English", hi: "romanised Hinglish", te: "Telugu" } as const;
 const FALLBACK = {
@@ -26,8 +27,32 @@ const shortReply = (text: string): string => {
   return words.length <= 24 ? words.join(" ") : `${words.slice(0, 24).join(" ")}…`;
 };
 
+const GOING = {
+  en: (n: string) => `Taking you to ${n}.`,
+  hi: (n: string) => `${n} le chalte hain.`,
+  te: (n: string) => `${n} కి తీసుకెళ్తున్నాను.`,
+};
+
 export class AssistantService {
-  constructor(private readonly root: string, private readonly provider: AssistantProvider = new OpenAiResponsesProvider()) {}
+  constructor(
+    private readonly root: string,
+    private readonly provider: AssistantProvider = new OpenAiResponsesProvider(),
+    /** Local sentence-embedding ranker: answers when no cloud model is configured (or it fails). */
+    private readonly semantic: Pick<LocalSemanticRanker, "rank" | "ready"> | null = null,
+  ) {}
+
+  /** A clear best match among this venue's places, from the local model. Never waits for the model to download. */
+  private async local(v: Venue, req: AssistantRequest, suggestions: AssistantSuggestion[]): Promise<AssistantResponse | null> {
+    if (!this.semantic?.ready()) return null;
+    try {
+      const ranked = await this.semantic.rank(v, req.text, 8);
+      const choice = chooseTarget(v, ranked, req.from, req.prefs);
+      const sugg = ranked.slice(0, 3).map((r) => ({ name: r.name, target: r.target }));
+      if ("pick" in choice) return { reply: GOING[req.lang](choice.pick.name), action: { type: "goto", target: choice.pick.target, name: choice.pick.name }, suggestions: sugg, fallback: false };
+      if (choice.ask.length) return { reply: FALLBACK[req.lang](choice.ask.join(" or ")), suggestions: sugg, fallback: true, reason: "disabled" };
+    } catch { /* the local model must never break wayfinding */ }
+    return null;
+  }
 
   private suggestions(v: Venue, q: string): AssistantSuggestion[] {
     return searchPlaces(v, q).map(({ name, target }) => ({ name, target }));
@@ -45,7 +70,7 @@ export class AssistantService {
     const suggestions = this.suggestions(v, req.text);
     const fallback = (reason: AssistantResponse["reason"]): AssistantResponse => ({ reply: FALLBACK[req.lang](suggestions.map((s) => s.name).join(" or ")), suggestions, fallback: true, reason });
     if (!this.provider.available()) {
-      const out = fallback("disabled");
+      const out = (await this.local(v, req, suggestions)) ?? fallback("disabled");
       await this.log({ at: new Date().toISOString(), provider: this.provider.name, venue: v.id, lang: req.lang, text: req.text, ...out });
       return out;
     }
@@ -72,7 +97,7 @@ export class AssistantService {
       const reply = shortReply(await this.provider.answer({ text: req.text, language: LANG_NAME[req.lang], tools: TOOLS, execute, signal: ctl.signal }));
       out = { reply, action, suggestions, fallback: false };
     } catch (err) {
-      out = fallback(ctl.signal.aborted ? "timeout" : err instanceof TypeError ? "offline" : "error");
+      out = (await this.local(v, req, suggestions)) ?? fallback(ctl.signal.aborted ? "timeout" : err instanceof TypeError ? "offline" : "error");
     } finally {
       clearTimeout(timer);
     }

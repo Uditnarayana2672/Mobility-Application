@@ -273,6 +273,15 @@ export function createApi(opts: ApiOptions) {
       const parts = url.pathname.slice("/api/".length).split("/").filter(Boolean);
 
       if (parts[0] === "health" && method === "GET") return send(res, 200, { ok: true, time: new Date().toISOString() });
+      if (parts[0] === "registry" && parts.length === 1 && method === "GET") {
+        // Every published venue with where it is on Earth: what the phone needs to find out which building it is in.
+        const out: { id: string; name: string; type: string; city: string; version: number; geo?: unknown }[] = [];
+        for (const id of await listVenueIds(root)) {
+          const parsed = parseVenue(await venues.getPublished<unknown>(id));
+          if (parsed.ok) out.push({ id, name: parsed.data.name, type: parsed.data.type, city: parsed.data.city, version: parsed.data.version, geo: parsed.data.geo });
+        }
+        return send(res, 200, { venues: out });
+      }
       if (parts[0] === "speech" && parts[1] === "status" && method === "GET") return send(res, 200, speech().status());
       if (parts[0] === "stt" && parts.length === 1 && method === "POST") {
         const lang = url.searchParams.get("lang");

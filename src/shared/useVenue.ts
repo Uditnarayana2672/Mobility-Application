@@ -49,9 +49,9 @@ export async function loadVenue(id: string = DEFAULT_VENUE_ID, opts: { fetchFn?:
 
 export type VenueState = { status: "loading" } | { status: "ready"; venue: Venue; source: VenueSource } | { status: "missing"; id: string };
 
-/** Venue id from ?venue=, default office-hq. */
-export function useVenue(): VenueState {
-  const id = typeof location === "undefined" ? DEFAULT_VENUE_ID : (new URLSearchParams(location.search).get("venue") ?? DEFAULT_VENUE_ID);
+/** Venue id: the argument, else ?venue=, else office-hq. */
+export function useVenue(idOverride?: string): VenueState {
+  const id = idOverride ?? (typeof location === "undefined" ? DEFAULT_VENUE_ID : (new URLSearchParams(location.search).get("venue") ?? DEFAULT_VENUE_ID));
   const [state, setState] = useState<VenueState>({ status: "loading" });
   useEffect(() => {
     let live = true;

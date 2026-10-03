@@ -2,7 +2,7 @@ import { DICT_SIZE } from "@/core/aruco/dict";
 import { distToSegment } from "@/core/geo";
 import { doorNodeId, nearestDoor, roomDoors } from "@/core/doors";
 import { edgeOutwardNormal, nearestOnPolygon, polygonArea, polygonBounds, polygonEdges, rotatePoints, roomLabelPoint, roomPolygon } from "@/core/geom";
-import type { Background, Door, Edge, Floor, MapObject, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
+import type { Background, Door, Geo, Edge, Floor, MapObject, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
 import { OBJECT_KINDS, type ObjectKind, type PoiKind } from "@/core/cats";
 
 /**
@@ -946,6 +946,29 @@ export function updateFloor(v0: Venue, id: string, patch: Partial<Omit<Floor, "i
 
 export function updateVenueMeta(v0: Venue, patch: Partial<Pick<Venue, "name" | "type" | "city" | "address">>): Venue {
   return { ...clone(v0), ...patch };
+}
+
+/** Where the venue is on Earth (the phone's GPS picks the building from this). `null` removes it. */
+export function setGeo(v0: Venue, patch: Partial<Geo> | null): Venue {
+  const v = clone(v0);
+  if (patch === null) {
+    delete v.geo;
+    return v;
+  }
+  const base: Geo = v.geo ?? { anchor: patch.anchor ?? [22.7196, 75.8577], radiusM: 60, entrances: [] };
+  const next: Geo = { ...base, ...patch };
+  if (patch.footprint !== undefined && patch.footprint.length === 0) delete next.footprint;
+  v.geo = next;
+  return v;
+}
+
+/** True-north offset of the map (degrees, -180..180). */
+export function setNorth(v0: Venue, deg: number): Venue {
+  const v = clone(v0);
+  const d = ((((deg + 180) % 360) + 360) % 360) - 180;
+  if (d === 0) delete v.northOffsetDeg;
+  else v.northOffsetDeg = Math.round(d * 10) / 10;
+  return v;
 }
 
 /** Recompute the venue-level calibrated flag: every floor with a photo must be calibrated. */

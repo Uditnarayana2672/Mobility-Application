@@ -12,3 +12,4 @@ export * from "./assistantTools";
 export * from "./poseFromMarker";
 export * from "./validate";
 export * from "./needs";
+export * from "./geofence";

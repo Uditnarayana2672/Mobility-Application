@@ -32,6 +32,11 @@ export class HeadingIntegrator {
     this.lastT = null;
   }
 
+  /** Turn the heading by `deg` (clockwise positive): a small correction from another sensor (the compass). */
+  nudge(deg: number): void {
+    this.bearing = normaliseBearing(this.bearing + deg);
+  }
+
   update(tMs: number, rate: RotationRate, accel: [number, number, number]): void {
     const m = Math.hypot(accel[0], accel[1], accel[2]);
     if (m > 1e-3) {

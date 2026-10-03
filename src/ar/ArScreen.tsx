@@ -8,6 +8,7 @@ import type { Pose } from "@/navigator/poseSource";
 import type { NavRuntime } from "@/navigator/useNav";
 import { CanvasArRenderer, relativeTurn, type GuideArrow } from "./CanvasArRenderer";
 import { loadCampaigns, recordAdMetric } from "./campaigns";
+import { direct } from "./director";
 import { buildSceneModel, type ArSceneModel } from "./sceneModel";
 import { WebXrSceneRenderer } from "./WebXrRenderer";
 
@@ -60,10 +61,19 @@ export default function ArScreen({ rt, ctl, s }: Props) {
     return () => { abort.abort(); off(); };
   }, [rt.bus, s.venue.id]);
 
-  const scene = useMemo(() => {
+  const built = useMemo(() => {
     if (!s.user) return null;
     return buildSceneModel(s.route, s.venue, { ...s.user, progressM: progress }, campaignFile.campaigns);
   }, [campaignFile.campaigns, progress, s.route, s.user, s.venue]);
+  // On a real phone the AR director decides what the position's accuracy and the camera angle allow; the laptop simulator shows everything.
+  const directed = useMemo(
+    () => (built && rt.kind !== "sim" && s.user ? direct(built, { acc: s.user.acc, stale: !!s.user.stale, pitchDownDeg: rt.pdr?.pitchDownDeg }) : built ? { model: built, compassOnly: false, hint: null } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [built, rt.kind, s.user],
+  );
+  const scene = directed?.model ?? null;
+  const compassOnly = directed?.compassOnly ?? false;
+  const hint = directed?.hint ?? null;
   latest.current = scene;
 
   useEffect(() => {
@@ -130,13 +140,15 @@ export default function ArScreen({ rt, ctl, s }: Props) {
           seeThrough,
           pitchDownDeg: rt.pdr?.pitchDownDeg,
           guide: seeThrough ? guideFor(s.route, s.user, progress) : null,
+          bigGuide: compassOnly,
         });
       }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [active, rt.kind, rt.pdr, seeThrough, s.user, s.venue, s.route, progress]);
+  }, [active, rt.kind, rt.pdr, seeThrough, s.user, s.venue, s.route, progress, compassOnly]);
+
 
   useEffect(() => {
     if (!active) return;
@@ -205,6 +217,7 @@ export default function ArScreen({ rt, ctl, s }: Props) {
           </div>
         )}
         <div className={`trk ${s.user?.stale ? "bad" : s.user && s.user.acc > 2 ? "mid" : ""}`}><i />{tracking}{rt.kind === "xr" ? " · same XR session" : seeThrough ? " · live camera" : " · simulated camera"}</div>
+        {hint && rt.kind !== "sim" && <div className="ar-hint" data-testid="ar-hint">{hint}</div>}
         {camErr && <div className="live-err" data-testid="ar-cam-err">Camera: {camErr}. Allow camera access for this site in Chrome (🔒 next to the address), then reopen this view.</div>}
       </div>
       {lookUp && <button className="lookup show" data-testid="look-up" onClick={() => setLookUp(false)}>⚠ Look up and check your surroundings</button>}

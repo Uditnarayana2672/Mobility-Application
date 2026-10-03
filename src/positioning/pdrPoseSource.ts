@@ -4,6 +4,7 @@ import { detectMarkers } from "@/spikes/aruco/detect";
 import type { Intrinsics } from "@/spikes/aruco/pose";
 import { LivePoseBase } from "./liveBase";
 import { devicePoseFromMarker } from "./markers";
+import { cameraCompassHeading } from "./compass";
 import { PdrPoseCore } from "./pdrCore";
 
 const HFOV_KEY = "indore.s2.hfov";
@@ -18,6 +19,23 @@ const hfov = (): number => {
     return 65;
   }
 };
+
+const NORTH_KEY = (id: string) => `indore.northOffset.${id}`;
+function readNorth(id: string): number | null {
+  try {
+    const v = Number(localStorage.getItem(NORTH_KEY(id)));
+    return localStorage.getItem(NORTH_KEY(id)) !== null && Number.isFinite(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+function writeNorth(id: string, v: number): void {
+  try {
+    localStorage.setItem(NORTH_KEY(id), String(Math.round(v * 10) / 10));
+  } catch {
+    /* private mode */
+  }
+}
 
 type MotionPermission = { requestPermission?: () => Promise<"granted" | "denied"> };
 
@@ -47,6 +65,8 @@ export class PdrPoseSource extends LivePoseBase {
   constructor(venue: Venue) {
     super(venue);
     this.core = new PdrPoseCore(venue);
+    const saved = readNorth(venue.id);
+    if (saved !== null) this.core.seedNorthOffset(saved);
   }
 
   get error(): string | null {
@@ -86,6 +106,12 @@ export class PdrPoseSource extends LivePoseBase {
     if (e.beta === null || e.beta === undefined) return;
     this.pitchDown = Math.max(-60, Math.min(90, 90 - e.beta));
   };
+  /** Absolute orientation (Android Chrome): the way the camera faces on Earth. */
+  private onCompass = (e: DeviceOrientationEvent): void => {
+    if (!e.absolute || e.alpha === null || e.beta === null || e.gamma === null) return;
+    const h = cameraCompassHeading(e.alpha, e.beta, e.gamma);
+    if (h !== null) this.core.compass(h);
+  };
   async startSensors(): Promise<void> {
     if (this.motionOn) return;
     try {
@@ -95,6 +121,7 @@ export class PdrPoseSource extends LivePoseBase {
         if (res !== "granted") throw new Error("motion permission denied");
       }
       window.addEventListener("deviceorientation", this.onOrient);
+      window.addEventListener("deviceorientationabsolute", this.onCompass as EventListener);
       window.addEventListener("devicemotion", this.onMotion);
       this.motionOn = true;
     } catch (e) {
@@ -104,6 +131,7 @@ export class PdrPoseSource extends LivePoseBase {
   private stopSensors(): void {
     window.removeEventListener("devicemotion", this.onMotion);
     window.removeEventListener("deviceorientation", this.onOrient);
+    window.removeEventListener("deviceorientationabsolute", this.onCompass as EventListener);
     this.motionOn = false;
   }
 
@@ -179,6 +207,8 @@ export class PdrPoseSource extends LivePoseBase {
     if (fresh) this.lastScanAt.set(f.markerId, now);
     this.anchorAtMs = now;
     this.core.anchor({ floor: f.floor, x: f.x, y: f.y, heading: f.heading, acc: Math.max(0.5, f.acc), markerId: f.markerId }, !fresh);
+    const off = this.core.northOffset;
+    if (off !== null) writeNorth(this.venue.id, off);
   }
 
   /* ---- ControllerPoseSource ---- */

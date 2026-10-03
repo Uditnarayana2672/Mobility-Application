@@ -3,6 +3,7 @@ import { HeadingIntegrator, type RotationRate } from "@/core/heading";
 import { StepDetector } from "@/core/steps";
 import type { Pose } from "@/navigator/poseSource";
 import { PoseSmoother, type PlanePose } from "./corrector";
+import { CompassFusion } from "./compass";
 import { ParticleFilter, seededRandom, walkableFromVenue, type Walkable } from "./particleFilter";
 
 export interface PdrOptions {
@@ -10,6 +11,8 @@ export interface PdrOptions {
   /** Particle count. */
   particles: number;
   rnd?: () => number;
+  /** Map north against true north, when known and the venue does not say. */
+  northOffsetDeg?: number | null;
 }
 export const DEFAULT_PDR = { strideM: 0.7, particles: 300 };
 
@@ -41,6 +44,8 @@ export class PdrPoseCore {
   private raw: PlanePose | null = null;
   private lastTMs = 0;
   private stride: number;
+  private readonly fusion: CompassFusion;
+  private lastCompass: number | null = null;
 
   constructor(
     venue: Venue,
@@ -49,6 +54,29 @@ export class PdrPoseCore {
     this.walk = walkableFromVenue(venue);
     this.pf = new ParticleFilter(this.walk, venue.floors[0]?.id ?? "", opts.rnd ?? Math.random, { count: opts.particles ?? DEFAULT_PDR.particles });
     this.stride = opts.strideM ?? DEFAULT_PDR.strideM;
+    this.fusion = new CompassFusion({ prior: venue.northOffsetDeg ?? opts.northOffsetDeg ?? null });
+  }
+
+  /** The map's north against true north (learned from marker fixes, or typed in the editor), or null. */
+  get northOffset(): number | null {
+    return this.fusion.offset;
+  }
+  /** Start from an offset learned in an earlier session. */
+  seedNorthOffset(offset: number): void {
+    if (this.fusion.offset === null) this.fusion.learn(offset, 0, 1);
+  }
+
+  /** A compass reading (degrees clockwise from true north, the way the camera faces). Gently pulls the gyro heading towards it. */
+  compass(deg: number): void {
+    this.lastCompass = deg;
+    this.fusion.push(deg);
+    if (!this.anchored || this.held) return;
+    const c = this.fusion.correction(this.heading.bearing);
+    if (c !== null) {
+      this.heading.nudge(c);
+      this.pf.setHeading(this.heading.bearing);
+      if (this.raw) this.raw = { ...this.raw, heading: this.pf.estimate().heading };
+    }
   }
 
   setVenue(v: Venue): void {
@@ -66,6 +94,8 @@ export class PdrPoseCore {
   /** A marker fix (camera) or a manual position: re-seed the cloud and the gyro heading. */
   anchor(a: MarkerAnchor, silent = false): void {
     const before = this.raw;
+    // A precise fix says which way the camera faces on the map; the compass said which way on Earth: that difference is the map's north.
+    if (this.lastCompass !== null && this.fusion.steady()) this.fusion.learn(this.lastCompass, a.heading, a.markerId !== null && a.acc <= 1 ? 1 : 0.15);
     this.heading.reset(a.heading);
     this.pf.seed(a.floor, a.x, a.y, a.heading, Math.max(0.15, a.acc * 0.6));
     this.anchored = true;
@@ -108,7 +138,8 @@ export class PdrPoseCore {
       const e = this.pf.estimate();
       this.raw = { floor: e.floor, x: e.x, y: e.y, heading: e.heading };
     } else if (this.raw) {
-      // Between steps the displayed heading follows the gyro.
+      // Between steps the displayed heading follows the gyro (turning on the spot turns the arrow).
+      this.pf.setHeading(this.heading.bearing);
       this.raw = { ...this.raw, heading: this.pf.estimate().heading };
     }
   }

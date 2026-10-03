@@ -24,6 +24,8 @@ export interface CanvasFrame {
   /** How far the camera looks below the horizon (deg). Only used with seeThrough; the simulator keeps its fixed tilt. */
   pitchDownDeg?: number;
   guide?: GuideArrow | null;
+  /** The compass arrow is the only guidance (position too rough for world-fixed cues): draw it larger. */
+  bigGuide?: boolean;
 }
 
 /** Signed turn from the phone's heading to a bearing, -180..180 (positive = right). */
@@ -156,7 +158,7 @@ export class CanvasArRenderer {
     }
 
     if (seeThrough) {
-      if (frame.guide) this.guideArrow(frame.guide);
+      if (frame.guide) this.guideArrow(frame.guide, frame.bigGuide ? 1.3 : 1);
       return;
     }
     const vignette = this.g.createRadialGradient(this.w / 2, this.h / 2, this.h * 0.25, this.w / 2, this.h / 2, this.h * 0.72);
@@ -167,12 +169,13 @@ export class CanvasArRenderer {
   }
 
   /** The always-correct hint: a big arrow that turns with the phone, plus what to do in words. */
-  private guideArrow(a: GuideArrow): void {
+  private guideArrow(a: GuideArrow, k = 1): void {
     const g = this.g;
     const cx = this.w / 2;
     const cy = this.h * 0.66;
     g.save();
     g.translate(cx, cy);
+    g.scale(k, k);
     g.rotate((a.relDeg * Math.PI) / 180);
     g.shadowColor = "rgba(0,0,0,.55)";
     g.shadowBlur = 14;
@@ -190,18 +193,18 @@ export class CanvasArRenderer {
     const tw = Math.max(g.measureText(a.title).width, 0) + 28;
     g.fillStyle = "rgba(15,27,61,.82)";
     g.beginPath();
-    g.roundRect(cx - tw / 2, cy + 74, tw, 34, 17);
+    g.roundRect(cx - tw / 2, cy + 74 * k, tw, 34, 17);
     g.fill();
     g.fillStyle = "#fff";
     g.textAlign = "center";
     g.textBaseline = "middle";
-    g.fillText(a.title, cx, cy + 91);
+    g.fillText(a.title, cx, cy + 74 * k + 17);
     if (a.sub) {
       g.font = "700 13px system-ui,sans-serif";
       g.fillStyle = "rgba(255,255,255,.95)";
       g.shadowColor = "rgba(0,0,0,.8)";
       g.shadowBlur = 6;
-      g.fillText(a.sub, cx, cy + 124);
+      g.fillText(a.sub, cx, cy + 74 * k + 50);
       g.shadowBlur = 0;
     }
   }

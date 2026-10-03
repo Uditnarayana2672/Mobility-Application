@@ -136,6 +136,8 @@ interface EdgeProj {
   pt: Pt;
   t: number;
   dist: number;
+  /** Length of the edge, metres. */
+  len: number;
 }
 
 /** Nearest walk edge between corridor nodes on the floor. */
@@ -148,7 +150,7 @@ function nearestWalkEdge(v: Venue, floor: string, p: Pt, radius: number): EdgePr
     if (!a || !b || a.floor !== floor || b.floor !== floor || a.kind !== "corridor" || b.kind !== "corridor") return;
     const { pt, t } = projectOnSegment(p, a, b);
     const d = Math.hypot(p.x - pt.x, p.y - pt.y);
-    if (d <= radius && (!best || d < best.dist)) best = { edgeIndex: i, pt, t, dist: d };
+    if (d <= radius && (!best || d < best.dist)) best = { edgeIndex: i, pt, t, dist: d, len: Math.hypot(b.x - a.x, b.y - a.y) };
   });
   return best;
 }
@@ -204,7 +206,7 @@ function linkDoor(v: Venue, room: Room, radius: number, i = 0): boolean {
   const node = nearestNode(v, room.floor, dp, radius, ["corridor"]);
   const edge = nearestWalkEdge(v, room.floor, dp, radius);
   const nodeD = node ? Math.hypot(node.x - dp.x, node.y - dp.y) : Infinity;
-  if (edge && edge.t > 0.02 && edge.t < 0.98 && edge.dist < nodeD - 0.01) {
+  if (edge && edge.t * edge.len > 0.05 && (1 - edge.t) * edge.len > 0.05 && edge.dist < nodeD - 0.01) {
     const n = splitEdge(v, room.floor, edge.edgeIndex, edge.pt);
     linkWalk(v, doorId, n.id);
     return true;
@@ -424,7 +426,7 @@ export function walkClick(v0: Venue, floor: string, chain: string | null, p: Pt)
   let n: VNode | null = nearestNode(v, floor, p, joinRadius(), ["corridor", "door"]);
   if (!n) {
     const edge = nearestWalkEdge(v, floor, p, EDGE_SNAP);
-    if (edge && edge.t > 0.02 && edge.t < 0.98) n = splitEdge(v, floor, edge.edgeIndex, edge.pt);
+    if (edge && edge.t * edge.len > 0.05 && (1 - edge.t) * edge.len > 0.05) n = splitEdge(v, floor, edge.edgeIndex, edge.pt);
   }
   if (!n) {
     n = { id: nodeId(v, floor), floor, x: snap(p.x), y: snap(p.y), kind: "corridor" };

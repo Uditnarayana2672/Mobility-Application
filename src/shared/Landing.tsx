@@ -19,7 +19,7 @@ export default function Landing() {
           <Link to={mapsHref()} data-testid="go-maps" className="group rounded-2xl border border-neutral-800 bg-neutral-900 p-6 transition hover:border-emerald-500 hover:bg-neutral-800">
             <div className="text-4xl">🗺️</div>
             <h2 className="mt-3 text-xl font-bold group-hover:text-emerald-300">Indore Maps</h2>
-            <p className="mt-1 text-sm text-neutral-400">Find your way inside My PG: the visitor map, search, voice and camera directions.</p>
+            <p className="mt-1 text-sm text-neutral-400">Find your way inside the airport: the visitor map, search, voice and camera directions.</p>
           </Link>
         </div>
       </div>

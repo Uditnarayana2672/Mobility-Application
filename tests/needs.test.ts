@@ -8,7 +8,7 @@ const load = (p: string): Venue => {
   return r.data;
 };
 const OFFICE = load("public/venues/office-hq/venue.json");
-const PG = load("public/venues/my-pg/venue.json");
+const PG = load("tests/fixtures/my-pg.venue.json");
 const from = { floor: "F1", x: 3, y: 17, heading: 0 } as const;
 const goto = (v: Venue, text: string) => {
   const m = matchIntent(v, text, { from });

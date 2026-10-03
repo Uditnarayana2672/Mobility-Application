@@ -20,10 +20,22 @@ export interface BpElement {
   name: string;
   floor: string;
   poiType?: string;
+  /** Airport files: what part an element plays (island, counter, lane, zone, ...). */
+  role?: string;
+  tags?: string[];
+  airlines?: string[];
+  counterRange?: string;
+}
+
+export interface BpConnection {
+  source: string;
+  target: string;
 }
 
 export interface BpFile {
   floors: string[];
+  /** Which elements really lead into each other (airport drawings). Optional. */
+  connections?: BpConnection[];
   elements: BpElement[];
   trueNorth: number;
 }
@@ -82,9 +94,20 @@ export function readBlueprint(json: unknown): { ok: true; file: BpFile; dropped:
       name: typeof e.name === "string" ? e.name : "",
       floor: typeof e.floor === "string" && floors.includes(e.floor) ? e.floor : floors[0]!,
       poiType: typeof e.poiType === "string" ? e.poiType : undefined,
+      role: typeof e.role === "string" ? e.role : undefined,
+      tags: Array.isArray(e.tags) ? e.tags.filter((t): t is string => typeof t === "string") : undefined,
+      airlines: Array.isArray(e.airlines) ? e.airlines.filter((t): t is string => typeof t === "string") : undefined,
+      counterRange: typeof e.counterRange === "string" ? e.counterRange : undefined,
     });
   }
-  return { ok: true, file: { floors, elements, trueNorth: num(j.trueNorth) ? j.trueNorth : 0 }, dropped };
+  const connections: BpConnection[] = [];
+  if (Array.isArray(j.connections)) {
+    for (const raw of j.connections) {
+      const c = raw as Record<string, unknown>;
+      if (c && typeof c.source === "string" && typeof c.target === "string") connections.push({ source: c.source, target: c.target });
+    }
+  }
+  return { ok: true, file: { floors, elements, trueNorth: num(j.trueNorth) ? j.trueNorth : 0, ...(connections.length ? { connections } : {}) }, dropped };
 }
 
 const median = (a: number[]): number => {
@@ -147,7 +170,35 @@ function classify(name: string): { cat: Cat; tags: string[] } {
   return { cat: "workspace", tags: [] };
 }
 
-const POI_MAP: Record<string, PoiKind> = { water: "water", printer: "printer", coffee: "coffee", exit: "exit", firstaid: "firstaid", "first-aid": "firstaid", atm: "atm", entrance: "entrance" };
+const POI_MAP: Record<string, PoiKind> = {
+  water: "water", drinkingwater: "water", printer: "printer", coffee: "coffee", exit: "exit", firstaid: "firstaid", "first-aid": "firstaid", medical: "firstaid", atm: "atm", entrance: "entrance",
+  info: "info", currency: "currency", trolley: "trolley", babycare: "babycare", charging: "charging", prayer: "prayer", taxi: "taxi",
+};
+
+/** Airport element types that become rooms: their category and the "need" tag that finds them ("I need a gate", "where can I shop"). */
+const AIRPORT_ROOM: Record<string, { cat: Cat; tag: string }> = {
+  eatery: { cat: "food", tag: "food" },
+  shop: { cat: "retail", tag: "shopping" },
+  toilet: { cat: "washroom", tag: "washroom" },
+  lounge: { cat: "lounge", tag: "lounge" },
+  gate: { cat: "gate", tag: "gate" },
+  baggage: { cat: "baggage", tag: "baggage" },
+  checkin: { cat: "checkin", tag: "checkin" },
+  security: { cat: "security", tag: "security" },
+};
+const VERTICAL = new Set(["elevator", "stairs", "escalator"]);
+const insideBox = (inner: Box, outer: Box): boolean => {
+  const cx = (inner.minX + inner.maxX) / 2;
+  const cy = (inner.minY + inner.maxY) / 2;
+  return cx >= outer.minX && cx <= outer.maxX && cy >= outer.minY && cy <= outer.maxY;
+};
+/** Small parts inside a bigger area (check-in counters inside an island, security lanes inside a zone, belts inside a reclaim hall) are not imported one by one. */
+function isDetail(e: BpElement, els: BpElement[]): boolean {
+  if (e.type === "checkin") return e.role === "counter";
+  if (e.type === "security") return e.role === "lane" || e.role === "counter";
+  if (e.type === "baggage") return els.some((o) => o !== e && o.type === "baggage" && o.width * o.height > e.width * e.height && insideBox(rectOf(e), rectOf(o)));
+  return false;
+}
 
 const r2 = (n: number): number => Math.round(n * 100) / 100;
 const segDist = (p: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) => {
@@ -158,6 +209,60 @@ const segDist = (p: { x: number; y: number }, a: { x: number; y: number }, b: { 
   const q = { x: a.x + dx * t, y: a.y + dy * t };
   return { d: Math.hypot(p.x - q.x, p.y - q.y), q };
 };
+
+function airportClass(e: BpElement, air: { cat: Cat; tag: string }, name: string): { cat: Cat; tags: string[] } {
+  const tags = [air.tag];
+  if (e.type === "eatery" && (e.tags?.includes("coffee") || /coffee|cafe|café|tea\b/i.test(name))) tags.push("coffee");
+  if (e.type === "lounge" || /sleep|pod|spa/i.test(name)) tags.push("rest");
+  if (e.type === "shop" && /pharmacy|chemist/i.test(name)) tags.push("firstaid");
+  return { cat: air.cat, tags };
+}
+
+/** Extra search words for an airport area: gents / ladies, the airlines of a check-in island, the belt numbers of a reclaim hall. */
+function airportAliases(e: BpElement, els: BpElement[]): string[] {
+  const out: string[] = [];
+  if (e.type === "toilet") {
+    if (e.tags?.includes("male")) out.push("gents", "men's toilet");
+    if (e.tags?.includes("female")) out.push("ladies", "women's toilet");
+    if (e.tags?.includes("accessible")) out.push("accessible toilet", "wheelchair toilet");
+    if (e.tags?.includes("family")) out.push("family restroom");
+  }
+  if (e.type === "checkin") {
+    for (const a of e.airlines ?? []) out.push(a.toLowerCase(), `${a.toLowerCase()} check-in`);
+    if (e.counterRange) out.push(`counters ${e.counterRange}`);
+  }
+  if (e.type === "baggage") {
+    out.push("baggage claim", "luggage", "bags");
+    for (const o of els) if (o !== e && o.type === "baggage" && insideBox(rectOf(o), rectOf(e))) out.push(o.name.toLowerCase());
+  }
+  if (e.type === "gate") out.push("boarding gate");
+  return out;
+}
+
+/**
+ * Where a hallway's walk line runs. A narrow hallway uses its centre line. A broad plaza would put the line through the shops and
+ * islands that stand in it, so the line moves sideways (in 1 m steps, nearest to the centre first) to a lane that is clear of rooms.
+ */
+function freeLane(h: BpElement, horizontal: boolean, rooms: BpElement[], L: (px: number) => number): number {
+  const lo = horizontal ? h.y : h.x;
+  const span = horizontal ? h.height : h.width;
+  const centre = lo + span / 2;
+  if (L(span) <= 12) return centre;
+  const pxPerM = 1 / (L(1) || 1);
+  const along0 = horizontal ? h.x : h.y;
+  const along1 = along0 + (horizontal ? h.width : h.height);
+  const margin = 0.6 * pxPerM;
+  const blocked = (c: number) =>
+    rooms.some((o) => {
+      const r = rectOf(o);
+      const [c0, c1, a0, a1] = horizontal ? [r.minY, r.maxY, r.minX, r.maxX] : [r.minX, r.maxX, r.minY, r.maxY];
+      return c >= c0 - margin && c <= c1 + margin && a1 > along0 && a0 < along1;
+    });
+  for (let d = 0; d <= span / 2 - margin; d += pxPerM) {
+    for (const c of d === 0 ? [centre] : [centre - d, centre + d]) if (!blocked(c)) return c;
+  }
+  return centre;
+}
 
 export function importBlueprint(file: BpFile, opts: ImportOptions): ImportResult {
   const issues: ImportIssue[] = [];
@@ -230,8 +335,9 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
         stats.skipped++;
         continue;
       }
-      const a = horizontal ? { x: X(e.x), y: Y(e.y + e.height / 2) } : { x: X(e.x + e.width / 2), y: Y(e.y) };
-      const b = horizontal ? { x: X(e.x + e.width), y: Y(e.y + e.height / 2) } : { x: X(e.x + e.width / 2), y: Y(e.y + e.height) };
+      const lane = freeLane(e, horizontal, els.filter((o) => o !== e && (AIRPORT_ROOM[o.type] || VERTICAL.has(o.type) || o.type === "room" || o.type === "custom") && !isDetail(o, els)), L);
+      const a = horizontal ? { x: X(e.x), y: Y(lane) } : { x: X(lane), y: Y(e.y) };
+      const b = horizontal ? { x: X(e.x + e.width), y: Y(lane) } : { x: X(lane), y: Y(e.y + e.height) };
       const c1 = ops.walkClick(v, floor, null, a);
       const c2 = ops.walkClick(c1.venue, floor, c1.nodeId, b);
       v = c2.venue;
@@ -255,14 +361,18 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
     }
 
     // 3. Rooms (named or not), lifts and stairs.
-    const roomEls = els.filter((e) => !boundary.has(e.id) && (e.type === "room" || e.type === "custom" || e.type === "elevator" || e.type === "stairs"));
+    const roomEls = els.filter((e) => !boundary.has(e.id) && (e.type === "room" || e.type === "custom" || VERTICAL.has(e.type) || (!!AIRPORT_ROOM[e.type] && !isDetail(e, els))));
+    const details = els.filter((e) => isDetail(e, els));
+    if (details.length) issues.push({ level: "info", title: `${floorName}: ${details.length} small parts not imported one by one`, detail: "Check-in counters, security lanes and baggage belts sit inside bigger areas that are imported (the island, the zone, the reclaim hall). Their names and numbers are added as search words." });
+    const restricted = els.filter((e) => e.type === "restricted").length;
+    if (restricted) issues.push({ level: "info", title: `${floorName}: ${restricted} staff-only area(s) not imported`, detail: "Restricted areas are not part of a passenger's map." });
     const made = new Map<string, string>(); // element id -> room id
     let unnamed = 0;
     for (const e of roomEls) {
-      const vertical = e.type === "elevator" || e.type === "stairs";
+      const vertical = VERTICAL.has(e.type);
       let name = e.name.trim();
-      if (isGenericName(name) || vertical) {
-        if (vertical) name = e.type === "elevator" ? "Lift" : "Staircase";
+      if (isGenericName(name) || (vertical && !name)) {
+        if (vertical) name = e.type === "elevator" ? "Lift" : e.type === "escalator" ? "Escalator" : "Staircase";
         else {
           unnamed++;
           name = `Room ${unnamed}`;
@@ -282,8 +392,10 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
         continue;
       }
       v = res.venue;
-      const cl = classify(`${name} ${vertical ? e.type : ""}`);
-      v = ops.updateRoom(v, res.id, { name, cat: cl.cat, tags: cl.tags.length ? cl.tags : undefined, aliases: [name.toLowerCase()] });
+      const air = AIRPORT_ROOM[e.type];
+      const cl = air ? airportClass(e, air, name) : classify(`${name} ${vertical ? e.type : ""}`);
+      if (air && (air.cat === "security" || air.cat === "baggage")) v = ops.updateRoom(v, res.id, { passThrough: true });
+      v = ops.updateRoom(v, res.id, { name, cat: cl.cat, tags: cl.tags.length ? cl.tags : undefined, aliases: [...new Set([name.toLowerCase(), ...(air ? airportAliases(e, els) : [])])] });
       made.set(e.id, res.id);
       stats.rooms++;
       if (vertical) lifts.push({ id: res.id, floor, x: cx, y: cy, type: e.type === "elevator" ? "lift" : "stairs" });
@@ -295,7 +407,7 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
     for (const e of els.filter((x) => x.type === "entry")) {
       const r = rectOf(e);
       const c = { x: X((r.minX + r.maxX) / 2), y: Y((r.minY + r.maxY) / 2) };
-      const hit = ops.nearestRoomEdge(v, floor, c, Math.max(0.6, L(Math.min(e.width, e.height)) + 0.4));
+      const hit = ops.nearestRoomEdge(v, floor, c, Math.min(2.5, Math.max(0.6, L(Math.min(e.width, e.height)) + 0.4)));
       if (hit) {
         const roomId = hit.room.id;
         const n = doorsOf.get(roomId) ?? 0;
@@ -331,6 +443,103 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
     const walls = els.filter((x) => x.type === "wall").length;
     if (walls) issues.push({ level: "info", title: `${floorName}: ${walls} wall element(s) not imported`, detail: "Walls come from the room outlines; ad slots are added in the editor." });
 
+    // 5b. The drawing's own connections say which hallways and rooms really lead into each other (hall -> security -> plaza, gate -> concourse).
+    // Small parts that are not imported (security lanes, belts) are looked through; an entry that touches two hallways joins them at its place.
+    if (file.connections?.length) {
+      type Pt2 = { x: number; y: number };
+      type Ln = (typeof lines)[number];
+      const detailIds = new Set(details.map((d) => d.id));
+      const adj = new Map<string, Set<string>>();
+      for (const c of file.connections) {
+        for (const [p, q] of [[c.source, c.target], [c.target, c.source]] as const) {
+          if (!adj.has(p)) adj.set(p, new Set());
+          adj.get(p)!.add(q);
+        }
+      }
+      const ends = (id: string): string[] => {
+        const out = new Set<string>();
+        const seen = new Set([id]);
+        const stack = [...(adj.get(id) ?? [])];
+        while (stack.length) {
+          const n = stack.pop()!;
+          if (seen.has(n)) continue;
+          seen.add(n);
+          if (detailIds.has(n)) stack.push(...(adj.get(n) ?? []));
+          else out.add(n);
+        }
+        return [...out];
+      };
+      const lineById = new Map(lines.map((l) => [l.el.id, l]));
+      const link = (p: Pt2, q: Pt2) => {
+        const n1 = ops.walkClick(v, floor, null, p);
+        const n2 = ops.walkClick(n1.venue, floor, n1.nodeId, q);
+        v = n2.venue;
+      };
+      const joinLines = (A: Ln, B: Ln, at?: Pt2) => {
+        if (at) return link(segDist(at, A.a, A.b).q, segDist(at, B.a, B.b).q);
+        const axis = A.a.y === A.b.y && B.a.y === B.b.y ? "x" : A.a.x === A.b.x && B.a.x === B.b.x ? "y" : null;
+        if (axis) {
+          const lo = Math.max(Math.min(A.a[axis], A.b[axis]), Math.min(B.a[axis], B.b[axis]));
+          const hi = Math.min(Math.max(A.a[axis], A.b[axis]), Math.max(B.a[axis], B.b[axis]));
+          if (hi - lo >= 1) {
+            const n = hi - lo > 200 ? 4 : hi - lo > 60 ? 2 : 1;
+            for (let i = 0; i < n; i++) {
+              const t = r2(lo + ((hi - lo) * (i + 0.5)) / n);
+              link(axis === "x" ? { x: t, y: A.a.y } : { x: A.a.x, y: t }, axis === "x" ? { x: t, y: B.a.y } : { x: B.a.x, y: t });
+            }
+            return;
+          }
+        }
+        let best: { d: number; p: Pt2; q: Pt2 } | null = null;
+        for (const P of [A.a, A.b]) {
+          const { d, q } = segDist(P, B.a, B.b);
+          if (!best || d < best.d) best = { d, p: P, q };
+        }
+        for (const P of [B.a, B.b]) {
+          const { d, q } = segDist(P, A.a, A.b);
+          if (!best || d < best.d) best = { d, p: q, q: P };
+        }
+        if (best) link(best.p, best.q);
+      };
+      const linkRoom = (roomId: string, A: Ln) => {
+        const room = v.rooms.find((r) => r.id === roomId);
+        if (!room) return;
+        const d = { x: room.door.x, y: room.door.y };
+        const q = segDist(d, A.a, A.b).q;
+        if (Math.hypot(q.x - d.x, q.y - d.y) >= 0.3) link(d, q);
+      };
+      // Two rooms that lead into each other (security zone to security zone, reclaim hall to its toilets): only when one of them is walked through.
+      const linkRooms = (idA: string, idB: string) => {
+        const ra = v.rooms.find((r) => r.id === idA);
+        const rb = v.rooms.find((r) => r.id === idB);
+        if (ra && rb && (ra.passThrough || rb.passThrough)) link({ x: ra.door.x, y: ra.door.y }, { x: rb.door.x, y: rb.door.y });
+      };
+      const done = new Set<string>();
+      const once = (a: string, b: string) => {
+        const k = a < b ? `${a}|${b}` : `${b}|${a}`;
+        if (done.has(k)) return false;
+        done.add(k);
+        return true;
+      };
+      for (const e of els.filter((x) => x.type === "entry")) {
+        const hs = [...new Set(ends(e.id))].map((i) => lineById.get(i)).filter((l): l is Ln => !!l);
+        const r = rectOf(e);
+        const c = { x: X((r.minX + r.maxX) / 2), y: Y((r.minY + r.maxY) / 2) };
+        for (let i = 1; i < hs.length; i++) if (once(`${e.id}|${hs[0]!.el.id}`, hs[i]!.el.id)) joinLines(hs[0]!, hs[i]!, c);
+      }
+      for (const id of [...lineById.keys(), ...made.keys()]) {
+        for (const o of ends(id)) {
+          if (!once(id, o)) continue;
+          const A = lineById.get(id);
+          const B = lineById.get(o);
+          if (A && B) joinLines(A, B);
+          else if (A && made.has(o)) linkRoom(made.get(o)!, A);
+          else if (B && made.has(id)) linkRoom(made.get(id)!, B);
+          else if (made.has(id) && made.has(o)) linkRooms(made.get(id)!, made.get(o)!);
+        }
+      }
+    }
+
     // 6. Connect every room whose door has no walk path yet.
     for (const room of v.rooms.filter((r) => r.floor === floor)) {
       const linked = ops.connectRoom(v, room.id, 3);
@@ -338,7 +547,7 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
         v = linked;
         continue;
       }
-      const far = ops.connectRoom(v, room.id, 40);
+      const far = ops.connectRoom(v, room.id, Math.max(40, Math.round(Math.max(sizeM.w, sizeM.h) / 8)));
       if ("error" in far) {
         issues.push({ level: "warn", title: `"${room.name}" is not connected to any corridor`, detail: "Draw a walk path from its door to a corridor (Walk tool)." });
       } else {
@@ -369,8 +578,15 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
   // 8. Suggested marker spots: beside the doors, spread out (farthest first), up to 8 per floor. They are only positions: the stickers still have to be printed.
   for (const f of v.floors) {
     const doors = v.rooms.filter((r) => r.floor === f.id).map((r) => ({ x: r.door.x, y: r.door.y }));
-    const picked: { x: number; y: number }[] = [];
-    while (picked.length < Math.min(8, doors.length)) {
+    // The checklist wants a marker within 6 m of every lift and staircase door (to confirm the floor after a ride): those come first.
+    for (const r of v.rooms.filter((x) => x.floor === f.id && (x.kind === "lift" || x.kind === "stairs"))) {
+      if (v.markers.some((m) => m.floor === f.id && Math.hypot(m.x - r.door.x, m.y - r.door.y) < 5)) continue;
+      const m = ops.addMarker(v, f.id, { x: r.door.x, y: r.door.y });
+      if (!("error" in m)) v = m.venue;
+    }
+    const picked: { x: number; y: number }[] = v.markers.filter((m) => m.floor === f.id).map((m) => ({ x: m.x, y: m.y }));
+    const fixed = picked.length;
+    while (picked.length < fixed + Math.min(8, doors.length)) {
       let best: { x: number; y: number } | null = null;
       let bestD = -1;
       for (const d of doors) {
@@ -383,11 +599,11 @@ function run(file: BpFile, opts: ImportOptions, s: number, issues: ImportIssue[]
       if (!best || (picked.length > 0 && bestD < 1.2)) break;
       picked.push(best);
     }
-    for (const p of picked) {
+    for (const p of picked.slice(fixed)) {
       const m = ops.addMarker(v, f.id, p);
       if (!("error" in m)) v = m.venue;
     }
-    if (picked.length) issues.push({ level: "info", title: `${f.name}: ${picked.length} marker positions suggested`, detail: "Print them from the marker sheet and stick them where shown (about 1.4 m high). Move them in the editor if needed." });
+    if (picked.length > fixed) issues.push({ level: "info", title: `${f.name}: ${picked.length - fixed} marker positions suggested`, detail: "Print them from the marker sheet and stick them where shown (about 1.4 m high). Move them in the editor if needed." });
   }
 
   // 9. Whatever the editor's own checklist says about the result.

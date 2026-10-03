@@ -73,7 +73,7 @@ export function CityScreen({ ctl, s }: P) {
         <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 2 }}>Indoor maps in Indore</div>
         <div className="muted small" style={{ marginBottom: 6 }}>Malls, airports, stations, bus stands and offices — navigate inside them.</div>
         <div>
-          {items.map((it, i) => (
+          {items.filter((it) => it.live || !(/airport/i.test(v.type) && /airport/i.test(it.name))).map((it, i) => (
             <div key={it.name} className={`vcard ${it.live ? "" : "off"}`} data-testid={i === 0 ? "venue-card" : undefined} onClick={() => (i === 0 ? open() : ctl.toast("Not mapped yet — venue owners can add it from the Owner portal"))}>
               <div className="vi">{it.icon}</div>
               <div style={{ flex: 1 }}>

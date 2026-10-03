@@ -70,7 +70,7 @@ export function matchIntent(v: Venue, text: string, ctx?: IntentContext): Intent
   if (RE.map.test(t)) return { intent: { type: "switch", view: "map" }, confidence: 1 };
   if (RE.howLong.test(t)) return { intent: { type: "howlong" }, confidence: 1 };
 
-  const query = t.replace(RE.nearest, " ").replace(RE.go, " ").replace(RE.whereIs, " ").replace(/\b(the|a|an|mujhe|please|kripya|dayachesi|ka|ko|hai|undi)\b/gi, " ").replace(/(?:కు|కి)/g, " ").replace(/\s+/g, " ").trim();
+  const query = t.replace(RE.nearest, " ").replace(RE.go, " ").replace(RE.whereIs, " ").replace(/\b(the|a|an|mujhe|please|kripya|dayachesi|ka|ko|hai|undi)\b/gi, " ").replace(/(?:కు|కి)/g, " ").replace(/\s+/g, " ").trim().replace(/^to\s+/i, "");
   const results = search(v, query);
   const best = results.find((r) => r.score >= 55) ?? results[0];
   // No clear place name in the sentence: maybe a need ("I want a coffee", "I'm hungry", "I need to sleep").

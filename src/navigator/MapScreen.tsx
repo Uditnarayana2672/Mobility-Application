@@ -5,6 +5,7 @@ import { isRouteError, route as computeRoute } from "@/core/route";
 import type { Step } from "@/core/route";
 import type { NavController, NavState } from "./controller";
 import { LANG_SHORT, NEXT_LANG } from "./messages";
+import { quickChips } from "./chips";
 import NavMap from "./NavMap";
 import { confOf, floorName, nearName, placeOf } from "./places";
 
@@ -265,8 +266,8 @@ export default function MapScreen({ ctl, s }: P) {
           </div>
           {s.mode !== "preview" && (
             <div className="chips">
-              {[["🍽️", "Food", "Food"], ["🚻", "Washrooms", "washroom"], ["👥", "Meeting rooms", "Meeting"], ["🛗", "Lifts", "Lifts"], ["🪜", "Stairs", "Stairs"], ["🏃", "Exits", "exit"]].map(([ic, label, q]) => (
-                <button key={label} className="qchip" onClick={() => ctl.openSearch(q as string)}>{ic} {label}</button>
+              {quickChips(s.venue).map(([ic, label, q]) => (
+                <button key={label} className="qchip" onClick={() => ctl.openSearch(q)}>{ic} {label}</button>
               ))}
             </div>
           )}

@@ -8,7 +8,7 @@ beforeAll(async () => {
 afterAll(async () => e?.close());
 
 describe("first page: Designer or Indore Maps", () => {
-  it("offers both; Designer opens the original empty-sheet designer; its Indore Maps button opens the PG visitor map", async () => {
+  it("offers both; Designer opens the original empty-sheet designer; its Indore Maps button opens the airport visitor map", async () => {
     const page = await e.newPage();
     await page.goto(`${e.url}/`);
     await page.getByTestId("landing").waitFor();
@@ -23,10 +23,10 @@ describe("first page: Designer or Indore Maps", () => {
     await page.getByTestId("screen-city").waitFor();
     const u = new URL(page.url());
     expect(u.pathname).toBe("/nav");
-    expect(u.searchParams.get("venue")).toBe("my-pg");
-    expect(await page.getByTestId("screen-city").innerText()).toContain("My PG");
+    expect(u.searchParams.get("venue")).toBe("airport");
+    expect(await page.getByTestId("screen-city").innerText()).toContain("Airport");
   });
-  it("Indore Maps on the first page opens the same PG map with the demo controls on a laptop", async () => {
+  it("Indore Maps on the first page opens the same airport map with the demo controls on a laptop", async () => {
     const page = await e.newPage();
     await page.goto(`${e.url}/`);
     await page.getByTestId("go-maps").click();

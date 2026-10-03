@@ -6,16 +6,16 @@ import { useVenueChoice } from "./autoVenue";
 import type { Venue } from "@/core/schema";
 import ArScreen from "@/ar/ArScreen";
 import DemoPanel from "./DemoPanel";
-import { DebugOverlay, LiveHud, ScanSheet } from "./LiveUi";
+import { DebugOverlay, LiveHud, ScanSheet, type LocateHints } from "./LiveUi";
 import MapScreen from "./MapScreen";
 import { CaptionToast, FloorPromptOverlay, SearchOverlay, TransitionOverlay, VoiceOverlay } from "./Overlays";
 import { ArrivedScreen, CityScreen, LocateScreen } from "./screens";
 import { useNav } from "./useNav";
 import "./nav.css";
 
-function NavApp({ venue, source }: { venue: Venue; source: VenueSource }) {
+function NavApp({ venue, source, auto, hints }: { venue: Venue; source: VenueSource; auto?: boolean; hints?: LocateHints }) {
   const root = useRef<HTMLDivElement>(null);
-  const { rt, state: s } = useNav(venue, source, root);
+  const { rt, state: s } = useNav(venue, source, root, auto);
   const { ctl } = rt;
   const demo = rt.cfg.demo;
   const [panel, setPanel] = useState(false);
@@ -29,7 +29,7 @@ function NavApp({ venue, source }: { venue: Venue; source: VenueSource }) {
           <div className="screen">
             <div className={`statusbar ${light ? "light" : ""}`}><span>9:41</span><span>5G ▂▄▆ 🔋</span></div>
             <CityScreen ctl={ctl} s={s} />
-            <LocateScreen ctl={ctl} s={s} rt={rt} />
+            <LocateScreen ctl={ctl} s={s} rt={rt} hints={hints} />
             <MapScreen ctl={ctl} s={s} />
             <ArScreen rt={rt} ctl={ctl} s={s} />
             <ArrivedScreen ctl={ctl} s={s} />
@@ -62,7 +62,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 }
 
 /** Loads the chosen venue and shows the app; a short banner says how the building was found. */
-function NavFor({ id, how, name }: { id: string; how: string; name?: string }) {
+function NavFor({ id, how, name, entranceMarker }: { id: string; how: string; name?: string; entranceMarker?: number | null }) {
   const v = useVenue(id);
   const [banner, setBanner] = useState(how === "gps");
   useEffect(() => {
@@ -85,7 +85,7 @@ function NavFor({ id, how, name }: { id: string; how: string; name?: string }) {
   }
   return (
     <>
-      <NavApp venue={v.venue} source={v.source} />
+      <NavApp venue={v.venue} source={v.source} auto={how === "gps" || how === "last" || how === "picked"} hints={{ entranceMarker }} />
       {banner && (
         <div className="pointer-events-none fixed left-1/2 top-3 z-[999] -translate-x-1/2 rounded-full bg-slate-900/90 px-4 py-2 text-sm font-semibold text-white shadow-lg" data-testid="venue-banner">
           📍 You’re at {name ?? v.venue.name}
@@ -126,5 +126,5 @@ export default function NavPage() {
       </Centered>
     );
   }
-  return <NavFor id={choice.id} how={choice.how} name={choice.status === "ready" ? choice.match?.name : undefined} />;
+  return <NavFor id={choice.id} how={choice.how} name={choice.match?.name} entranceMarker={choice.match?.entrance?.marker ?? null} />;
 }

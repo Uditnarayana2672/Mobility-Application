@@ -1,15 +1,26 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { roomPolygon } from "@/core/geom";
 import type { Venue } from "@/core/schema";
 import { XrPoseSource } from "@/positioning/xrPoseSource";
+import { suggestPlaces } from "@/positioning/locator";
+import { loadLastFix } from "@/shared/lastFix";
+import { placeOf } from "./places";
 import type { NavController, NavState } from "./controller";
 import type { PoseDebug } from "./poseSource";
 import type { NavRuntime } from "./useNav";
 
 type Props = { rt: NavRuntime; ctl: NavController; s: NavState };
 
+/** What the venue detection already knows about the visitor (e.g. which entrance GPS says they came through). */
+export interface LocateHints {
+  entranceMarker?: number | null;
+}
+
+/** Seconds the camera must look without finding a marker before the app asks "are you near…?". */
+export const ASK_AFTER_SEC = 5;
+
 /** What the first screen shows when the phone positions itself (instead of the demo marker chips). */
-export function LiveLocate({ rt }: Props) {
+export function LiveLocate({ rt, ctl, s, hints }: Props & { hints?: LocateHints }) {
   const video = useRef<HTMLVideoElement>(null);
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -32,6 +43,24 @@ export function LiveLocate({ rt }: Props) {
   }, [rt]);
 
   useEffect(() => () => rt.pdr?.stopCamera(), [rt]);
+
+  // Phones without ARCore: open the camera by itself (no button) so a marker in view locks on at once.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (rt.kind !== "pdr" || autoStarted.current || !video.current) return;
+    autoStarted.current = true;
+    void rt.pdr?.startCamera(video.current).then(() => setActive(true)).catch((e: unknown) => setErr(e instanceof Error ? e.message : String(e)));
+  }, [rt]);
+
+  // Nothing found yet after a few seconds: offer the likely places for one tap, and "continue where you left off".
+  const [waited, setWaited] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setWaited((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const last = useMemo(() => loadLastFix(s.venue.id), [s.venue.id]);
+  const guesses = useMemo(() => suggestPlaces(s.venue, { last, entranceMarker: hints?.entranceMarker }), [s.venue, last, hints?.entranceMarker]);
+  const askNow = waited >= ASK_AFTER_SEC || !!err;
 
   const startXr = async () => {
     if (!rt.xr) return;
@@ -82,6 +111,27 @@ export function LiveLocate({ rt }: Props) {
         )}
         {rt.kind === "pdr" && active && <div className="live-hint" data-testid="live-hint">Point the camera at a marker sticker, about 1–2 m away.</div>}
         {err && <div className="live-err" data-testid="live-err">{err}</div>}
+        {(last || askNow) && (
+          <div className="live-suggest" data-testid="live-suggest">
+            {last && (
+              <button className="pbtn block" data-testid="resume-fix" onClick={() => ctl.resumeFrom(last)}>
+                ↩ Continue where I left off{guesses.find((g) => g.reason === "resume") ? ` (near ${guesses.find((g) => g.reason === "resume")!.name})` : ""}
+              </button>
+            )}
+            {askNow && guesses.length > 0 && (
+              <>
+                <div className="small" style={{ margin: "8px 0 4px" }}>No marker in sight. Are you near…</div>
+                <div className="row" style={{ gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                  {guesses.map((g) => (
+                    <button key={g.roomId} className="pbtn sm" data-testid="guess" data-room={g.roomId} onClick={() => { const pl = placeOf(s.venue, { room: g.roomId }); if (pl) ctl.setLocationManually(pl); }}>
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         {rt.kind === "xr" && (supported === false || err) && (
           <button className="pbtn block" style={{ marginTop: 8, background: "rgba(255,255,255,.14)", color: "#fff" }} onClick={() => rt.switchKind("pdr")}>
             Use step counting instead

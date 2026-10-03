@@ -273,3 +273,6 @@
 .is-nav .debug-overlay { position: absolute; z-index: 90; left: 6px; top: calc(var(--sat, 0px) + 46px); background: rgba(0, 0, 0, .72); color: #9ff0b0; font: 10.5px/1.35 ui-monospace, monospace; padding: 6px 8px; border-radius: 8px; pointer-events: none; max-width: 78%; }
 .is-nav .debug-overlay canvas { display: block; margin-top: 4px; background: rgba(0, 0, 0, .35); border-radius: 4px; }
 .is-nav #s-locate.live .locate-bottom, .is-nav #s-locate.live .locate-title { z-index: 6; }
+
+.is-nav .live-suggest { margin-top: 10px; background: rgba(8, 12, 24, .72); border-radius: 14px; padding: 10px 12px; }
+.is-nav .live-suggest .pbtn { background: rgba(255, 255, 255, .92); color: #14213d; }

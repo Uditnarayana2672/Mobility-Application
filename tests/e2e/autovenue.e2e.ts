@@ -29,6 +29,19 @@ describe("the phone finds its building by itself", () => {
     await p.close();
   });
 
+  it("on a phone the located building goes straight to 'where are you': no marker in sight -> one-tap guesses", async () => {
+    await e.context.setGeolocation({ latitude: 22.7532, longitude: 75.8937, accuracy: 12 });
+    const p = await e.newPage();
+    await p.goto(`${e.url}/nav?auto=1&pose=pdr`);
+    await p.getByTestId("screen-locate").waitFor({ state: "visible", timeout: 20_000 });
+    await p.getByTestId("guess").first().waitFor({ timeout: 20_000 });
+    expect(await p.getByTestId("guess").count()).toBeGreaterThanOrEqual(2);
+    await p.getByTestId("guess").first().click();
+    await p.getByTestId("navmap").waitFor();
+    expect(await p.getByTestId("conf-chip").innerText()).toMatch(/./);
+    await p.close();
+  });
+
   it("far from every mapped place: it asks, and a tap on the place opens it", async () => {
     await e.context.setGeolocation({ latitude: 28.61, longitude: 77.2, accuracy: 10 });
     const p = await e.newPage();

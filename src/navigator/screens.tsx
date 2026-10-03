@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { arrivedText } from "@/core/instructions";
 import type { NavController, NavState } from "./controller";
-import { LiveLocate } from "./LiveUi";
+import { LiveLocate, type LocateHints } from "./LiveUi";
 import { floorName } from "./places";
 import type { NavRuntime } from "./useNav";
 
@@ -120,12 +120,12 @@ function ScanQR() {
   );
 }
 
-export function LocateScreen({ ctl, s, rt }: P & { rt: NavRuntime }) {
+export function LocateScreen({ ctl, s, rt, hints }: P & { rt: NavRuntime; hints?: LocateHints }) {
   const v = s.venue;
   const live = rt.kind !== "sim";
   return (
     <section className={`scr ${s.screen === "locate" ? "on" : ""} ${live ? `live ${rt.kind}` : ""}`} id="s-locate" data-testid="screen-locate">
-      {live && s.screen === "locate" && <LiveLocate rt={rt} ctl={ctl} s={s} />}
+      {live && s.screen === "locate" && <LiveLocate rt={rt} ctl={ctl} s={s} hints={hints} />}
       <div className="viewfinder">
         <svg className="vf-corridor" viewBox="0 0 340 340" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="2">
           <path d="M20,330 L120,120 L220,120 L320,330" />

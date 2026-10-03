@@ -8,6 +8,7 @@ import { alternatives, isRouteError, route as computeRoute, type Route, type Rou
 import type { Venue } from "@/core/schema";
 import { EXAMPLES, MSG } from "./messages";
 import { floorName, nearName, placeOf, type Place } from "./places";
+import { saveLastFix, type LastFix } from "@/shared/lastFix";
 import type { ControllerPoseSource, Pose, PoseDebug, PoseKind } from "./poseSource";
 import { RuleIntentResolver, type IntentResolver } from "./intentResolver";
 import { advance, createSession, snapshot, type SessionEvent, type SessionSnapshot, type SessionState } from "./session";
@@ -292,6 +293,15 @@ export class NavController {
     this.toast("Approximate position set (±4 m). Scan a marker for exact.");
     if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
   }
+  /** "Continue where you left off": the position this phone had last time, taken as approximate (±4 m or worse) until a marker confirms it. */
+  resumeFrom(f: LastFix): void {
+    if (f.venueId !== this.v.id || !this.v.floors.some((x) => x.id === f.floor)) return;
+    this.setLocated();
+    this.sim.teleport({ floor: f.floor, x: f.x, y: f.y, heading: f.heading, acc: Math.max(4, f.acc), markerId: null });
+    this.toast("↩ Continuing from where you were. Scan a marker to be exact.");
+    if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
+  }
+  private lastSavedAt = 0;
   private setLocated(): void {
     if (!this.st.located) this.patch({ located: true });
     this.located = true;
@@ -318,6 +328,10 @@ export class NavController {
       this.patch({ scanning: false });
     }
     const prev = this.lastPose;
+    if (this.live && !p.stale && Date.now() - this.lastSavedAt > 3000) {
+      this.lastSavedAt = Date.now();
+      saveLastFix({ venueId: this.v.id, floor: p.floor, x: p.x, y: p.y, heading: p.heading, acc: p.acc, at: Date.now() });
+    }
     if (this.live && p.stale && !(prev?.stale ?? false)) {
       if (this.st.screen === "ar") this.patch({ screen: "map" });
       this.toast("📡 Tracking lost — scan a marker to fix your position");

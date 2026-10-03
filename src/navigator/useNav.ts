@@ -39,7 +39,7 @@ const env = () => ({
  * refreshes the venue when the server says it was republished, and tears everything down on unmount.
  * `overlayRef` = the element WebXR uses as its DOM overlay (the whole app).
  */
-export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<HTMLElement>): { rt: NavRuntime; state: NavState } {
+export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<HTMLElement>, openLocate = false): { rt: NavRuntime; state: NavState } {
   const base = useMemo(() => readRuntimeConfig(env()), []);
   const [kind, setKind] = useState<PoseKind>(base.kind);
   // After a source switch (from the locate screen) the rebuilt controller opens on the locate screen again, not the city list.
@@ -65,7 +65,8 @@ export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<
 
   useEffect(() => {
     rt.ctl.start();
-    if (switched.current) rt.ctl.openLocate();
+    // After a source switch, or when the building was found by itself: straight to "where are you", not the city list.
+    if (switched.current || (openLocate && rt.kind !== "sim")) rt.ctl.openLocate();
     const stop = startTicker((dt) => rt.ctl.tick(dt));
     if (rt.kind === "sim") rt.ctl.applyHash(window.location.hash);
     const onHash = () => {

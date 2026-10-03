@@ -9,7 +9,7 @@
     22.7196,
     75.8577
   ],
-  "version": 1,
+  "version": 2,
   "status": "published",
   "scale": {
     "metersPerUnit": 1,
@@ -1571,9 +1571,9 @@
       "y1": 15,
       "x2": 18,
       "y2": 15,
-      "normal": 180,
       "bottom": 1,
       "height": 1.6,
+      "normal": 180,
       "approved": true
     },
     {
@@ -1584,9 +1584,9 @@
       "y1": 19,
       "x2": 41.5,
       "y2": 19,
-      "normal": 0,
       "bottom": 1,
       "height": 1.6,
+      "normal": 0,
       "approved": true
     },
     {
@@ -1597,9 +1597,9 @@
       "y1": 19,
       "x2": 31,
       "y2": 19,
-      "normal": 0,
       "bottom": 1,
       "height": 1.6,
+      "normal": 0,
       "approved": true
     }
   ],
@@ -1668,5 +1668,6 @@
       "x": 44,
       "y": 16
     }
-  ]
+  ],
+  "publishedAt": "2026-10-02T15:03:55.022Z"
 }

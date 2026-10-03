@@ -31,7 +31,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "") || undefined}>
         <Suspense fallback={<div className="p-6 text-neutral-400">Loading…</div>}>
           <Routes>
             <Route path="/" element={<Hub />} />

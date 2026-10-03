@@ -44,6 +44,18 @@ export async function loadVenue(id: string = DEFAULT_VENUE_ID, opts: { fetchFn?:
     const v = bundledVenue();
     if (v) return { venue: v, source: "bundled" };
   }
+  // No server (static site): venues shipped with the app as public/venues/<id>/venue.json.
+  if (fetchFn) {
+    try {
+      const res = await fetchFn(`/venues/${encodeURIComponent(id)}/venue.json`, { cache: "no-store" });
+      if (res.ok) {
+        const parsed = parseVenue(await res.json());
+        if (parsed.ok) return { venue: parsed.data, source: "bundled" };
+      }
+    } catch {
+      /* not shipped either */
+    }
+  }
   return null;
 }
 

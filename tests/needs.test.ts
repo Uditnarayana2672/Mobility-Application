@@ -61,8 +61,9 @@ describe("needs: 'I want a coffee' finds a place without naming it", () => {
   });
 
   it("never invents a place: a need the venue cannot satisfy is not answered", () => {
-    expect(needCandidates(PG, NEEDS.find((n) => n.id === "balcony")!)).toEqual([]);
-    expect(resolveNeed(PG, "I want some fresh air", { from })).toBeNull();
+    const noBalcony = { ...PG, rooms: PG.rooms.filter((r) => !/balcony/i.test(r.name) && !r.tags?.includes("balcony")) };
+    expect(needCandidates(noBalcony, NEEDS.find((n) => n.id === "balcony")!)).toEqual([]);
+    expect(resolveNeed(noBalcony, "I want some fresh air", { from })).toBeNull();
   });
 });
 

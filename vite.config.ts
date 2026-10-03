@@ -15,6 +15,8 @@ export default defineConfig(({ mode, command }) => {
     console.warn("\n[indore] certs/ missing: using a throwaway self-signed cert. Run `npm run certs` (docs/https-on-phone.md) for a phone-trusted one.\n");
   }
   return {
+    // GitHub Pages serves a project site from /<repo>/; the workflow sets BASE_PATH. Everywhere else the app lives at "/".
+    base: process.env.BASE_PATH ?? "/",
     server: {
       host: "::",
       port: 8080,

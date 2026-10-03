@@ -1,0 +1,50 @@
+name: Deploy to GitHub Pages
+
+# Builds the app as a static site (no server: maps are the ones shipped in public/venues) and publishes it.
+# One-time setup in the repo: Settings -> Pages -> Source: "GitHub Actions"; Settings -> Environments -> github-pages ->
+# Deployment branches: allow the branch you push from (or merge to main).
+on:
+  push:
+    branches: [main, enhancements]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_STATIC: "1"
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - name: Single-page-app fallback and no Jekyll
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

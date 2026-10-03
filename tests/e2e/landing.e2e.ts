@@ -8,7 +8,7 @@ beforeAll(async () => {
 afterAll(async () => e?.close());
 
 describe("first page: Designer or Indore Maps", () => {
-  it("offers both, Designer opens the original empty-sheet designer, and it has a way to the maps", async () => {
+  it("offers both; Designer opens the original empty-sheet designer; its Indore Maps button opens the PG visitor map", async () => {
     const page = await e.newPage();
     await page.goto(`${e.url}/`);
     await page.getByTestId("landing").waitFor();
@@ -20,18 +20,26 @@ describe("first page: Designer or Indore Maps", () => {
     expect(new URL(page.url()).pathname).toBe("/designer");
 
     await page.getByTestId("go-maps").click();
-    await page.getByText("Dora.AI · Indore Maps").waitFor();
-    expect(new URL(page.url()).pathname).toBe("/maps");
-    expect(await page.getByText("Visitor app").count()).toBe(1);
-
-    await page.getByText("← Designer or Indore Maps").click();
-    await page.getByTestId("landing").waitFor();
+    await page.getByTestId("screen-city").waitFor();
+    const u = new URL(page.url());
+    expect(u.pathname).toBe("/nav");
+    expect(u.searchParams.get("venue")).toBe("my-pg");
+    expect(await page.getByTestId("screen-city").innerText()).toContain("My PG");
   });
-  it("Indore Maps opens the current app hub, and the old /legacy-editor address still reaches the designer", async () => {
+  it("Indore Maps on the first page opens the same PG map with the demo controls on a laptop", async () => {
     const page = await e.newPage();
     await page.goto(`${e.url}/`);
     await page.getByTestId("go-maps").click();
+    await page.getByTestId("screen-city").waitFor();
+    expect(new URL(page.url()).searchParams.get("demo")).toBe("1");
+    expect(await page.getByText("Demo controls").count()).toBeGreaterThan(0);
+  });
+  it("the tool list is still at /maps, and the old /legacy-editor address reaches the designer", async () => {
+    const page = await e.newPage();
+    await page.goto(`${e.url}/maps`);
     await page.getByText("Dora.AI · Indore Maps").waitFor();
+    await page.getByText("← Designer or Indore Maps").click();
+    await page.getByTestId("landing").waitFor();
     await page.goto(`${e.url}/legacy-editor`);
     await page.getByText("Blueprint Designer").waitFor();
     expect(new URL(page.url()).pathname).toBe("/designer");

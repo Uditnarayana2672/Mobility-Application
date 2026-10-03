@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { mapsHref } from '@/shared/mapsLink';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -143,7 +144,7 @@ const TopNavBar = ({
       <div className="flex items-center space-x-2">
         <h1 className="text-lg font-semibold">Blueprint Designer</h1>
         <Button asChild variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white hover:text-blueprint-secondary" data-testid="go-maps">
-          <Link to="/maps"><MapIcon className="h-4 w-4 mr-1" />Indore Maps</Link>
+          <Link to={mapsHref()}><MapIcon className="h-4 w-4 mr-1" />Indore Maps</Link>
         </Button>
         <div className="flex items-center mx-4 space-x-2">
           <Button variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white hover:text-blueprint-secondary" onClick={onSave}>

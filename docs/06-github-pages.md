@@ -9,7 +9,8 @@ GitHub Pages only hosts files. It cannot run `npm run serve`, so the site is a *
 |---|---|
 | `/` | First page: **Designer** or **Indore Maps** |
 | `/designer` | The original Blueprint designer on an empty sheet (it has an **Indore Maps** button; the old `/legacy-editor` address redirects here) |
-| `/maps` | The current app: the list of every tool (visitor map `/nav`, `/editor`, `/dashboard`, …) |
+| `/nav?venue=my-pg` | What **Indore Maps** opens: the PG visitor map (on a laptop with `&demo=1`, the demo controls and walker) |
+| `/maps` | The list of every tool (`/nav`, `/editor`, `/dashboard`, …), linked from inside the app |
 
 ## One-time setup (about 2 minutes, in the GitHub website)
 1. Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.

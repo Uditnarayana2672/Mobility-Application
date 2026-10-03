@@ -58,7 +58,7 @@ export default function MarkersPage() {
       <SheetStyles paper={chosen} w={w} h={h} />
       <div className="noprint border-b border-slate-200 bg-white p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Link to="/" className="font-bold text-blue-700">
+          <Link to="/maps" className="font-bold text-blue-700">
             Dora.AI
           </Link>
           <h1 className="text-xl font-extrabold">Marker sheet</h1>

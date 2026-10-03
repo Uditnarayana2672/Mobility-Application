@@ -151,7 +151,7 @@ function Survey({ venue }: { venue: Venue }) {
     <div className="mx-auto flex max-w-xl flex-col gap-3 p-3 text-sm" data-testid="survey-page">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-extrabold">Survey walk · {venue.name}</h1>
-        <Link to="/" className="text-blue-700 underline">back</Link>
+        <Link to="/maps" className="text-blue-700 underline">back</Link>
       </div>
       <p className="text-slate-600">
         Walk slowly through every corridor and room, in both directions, holding the phone upright like a camera. A picture is saved about every metre with the position the app believes you are at. Scan a marker now and then to correct drift.

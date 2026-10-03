@@ -339,7 +339,7 @@ function Dash({ venue }: { venue: Venue }) {
   return (
     <div className="is-dash" data-testid="dash-root">
       <div className="topbar">
-        <Link className="brand" to="/"><i />Dora.AI</Link>
+        <Link className="brand" to="/maps"><i />Dora.AI</Link>
         <Link className="nav" to="/nav">Visitor app</Link>
         <Link className="nav" to="/editor">Map editor</Link>
         <Link className="nav" to="/markers">Marker sheet</Link>
@@ -463,7 +463,7 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
         <h1 className="text-xl font-bold">Venue “{v.id}” not found</h1>
-        <Link to="/" className="text-blue-600 underline">back to hub</Link>
+        <Link to="/maps" className="text-blue-600 underline">back to hub</Link>
       </div>
     );
   }

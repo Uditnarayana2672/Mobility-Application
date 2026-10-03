@@ -79,7 +79,7 @@ function NavFor({ id, how, name, entranceMarker }: { id: string; how: string; na
       <Centered>
         <h1 className="text-xl font-bold">Venue “{v.id}” not found</h1>
         <p className="max-w-md text-neutral-600">The server has no published map with this id, and there is no bundled copy.</p>
-        <Link to="/" className="text-blue-600 underline">back to hub</Link>
+        <Link to="/maps" className="text-blue-600 underline">back to hub</Link>
       </Centered>
     );
   }

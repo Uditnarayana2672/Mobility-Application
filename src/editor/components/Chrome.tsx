@@ -37,7 +37,7 @@ export function SubBar(p: SubBarProps) {
     save.state === "saving" ? "Saving…" : save.state === "error" ? `Save failed: ${save.message}` : save.state === "saved" ? "All changes saved to draft" : p.hasDraft ? "Draft loaded" : "Published version";
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2">
-      <Link to="/" className="mr-1 text-sm font-bold text-blue-700">
+      <Link to="/maps" className="mr-1 text-sm font-bold text-blue-700">
         Dora.AI
       </Link>
       <span className="text-base font-extrabold">{v.name}</span>
@@ -104,7 +104,7 @@ export function SubBar(p: SubBarProps) {
               <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to={`/survey?venue=${encodeURIComponent(v.id)}`} target="_blank" onClick={() => setMenu(false)}>
                 Survey walk (recognise places by sight)
               </Link>
-              <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to="/legacy-editor" onClick={() => setMenu(false)}>
+              <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to="/designer" onClick={() => setMenu(false)}>
                 Legacy Blueprint editor
               </Link>
             </div>

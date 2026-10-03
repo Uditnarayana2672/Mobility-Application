@@ -4,6 +4,13 @@ Live address (after the one-time setup below): `https://uditnarayana2672.github.
 
 GitHub Pages only hosts files. It cannot run `npm run serve`, so the site is a **static build**: the maps are the ones in `public/venues/`, and everything that needs the laptop server is switched off.
 
+## Pages of the site
+| Address | What it is |
+|---|---|
+| `/` | First page: **Designer** or **Indore Maps** |
+| `/designer` | The original Blueprint designer on an empty sheet (it has an **Indore Maps** button; the old `/legacy-editor` address redirects here) |
+| `/maps` | The current app: the list of every tool (visitor map `/nav`, `/editor`, `/dashboard`, …) |
+
 ## One-time setup (about 2 minutes, in the GitHub website)
 1. Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 2. Repo → **Settings → Environments → github-pages → Deployment branches** → add `enhancements` (or merge `enhancements` into `main`, which is already allowed).

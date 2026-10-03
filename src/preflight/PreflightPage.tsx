@@ -95,7 +95,7 @@ export default function PreflightPage() {
   const pass = values.filter((c) => c.status === "pass").length;
 
   return <main className="preflight">
-    <header><div><Link to="/">← Hub</Link><h1>Demo preflight</h1><p>{pass}/{values.length} checks green. Run this on the demo phone.</p></div><div className={`score ${pass === values.length ? "all" : ""}`}>{pass}/{values.length}</div></header>
+    <header><div><Link to="/maps">← Hub</Link><h1>Demo preflight</h1><p>{pass}/{values.length} checks green. Run this on the demo phone.</p></div><div className={`score ${pass === values.length ? "all" : ""}`}>{pass}/{values.length}</div></header>
     <section className="checks">
       {Object.entries(checks).map(([key, c]) => <article key={key} className={c.status} data-testid={`check-${key}`}><i>{c.status === "pass" ? "✓" : c.status === "fail" ? "×" : "…"}</i><div><b>{c.label}</b><span>{c.detail}</span></div></article>)}
     </section>

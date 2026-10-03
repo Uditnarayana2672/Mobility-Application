@@ -4,6 +4,7 @@ import type { ValidationResult, Venue } from "@/core/schema";
 import { MapCanvas, type MapHandle, type MapItem } from "@/ui/map";
 import { DEFAULT_VENUE_ID, fetchSample, loadVenue, publishVenue } from "./api";
 import { HintBar, Legend, LayerBar, ScaleModal, SubBar, ToolOverlay, ToolPalette } from "./components/Chrome";
+import { ImportBlueprintDialog } from "./components/ImportBlueprint";
 import { ChecklistPanel, JsonPanel, PropertiesPanel } from "./components/Panels";
 import { Btn, Toasts, type ToastMsg } from "./components/ui";
 import * as ops from "./ops";
@@ -56,6 +57,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
 
   const [cleanRev, setCleanRev] = useState<number | null>(initialHasDraft ? null : 0);
   const [tab, setTab] = useState<Tab>("props");
+  const [importOpen, setImportOpen] = useState(false);
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [status, setStatus] = useState("");
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
@@ -177,6 +179,13 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
     notify(`Added ${r.id}. Draw its walk path and rooms, then link it with a lift or stairs.`);
   };
 
+  const applyImport = (venue: Venue) => {
+    commit({ ...venue, status: "draft", version: state.venue.version });
+    dispatch({ type: "setFloor", id: venue.floors[0]!.id });
+    setImportOpen(false);
+    notify("Imported. Check the review list, add the walk paths it asked for, then Validate.");
+  };
+
   const startBlank = () => {
     if (!window.confirm("Replace everything with a blank one-floor venue? You can undo this.")) return;
     commit(ops.blankVenue(state.venue));
@@ -254,6 +263,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
         onPublish={() => void publish()}
         onBlank={startBlank}
         onSample={() => void loadSample()}
+        onImport={() => setImportOpen(true)}
       />
       <div className="grid min-h-0 flex-1 grid-cols-[76px_minmax(0,1fr)_380px]">
         <ToolPalette tool={state.tool} onTool={(tool) => dispatch({ type: "setTool", tool })} />
@@ -324,6 +334,7 @@ function Editor({ initial, initialHasDraft }: { initial: Venue; initialHasDraft:
           </div>
         </aside>
       </div>
+      {importOpen && <ImportBlueprintDialog current={state.venue} onApply={applyImport} onClose={() => setImportOpen(false)} />}
       {scaleReq && (
         <ScaleModal
           drawnMetres={Math.hypot(scaleReq.b.x - scaleReq.a.x, scaleReq.b.y - scaleReq.a.y)}

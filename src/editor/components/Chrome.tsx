@@ -27,6 +27,7 @@ export interface SubBarProps {
   onPublish(): void;
   onBlank(): void;
   onSample(): void;
+  onImport(): void;
 }
 
 export function SubBar(p: SubBarProps) {
@@ -66,6 +67,17 @@ export function SubBar(p: SubBarProps) {
           <>
             <div className="fixed inset-0 z-10" onClick={() => setMenu(false)} />
             <div role="menu" className="absolute right-0 z-20 mt-1 w-56 rounded border border-slate-200 bg-white p-1 shadow-lg">
+              <button
+                role="menuitem"
+                data-testid="menu-import"
+                className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-100"
+                onClick={() => {
+                  setMenu(false);
+                  p.onImport();
+                }}
+              >
+                Import a Blueprint file…
+              </button>
               <button
                 role="menuitem"
                 className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-100"

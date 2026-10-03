@@ -159,7 +159,8 @@ function splitEdge(v: Venue, floor: string, edgeIndex: number, pt: Pt): VNode {
   const n: VNode = { id: nodeId(v, floor), floor, x: r2(pt.x), y: r2(pt.y), kind: "corridor" };
   v.nodes.push(n);
   v.edges.splice(edgeIndex, 1);
-  v.edges.push({ a: e.a, b: n.id, type: "walk" }, { a: n.id, b: e.b, type: "walk" });
+  // Both halves keep the width of the corridor they came from.
+  v.edges.push({ a: e.a, b: n.id, type: "walk", ...(e.width !== undefined ? { width: e.width } : {}) }, { a: n.id, b: e.b, type: "walk", ...(e.width !== undefined ? { width: e.width } : {}) });
   return n;
 }
 

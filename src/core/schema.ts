@@ -171,6 +171,8 @@ export const VenueSchema = z.object({
   city: z.string().default(""),
   address: z.string().default(""),
   latlng: z.tuple([finite, finite]).optional(),
+  /** True compass bearing of the map's up direction (map bearing 0), degrees. true bearing = map bearing + northOffsetDeg. */
+  northOffsetDeg: z.number().optional(),
   version: z.number().int().positive(),
   status: z.enum(["draft", "published"]),
   publishedAt: z.string().optional(),

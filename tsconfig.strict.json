@@ -36,6 +36,7 @@
     "src/spikes",
     "src/positioning",
     "src/ar",
+    "src/ai",
     "src/ads",
     "src/speech",
     "src/vision",

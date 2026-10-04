@@ -77,6 +77,8 @@ export interface ControllerPoseSource extends PoseSource {
   loseTracking(sec?: number): void;
   /** Live sources only. The session reached a lift/stairs: continue on `toFloor` at (x, y). */
   onConnector?(toFloor: string, x: number, y: number): void;
+  /** Live (step counting) source only. The visitor faces this map heading: the gyro takes it and the compass learns the map's north. */
+  alignHeading?(mapHeadingDeg: number): void;
   /** Live sources only. The visitor confirmed they are on `floor`. */
   forceFloor?(floor: string): void;
   /** A newer published venue replaces the one the source was built with. */

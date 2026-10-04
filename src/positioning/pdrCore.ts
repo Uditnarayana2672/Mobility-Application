@@ -82,6 +82,22 @@ export class PdrPoseCore {
     }
   }
 
+  /** Whether the phone's compass has produced a reading at all. */
+  get hasCompass(): boolean {
+    return this.lastCompass !== null;
+  }
+  /**
+   * The visitor says which way they face (a map heading): the gyro heading takes it, and the compass learns the map's north from it
+   * (it counts as a strong lesson, like a marker). Used by the Align button and by "Look around".
+   */
+  align(mapHeading: number): void {
+    if (!this.raw) return;
+    if (this.lastCompass !== null) this.fusion.learn(this.lastCompass, mapHeading, 1);
+    this.heading.reset(mapHeading);
+    this.pf.setHeading(mapHeading);
+    this.raw = { ...this.raw, heading: mapHeading };
+  }
+
   setVenue(v: Venue): void {
     this.walk = walkableFromVenue(v);
     this.pf.setWalkable(this.walk);

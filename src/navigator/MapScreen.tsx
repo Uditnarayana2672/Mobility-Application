@@ -153,6 +153,12 @@ function PreviewSheet({ ctl, s }: P) {
         <div style={{ flex: 1 }}>
           <div className="muted small">Route to</div>
           <div style={{ fontWeight: 800, fontSize: 17 }}>{s.place?.name}</div>
+          {s.user && (
+            <div className="muted small" data-testid="route-from">
+              From <b>{nearName(s.venue, s.user)}</b> ·{" "}
+              <button data-testid="change-start" onClick={() => ctl.openSearch("", true)} style={{ border: 0, background: "none", color: "#2f5bea", fontWeight: 700, padding: 0, cursor: "pointer" }}>Change start</button>
+            </div>
+          )}
         </div>
         <button className="pbtn sm" onClick={() => ctl.closePreview()}>✕</button>
       </div>

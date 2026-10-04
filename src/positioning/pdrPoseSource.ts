@@ -270,6 +270,29 @@ export class PdrPoseSource extends LivePoseBase {
     if (off !== null) writeNorth(this.venue.id, off);
   }
 
+  /** One camera picture as a JPEG (for the AI "Look around"), or null when the camera is not running. */
+  snapshotJpeg(maxWidth = 640, quality = 0.72): Promise<Blob | null> {
+    const v = this.video;
+    if (!v || v.videoWidth === 0) return Promise.resolve(null);
+    const W = Math.min(maxWidth, v.videoWidth);
+    const H = Math.round((W * v.videoHeight) / v.videoWidth);
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    c.getContext("2d")?.drawImage(v, 0, 0, W, H);
+    return new Promise((resolve) => c.toBlob((b) => resolve(b), "image/jpeg", quality));
+  }
+  /** The visitor faces `mapHeading` (degrees on the map): arrows and the compass take it from here. */
+  alignHeading(mapHeading: number): void {
+    this.core.align(mapHeading);
+    const off = this.core.northOffset;
+    if (off !== null) writeNorth(this.venue.id, off);
+  }
+  /** What the AR check panel shows. */
+  health(): { sensors: boolean; fps: number; compass: boolean; northKnown: boolean; camera: boolean; error: string | null } {
+    return { sensors: this.motionOn, fps: this.fps, compass: this.core.hasCompass, northKnown: this.core.northOffset !== null, camera: this.stream !== null && !!this.video && this.video.videoWidth > 0, error: this.lastError };
+  }
+
   /* ---- ControllerPoseSource ---- */
   tick(dtSec: number): void {
     if (!this.running) return;

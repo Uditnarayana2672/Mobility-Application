@@ -8,6 +8,7 @@ import { alternatives, isRouteError, route as computeRoute, type Route, type Rou
 import type { Venue } from "@/core/schema";
 import { EXAMPLES, MSG } from "./messages";
 import { floorName, nearName, placeOf, type Place } from "./places";
+import { headingFromView, postLook, type LookResult } from "@/ai/look";
 import { saveLastFix, type LastFix } from "@/shared/lastFix";
 import type { ControllerPoseSource, Pose, PoseDebug, PoseKind } from "./poseSource";
 import { RuleIntentResolver, type IntentResolver } from "./intentResolver";
@@ -100,6 +101,19 @@ const prefsFor = (via: "stairs" | "lift" | null, base: { avoidStairs: boolean })
  * Everything the visitor app does, without React: screens, the pose -> session -> speech/bus pipeline, route planning,
  * voice intents. Time only moves through tick(dtSec) (and the pose stream), so a test can run a whole walk deterministically.
  */
+const JOURNEY_MSG = {
+  here: {
+    en: (n: string) => `Okay, you are near ${n}.`,
+    hi: (n: string) => `Theek hai, aap ${n} ke paas hain.`,
+    te: (n: string) => `సరే, మీరు ${n} దగ్గర ఉన్నారు.`,
+  },
+  go: {
+    en: (from: string, to: string) => `Starting from ${from}. Taking you to ${to}.`,
+    hi: (from: string, to: string) => `${from} se shuru karte hain. ${to} le chalte hain.`,
+    te: (from: string, to: string) => `${from} నుండి మొదలుపెడదాం. ${to} కి తీసుకెళ్తున్నాను.`,
+  },
+};
+
 export class NavController {
   private st: NavState;
   private readonly listeners = new Set<() => void>();
@@ -234,6 +248,15 @@ export class NavController {
   private say(text: string, urgent = false): void {
     this.speech.say(text, this.st.lang, urgent ? "urgent" : "normal");
   }
+  /** Where startAt() puts the visitor for `from` (same rule), for planning before the pose has arrived. */
+  private fromPoint(from: Target): RouteFrom {
+    const p = placeOf(this.v, from)!;
+    const room = p.kind === "room" ? this.v.rooms.find((r) => r.id === p.id) : undefined;
+    if (!room) return { floor: p.floor, x: p.x, y: p.y, heading: 90 };
+    const out = doorOutward(room.door);
+    const rad = (out * Math.PI) / 180;
+    return { floor: p.floor, x: room.door.x + Math.sin(rad) * 1.5, y: room.door.y - Math.cos(rad) * 1.5, heading: out };
+  }
   private fromPose(): RouteFrom | null {
     const u = this.st.user;
     return u ? { floor: u.floor, x: u.x, y: u.y, heading: u.heading } : null;
@@ -271,27 +294,72 @@ export class NavController {
     if (first || this.st.screen === "locate" || this.st.screen === "city") this.goMap();
     else if (this.st.route && this.st.mode !== "nav") this.replanPreview();
   }
-  /** "I can't find a marker": approximate position at a room door (±4 m). */
+  /** "I can't find a marker" / "Change start": the visitor picks where they are (a room or an entrance point). About 3 m sure until a marker or the camera says better. */
   setLocationManually(p: Place): void {
-    const r = p.kind === "room" ? this.v.rooms.find((x) => x.id === p.id) : undefined;
-    if (this.live && r) {
-      // A phone has no simulator: put the visitor just inside the room, facing its door, so the camera arrows start pointing the right way.
-      const out = doorOutward(r.door);
-      const back = ((out + 180) * Math.PI) / 180;
-      this.setLocated();
-      this.sim.teleport({ floor: r.floor, x: r.door.x + Math.sin(back) * 1.2, y: r.door.y - Math.cos(back) * 1.2, heading: out, acc: 3, markerId: null });
-      this.patch({ pickLoc: false });
-      this.toast(`📍 Starting in ${r.name}. Stand just inside, facing its door.`);
-      if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
+    if (!this.startAt(p.target, this.st.place?.target, "inside")) return;
+    this.toast(`📍 Starting near ${p.name}. A marker scan or Look around makes it exact.`);
+    this.closeOverlay();
+    if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
+    else if (this.st.route && this.st.mode !== "nav") this.later(300, () => this.replanPreview());
+  }
+  /**
+   * The visitor says (or picks) where they are: a room or an entrance point. They are placed just outside the room's door (in the corridor),
+   * or at the point itself, about 3 m sure. With a destination the heading is the direction of the first part of the route, so the first
+   * arrow reads "straight ahead" when they stand the way they will walk (the AR view has an Align button for any other way).
+   */
+  startAt(from: Target, towards?: Target, where: "near" | "inside" = "near", facing: number | null = null): boolean {
+    const p = placeOf(this.v, from);
+    if (!p) return false;
+    let x = p.x;
+    let y = p.y;
+    let heading = 90;
+    const room = p.kind === "room" ? this.v.rooms.find((r) => r.id === p.id) : undefined;
+    if (room) {
+      const out = doorOutward(room.door);
+      const rad = (out * Math.PI) / 180;
+      // "near": just outside the door, in the corridor. "inside": just inside the room, facing its door.
+      const d = where === "near" ? 1.5 : -1.2;
+      x = room.door.x + Math.sin(rad) * d;
+      y = room.door.y - Math.cos(rad) * d;
+      heading = out;
+    }
+    if (facing !== null) heading = facing;
+    else if (towards) {
+      const r = computeRoute(this.v, { floor: p.floor, x, y, heading }, towards, this.st.prefs);
+      if (!isRouteError(r) && r.total > 0.5) heading = pointAt(r, Math.min(3, r.total)).bearing;
+    }
+    this.setLocated();
+    this.sim.teleport({ floor: p.floor, x, y, heading, acc: 3, markerId: null });
+    if (facing !== null) this.sim.alignHeading?.(heading);
+    this.patch({ pickLoc: false });
+    return true;
+  }
+  /** "Look around (AI)": send the camera picture to the server; Claude says which known place the camera is near and which are ahead / left / right. */
+  async lookAround(jpeg: Blob): Promise<void> {
+    this.toast("👁 Looking… (the AI reads signs and doors)");
+    const out = await postLook(this.v.id, this.st.user?.floor, jpeg);
+    if (!out.ok) {
+      this.toast(out.error === "no-key" ? "AI is off: put ANTHROPIC_API_KEY in the .env file on the laptop and restart it." : out.error === "offline" ? "Could not reach the server." : `The AI could not read the picture${out.detail ? `: ${out.detail}` : ""}`);
       return;
     }
-    const x = r ? r.door.x + (r.door.side ? 0 : Math.sin((doorOutward(r.door) * Math.PI) / 180) * 1.2) : p.x;
-    const y = r ? r.door.y + (r.door.side === "N" ? 1.2 : r.door.side ? -1.2 : -Math.cos((doorOutward(r.door) * Math.PI) / 180) * 1.2) : p.y;
-    this.setLocated();
-    this.sim.teleport({ floor: p.floor, x, y, heading: 90, acc: 4, markerId: null });
-    this.patch({ pickLoc: false });
-    this.toast("Approximate position set (±4 m). Scan a marker for exact.");
+    this.applyLook(out.result);
+  }
+  /** Take Claude's answer as the position (near the place it named) and the facing (from the places it saw). Only medium or high confidence counts. */
+  applyLook(a: LookResult): boolean {
+    if (!a.nearest || (a.confidence !== "medium" && a.confidence !== "high")) {
+      this.toast(`👁 The AI can't tell where you are${a.saw ? `: ${a.saw}` : ""}. Point at a sign or a door, or choose your start.`);
+      return false;
+    }
+    const p = placeOf(this.v, a.nearest.target);
+    if (!p) return false;
+    const spot = this.fromPoint(a.nearest.target);
+    const facing = headingFromView(this.v, { floor: spot.floor!, x: spot.x!, y: spot.y! }, a.visible);
+    if (!this.startAt(a.nearest.target, this.st.place?.target, "near", facing ?? this.st.user?.heading ?? null)) return false;
+    this.toast(`👁 AI: you are near ${p.name}${a.saw ? ` — ${a.saw}` : ""}`);
+    this.ev("vision", `AI look: near ${p.name} (${a.confidence})`);
     if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
+    else if (this.st.route && this.st.mode !== "nav") this.later(300, () => this.replanPreview());
+    return true;
   }
   /** "Continue where you left off": the position this phone had last time, taken as approximate (±4 m or worse) until a marker confirms it. */
   resumeFrom(f: LastFix): void {
@@ -810,6 +878,31 @@ export class NavController {
           this.showPlace(res.target);
         });
         return p ? MSG.show[lang](p.name, this.fl(p.floor), r && !isRouteError(r) ? fmtTime(r.time) : "—") : MSG.unknown[lang]();
+      }
+      case "locate": {
+        if (!this.startAt(res.target)) return MSG.unknown[lang]();
+        this.later(500, () => {
+          this.closeOverlay();
+          if (this.st.screen === "locate" || this.st.screen === "city") this.goMap();
+          else if (this.st.route && this.st.mode !== "nav") this.replanPreview();
+        });
+        return JOURNEY_MSG.here[lang](res.name);
+      }
+      case "journey": {
+        const to = placeOf(this.v, res.target);
+        if (!to || !this.startAt(res.from, res.target)) return MSG.unknown[lang]();
+        // a route that cannot exist is reported before anything moves
+        const rr = computeRoute(this.v, this.fromPoint(res.from), res.target, this.st.prefs);
+        if (isRouteError(rr)) return rr.error === "restricted" ? MSG.restricted[lang](to.name) : MSG.noRoute[lang]();
+        this.later(700, () => {
+          this.closeOverlay();
+          if (this.st.mode === "nav") this.endNav();
+          // On a phone: straight into the camera view with the arrows. On the laptop simulator: the map preview.
+          if (this.live) return this.guideTo(res.target);
+          this.showPlace(res.target);
+          this.preview();
+        });
+        return JOURNEY_MSG.go[lang](res.fromName, res.name);
       }
       case "whereami": {
         const u = this.st.user;

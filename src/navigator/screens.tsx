@@ -151,6 +151,11 @@ export function LocateScreen({ ctl, s, rt, hints }: P & { rt: NavRuntime; hints?
           ))}
         </div>
         <div className="row" style={{ marginTop: 10, gap: 10 }}>
+          <button className="pbtn block primary" data-testid="locate-say" onClick={() => ctl.openVoice()}>
+            🎤 Say it: “I’m near … and I want to go to …”
+          </button>
+        </div>
+        <div className="row" style={{ marginTop: 10, gap: 10 }}>
           <button className="pbtn block" style={{ background: "rgba(255,255,255,.14)", color: "#fff" }} onClick={() => ctl.openSearch("", true)}>
             📍 I can’t find a marker — choose manually
           </button>

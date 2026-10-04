@@ -1,5 +1,6 @@
 import { isRouteError, route, type RouteFrom, type RoutePrefs } from "./route";
 import { resolveNeed } from "./needs";
+import { parseHere, parseJourney } from "./journey";
 import { search, type SearchHit } from "./search";
 import type { Venue } from "./schema";
 
@@ -28,7 +29,11 @@ export type Intent =
   | { type: "switch"; view: "ar" | "map" }
   | { type: "howlong" }
   | { type: "goto"; nearest?: true; target: Target; name: string }
-  | { type: "show"; target: Target; name: string };
+  | { type: "show"; target: Target; name: string }
+  /** "I am near X and I want to go to Y": where the visitor is, and where to. */
+  | { type: "journey"; from: Target; fromName: string; target: Target; name: string }
+  /** "I am near X": where the visitor says they are. */
+  | { type: "locate"; target: Target; name: string };
 
 export interface IntentContext {
   from?: RouteFrom;
@@ -64,6 +69,10 @@ export function matchIntent(v: Venue, text: string, ctx?: IntentContext): Intent
   if (!t) return { intent: { type: "unknown" }, confidence: 0 };
   if (RE.stop.test(t)) return { intent: { type: "stop" }, confidence: 1 };
   if (RE.repeat.test(t)) return { intent: { type: "repeat" }, confidence: 1 };
+  const journey = parseJourney(v, t);
+  if (journey) return { intent: { type: "journey", from: journey.from, fromName: journey.fromName, target: journey.to, name: journey.toName }, confidence: 0.92 };
+  const here = parseHere(v, t);
+  if (here) return { intent: { type: "locate", target: here.at, name: here.name }, confidence: 0.85 };
   if (RE.where.test(t)) return { intent: { type: "whereami" }, confidence: 1 };
   if (RE.avoidStairs.test(t)) return { intent: { type: "pref", avoidStairs: true }, confidence: 1 };
   if (RE.ar.test(t)) return { intent: { type: "switch", view: "ar" }, confidence: 1 };

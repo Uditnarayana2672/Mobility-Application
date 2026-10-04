@@ -10,13 +10,13 @@ describe("readRuntimeConfig", () => {
     expect(readRuntimeConfig(env("?demo=1")).demo).toBe(true);
   });
   it("a phone uses WebXR when the browser has it, else step counting", () => {
-    expect(readRuntimeConfig(env("", true, true)).kind).toBe("xr");
+    expect(readRuntimeConfig(env("", true, true)).kind).toBe("pdr"); // camera + step counting is the default even when WebXR exists
     expect(readRuntimeConfig(env("", true, false)).kind).toBe("pdr");
   });
   it("?pose= forces a source (and the demo panel only exists for the simulator)", () => {
     expect(readRuntimeConfig(env("?pose=pdr")).kind).toBe("pdr");
     expect(readRuntimeConfig(env("?pose=xr&demo=1")).demo).toBe(false);
-    expect(readRuntimeConfig(env("?pose=bogus", true, true)).kind).toBe("xr");
+    expect(readRuntimeConfig(env("?pose=bogus", true, true)).kind).toBe("pdr");
   });
   it("debug flag", () => {
     expect(readRuntimeConfig(env("?debug=1")).debug).toBe(true);

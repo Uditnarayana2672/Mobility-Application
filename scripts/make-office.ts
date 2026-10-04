@@ -1,6 +1,7 @@
 /**
  * Builds the office, 1st floor, from the hand-drawn sketch (rough estimates):
  *   public/venues/my-office/venue.json
+ * Second sketch: J is the lift lobby, outside the main wall beside the corridor; C, D, E and K are entrances.
  * Scale read from the sketch: the long corridor A-B is 70 steps (about 49 m at 0.7 m a step), A-C is 15 steps. Rooms are placed where
  * they are drawn, in metres from the top-left corner of the building. Walk lines follow the dashed route on the sketch (Pantry door,
  * down the west aisle to the corridor at C) plus short aisles to every door. Edit the numbers below and run `npm run make:office`.
@@ -17,7 +18,7 @@ ops.setGrid(0);
 let v: Venue = ops.blankVenue({ id: "my-office", name: "My Office · 1st Floor", type: "Office", city: "Indore", address: "", version: 1 });
 v.status = "published";
 v.scale = { metersPerUnit: 1, calibrated: true, reference: "From a hand sketch: corridor A-B = 70 steps (about 49 m). Rough estimates, check with a tape measure." };
-v.floors = [{ id: "F1", name: "1st Floor", short: "1", elevation: 0, height: 3, w: 70, h: 56 }];
+v.floors = [{ id: "F1", name: "1st Floor", short: "1", elevation: 0, height: 3, w: 70, h: 66 }];
 const F = "F1";
 
 type Pt = { x: number; y: number };
@@ -56,6 +57,8 @@ room("Meeting Room 3", P(22.4, 9.4), P(32.4, 16.4), P(22.4, 13.4), "meeting", ["
 room("Server Rooms", P(15.8, 37.6), P(38, 45.3), P(26.3, 45.3), "workspace", ["it"], ["server room", "server", "d"]);
 room("Workspace 1", P(33, 3.1), P(47.4, 22), P(33, 20), "workspace", [], ["open workspace"]);
 room("Workspace 2", P(35, 22), P(47.4, 29.8), P(41.2, 29.8), "workspace", [], []);
+// J = lift lobby, outside the building outline on the far side of the corridor; its entrance is K
+room("Lift Lobby", P(19.4, 53.5), P(36.4, 63.5), P(24, 53.5), "vertical", ["stairs"], ["lift lobby", "lift", "lifts", "elevator", "lobby", "j"]);
 
 /* ---- walk lines ---- */
 walk(4.4, P(2.4, 51.3), P(51, 51.3)); // main corridor A - B
@@ -65,6 +68,7 @@ walk(2.6, P(12, 33.5), P(56, 33.5)); // cross aisle through the middle of the fl
 walk(2.4, P(12, 38.6), P(6.2, 38.6)); // to Meeting Room 2
 walk(2.4, P(26.3, 46), P(26.3, 51.3)); // Server Rooms door (D) down to the corridor
 walk(2.4, P(41.2, 33.5), P(41.2, 29.8)); // to Workspace 2
+walk(2.4, P(24, 51.3), P(24, 54)); // Lift Lobby entrance (K) up to the corridor
 walk(2.4, P(29.5, 33.5), P(29.5, 20), P(33, 20)); // to Workspace 1
 for (const r of v.rooms) {
   const c = ops.connectRoom(v, r.id, 8);
@@ -72,10 +76,14 @@ for (const r of v.rooms) {
 }
 
 /* ---- entrance, exit, markers ---- */
-v = ops.addPoi(v, F, P(2.4, 51.3), "entrance", "Main Entrance and lift lobby (A)").venue;
-v = ops.addPoi(v, F, P(50.8, 49.2), "exit", "Exit (E)").venue;
+// A, C, D, E and K are the entrances of the sketch: they can all be picked as the place to start
+v = ops.addPoi(v, F, P(2.4, 51.3), "entrance", "Point A (west end of the corridor)").venue;
+v = ops.addPoi(v, F, P(12, 49.6), "entrance", "Entrance C (west aisle)").venue;
+v = ops.addPoi(v, F, P(26.3, 47.2), "entrance", "Entrance D (Server Rooms)").venue;
+v = ops.addPoi(v, F, P(50.8, 49.4), "entrance", "Entrance E (east end, point B)").venue;
+v = ops.addPoi(v, F, P(24, 52.4), "entrance", "Entrance K (Lift Lobby)").venue;
 v = ops.addPoi(v, F, P(6.2, 12.8), "water", "Drinking water (Pantry)").venue;
-for (const p of [P(3.5, 50), P(12, 49.5), P(26.3, 49.5), P(49.5, 49.5), P(6.2, 12), P(22.8, 13.4), P(6.2, 38.6), P(41.2, 32.5)]) {
+for (const p of [P(3.5, 50), P(12, 49.5), P(26.3, 49.5), P(49.5, 49.5), P(6.2, 12), P(22.8, 13.4), P(6.2, 38.6), P(41.2, 32.5), P(24, 55)]) {
   const m = ops.addMarker(v, F, p);
   if (!("error" in m)) v = m.venue;
 }

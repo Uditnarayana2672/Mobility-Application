@@ -8,6 +8,7 @@ export * from "./playback";
 export * from "./instructions";
 export * from "./search";
 export * from "./intent";
+export * from "./journey";
 export * from "./assistantTools";
 export * from "./poseFromMarker";
 export * from "./validate";

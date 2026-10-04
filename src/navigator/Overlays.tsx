@@ -23,6 +23,11 @@ export function SearchOverlay({ ctl, s }: P) {
   const rows = useMemo<Target[]>(() => {
     const v = s.venue;
     const text = q.trim();
+    if (!text && s.pickLoc) {
+      // Choosing where you start: the entrances ("gates") first, then every place.
+      const gates: Target[] = v.pois.filter((p) => p.kind === "entrance" || p.kind === "exit").map((p) => ({ poi: p.id }));
+      return [...gates, ...v.rooms.filter((r) => r.access !== "staff").map((r): Target => ({ room: r.id }))].slice(0, 40);
+    }
     if (!text) {
       return v.rooms
         .filter((r) => r.access !== "staff")
@@ -61,7 +66,7 @@ export function SearchOverlay({ ctl, s }: P) {
         <button className="mic" style={{ width: 40, height: 40, borderRadius: "50%", border: 0, background: "#eef1f6", fontSize: 18, cursor: "pointer" }} aria-label="voice" onClick={() => ctl.openVoice()}>🎤</button>
       </div>
       <div className="results" data-testid="search-results">
-        {!text && <div className="muted small" style={{ padding: "10px 4px" }}>Suggestions</div>}
+        {!text && <div className="muted small" style={{ padding: "10px 4px" }}>{s.pickLoc ? "Entrances first, then places" : "Suggestions"}</div>}
         {text && rows.length === 0 && <div className="muted" style={{ padding: "24px 8px", textAlign: "center" }}>No match. Try “canteen”, “toilet”, “Everest”…</div>}
         {rows.map((t, i) => {
           const p = placeOf(s.venue, t);

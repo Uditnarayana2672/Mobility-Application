@@ -6,6 +6,7 @@ import path from "node:path";
 import { parseCampaigns, parseVenue, type CampaignsFile, type ValidationResult, type Venue } from "../src/core/schema";
 import { validate } from "../src/core/validate";
 import type { AssistantRequest } from "../src/core/assistant";
+import { AnthropicClient } from "./anthropic";
 import { AssistantService } from "./assistant";
 import { LocalSemanticRanker } from "./semantic";
 import { NodeEmbedder, type PictureEmbedder } from "./vision/embed";
@@ -26,6 +27,8 @@ export interface ApiOptions {
   onPublished?: (kind: "venue" | "campaigns", venueId: string, version: number) => void;
   onReset?: (venueId: string) => void;
   assistantProvider?: AssistantProvider;
+  /** Claude on the server (default: ANTHROPIC_API_KEY from the environment; without a key it is simply off). */
+  anthropic?: AnthropicClient;
   /** Local speech engines (Whisper + Piper). Default: created lazily from <root>/data/models. */
   speech?: SpeechService;
   /** Local free-form place ranker (default: a MiniLM embedding model on this machine, loaded in the background). `null` turns it off. */
@@ -39,6 +42,7 @@ export type Next = (err?: unknown) => void;
 const MAX_JSON = 5 * 1024 * 1024;
 const MAX_UPLOAD = 10 * 1024 * 1024;
 const MAX_AUDIO = 2 * 1024 * 1024;
+const MAX_LOOK = 2 * 1024 * 1024;
 const MAX_MEDIA = 30 * 1024 * 1024;
 const UPLOAD_TYPES: Record<string, string> = { "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp" };
 const UPLOAD_MIME: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
@@ -122,7 +126,8 @@ export function createApi(opts: ApiOptions) {
   const warm = !process.env.VITEST && process.env.LOCAL_AI_WARM !== "0";
   const semantic = opts.semantic === undefined ? (process.env.VITEST ? null : new LocalSemanticRanker(root)) : opts.semantic;
   if (opts.semantic === undefined && warm) (semantic as LocalSemanticRanker | null)?.warm();
-  const assistant = new AssistantService(root, opts.assistantProvider, semantic);
+  const anthropic = opts.anthropic ?? new AnthropicClient();
+  const assistant = new AssistantService(root, opts.assistantProvider, semantic, anthropic);
   const survey = new SurveyStore(root);
   const embedder: PictureEmbedder = opts.embedder ?? new NodeEmbedder(root);
   const building = new Map<string, Promise<unknown>>();
@@ -420,6 +425,29 @@ export function createApi(opts: ApiOptions) {
         res.setHeader("Cache-Control", "public, max-age=86400");
         res.end(wav);
         return;
+      }
+      if (parts[0] === "ai" && parts[1] === "status" && method === "GET") {
+        return send(res, 200, { available: anthropic.available(), models: anthropic.available() ? anthropic.models : null });
+      }
+      if (parts[0] === "ai" && parts[1] === "look" && method === "POST") {
+        const venueId = checkId(url.searchParams.get("venue") ?? undefined, "venue id");
+        if (!anthropic.available()) throw new HttpError(503, "no ANTHROPIC_API_KEY on the server");
+        const type = (req.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase();
+        if (type !== "image/jpeg") throw new HttpError(415, "content-type must be image/jpeg");
+        const jpeg = await readBuffer(req, MAX_LOOK);
+        if (!sniffImage(jpeg, "image/jpeg")) throw new HttpError(415, "file contents are not a valid image/jpeg");
+        const venue = await venues.getPublished<Venue>(venueId);
+        if (!venue) throw new HttpError(404, "no such venue");
+        const floor = url.searchParams.get("floor") ?? undefined;
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 25_000);
+        try {
+          return send(res, 200, await anthropic.look(venue, jpeg, floor ? { floor } : undefined, ctl.signal));
+        } catch (e) {
+          throw new HttpError(502, ctl.signal.aborted ? "the AI took too long" : e instanceof Error ? e.message : "the AI could not read the picture");
+        } finally {
+          clearTimeout(timer);
+        }
       }
       if (parts[0] === "assistant" && method === "POST") {
         const body = await readJsonBody(req) as Partial<AssistantRequest> | undefined;

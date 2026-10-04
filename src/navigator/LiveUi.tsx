@@ -26,6 +26,18 @@ export function LiveLocate({ rt, ctl, s, hints }: Props & { hints?: LocateHints 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [supported, setSupported] = useState<boolean | null>(rt.kind === "xr" ? null : true);
+  const [aiBusy, setAiBusy] = useState(false);
+  const lookNow = async () => {
+    if (!rt.pdr || aiBusy) return;
+    setAiBusy(true);
+    try {
+      const jpeg = await rt.pdr.snapshotJpeg();
+      if (jpeg) await ctl.lookAround(jpeg);
+      else ctl.toast("The camera is not ready yet");
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (rt.kind !== "xr") return;
@@ -110,6 +122,11 @@ export function LiveLocate({ rt, ctl, s, hints }: Props & { hints?: LocateHints 
           </button>
         )}
         {rt.kind === "pdr" && active && <div className="live-hint" data-testid="live-hint">Point the camera at a marker sticker, about 1–2 m away.</div>}
+        {rt.kind === "pdr" && active && (
+          <button className="pbtn block" data-testid="locate-look" disabled={aiBusy} style={{ marginTop: 8 }} onClick={() => void lookNow()}>
+            {aiBusy ? "Looking…" : "👁 Look around (AI reads signs and doors)"}
+          </button>
+        )}
         {err && <div className="live-err" data-testid="live-err">{err}</div>}
         {(last || askNow) && (
           <div className="live-suggest" data-testid="live-suggest">

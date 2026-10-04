@@ -20,7 +20,7 @@
       "elevation": 0,
       "height": 3,
       "w": 70,
-      "h": 56
+      "h": 66
     }
   ],
   "corridors": [],
@@ -209,6 +209,37 @@
       "hours": "9:00 – 19:00",
       "access": "public",
       "short": null
+    },
+    {
+      "id": "F1-r8",
+      "floor": "F1",
+      "name": "Lift Lobby",
+      "cat": "vertical",
+      "x": 19.4,
+      "y": 53.5,
+      "w": 17,
+      "h": 10,
+      "door": {
+        "x": 24,
+        "y": 53.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "lift lobby",
+        "lift lobby",
+        "lift",
+        "lifts",
+        "elevator",
+        "lobby",
+        "j"
+      ],
+      "tags": [
+        "stairs"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
     }
   ],
   "nodes": [
@@ -325,6 +356,22 @@
       "room": "F1-r7"
     },
     {
+      "id": "F1-r8",
+      "floor": "F1",
+      "x": 27.9,
+      "y": 58.5,
+      "kind": "room",
+      "room": "F1-r8"
+    },
+    {
+      "id": "F1-r8:door",
+      "floor": "F1",
+      "x": 24,
+      "y": 53.5,
+      "kind": "door",
+      "room": "F1-r8"
+    },
+    {
       "id": "F1:n1",
       "floor": "F1",
       "x": 2.4,
@@ -418,19 +465,33 @@
     {
       "id": "F1:n14",
       "floor": "F1",
+      "x": 24,
+      "y": 51.3,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n15",
+      "floor": "F1",
+      "x": 24,
+      "y": 54,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n16",
+      "floor": "F1",
       "x": 29.5,
       "y": 33.5,
       "kind": "corridor"
     },
     {
-      "id": "F1:n15",
+      "id": "F1:n17",
       "floor": "F1",
       "x": 29.5,
       "y": 20,
       "kind": "corridor"
     },
     {
-      "id": "F1:n16",
+      "id": "F1:n18",
       "floor": "F1",
       "x": 6,
       "y": 51.3,
@@ -471,6 +532,11 @@
     {
       "a": "F1-r7:door",
       "b": "F1-r7",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r8:door",
+      "b": "F1-r8",
       "type": "walk"
     },
     {
@@ -526,12 +592,6 @@
       "type": "walk"
     },
     {
-      "a": "F1:n5",
-      "b": "F1:n12",
-      "type": "walk",
-      "width": 4.4
-    },
-    {
       "a": "F1:n12",
       "b": "F1:n2",
       "type": "walk",
@@ -556,16 +616,16 @@
       "width": 2.4
     },
     {
-      "a": "F1:n7",
+      "a": "F1:n5",
       "b": "F1:n14",
       "type": "walk",
-      "width": 2.6
+      "width": 4.4
     },
     {
       "a": "F1:n14",
-      "b": "F1:n13",
+      "b": "F1:n12",
       "type": "walk",
-      "width": 2.6
+      "width": 4.4
     },
     {
       "a": "F1:n14",
@@ -574,7 +634,30 @@
       "width": 2.4
     },
     {
-      "a": "F1:n15",
+      "a": "F1-r8:door",
+      "b": "F1:n15",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n7",
+      "b": "F1:n16",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n16",
+      "b": "F1:n13",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n16",
+      "b": "F1:n17",
+      "type": "walk",
+      "width": 2.4
+    },
+    {
+      "a": "F1:n17",
       "b": "F1-r6:door",
       "type": "walk",
       "width": 2.4
@@ -586,19 +669,19 @@
     },
     {
       "a": "F1:n1",
-      "b": "F1:n16",
+      "b": "F1:n18",
       "type": "walk",
       "width": 4.4
     },
     {
-      "a": "F1:n16",
+      "a": "F1:n18",
       "b": "F1:n5",
       "type": "walk",
       "width": 4.4
     },
     {
       "a": "F1-r3:door",
-      "b": "F1:n16",
+      "b": "F1:n18",
       "type": "walk"
     }
   ],
@@ -690,6 +773,17 @@
       "normal": 180,
       "sizeM": 0.12,
       "note": ""
+    },
+    {
+      "id": 8,
+      "floor": "F1",
+      "name": "Marker 8",
+      "x": 24,
+      "y": 53.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
     }
   ],
   "walls": [],
@@ -698,20 +792,44 @@
       "id": "P01",
       "floor": "F1",
       "kind": "entrance",
-      "name": "Main Entrance and lift lobby (A)",
+      "name": "Point A (west end of the corridor)",
       "x": 2.4,
       "y": 51.3
     },
     {
       "id": "P02",
       "floor": "F1",
-      "kind": "exit",
-      "name": "Exit (E)",
-      "x": 50.8,
-      "y": 49.2
+      "kind": "entrance",
+      "name": "Entrance C (west aisle)",
+      "x": 12,
+      "y": 49.6
     },
     {
       "id": "P03",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Entrance D (Server Rooms)",
+      "x": 26.3,
+      "y": 47.2
+    },
+    {
+      "id": "P04",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Entrance E (east end, point B)",
+      "x": 50.8,
+      "y": 49.4
+    },
+    {
+      "id": "P05",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Entrance K (Lift Lobby)",
+      "x": 24,
+      "y": 52.4
+    },
+    {
+      "id": "P06",
       "floor": "F1",
       "kind": "water",
       "name": "Drinking water (Pantry)",

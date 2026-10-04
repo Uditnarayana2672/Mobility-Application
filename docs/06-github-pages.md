@@ -9,7 +9,7 @@ GitHub Pages only hosts files. It cannot run `npm run serve`, so the site is a *
 |---|---|
 | `/` | First page: **Designer** or **Indore Maps** |
 | `/designer` | The original Blueprint designer on an empty sheet (it has an **Indore Maps** button; the old `/legacy-editor` address redirects here) |
-| `/nav?venue=airport` | What **Indore Maps** opens: the first screen of the visitor app, a list of every place (Kempegowda Airport, Phoenix Citadel Mall, Majestic Bus Stand, Demo Office); tap one to open its map. On a laptop it opens with `&demo=1` (demo controls and walker) |
+| `/nav?venue=airport` | What **Indore Maps** opens: the first screen of the visitor app, a list of every place (Kempegowda Airport, Phoenix Citadel Mall, Majestic Bus Stand, My Office); tap one to open its map. On a laptop it opens with `&demo=1` (demo controls and walker) |
 | `/maps` | The list of every tool (`/nav`, `/editor`, `/dashboard`, …), linked from inside the app |
 
 ## One-time setup (about 2 minutes, in the GitHub website)
@@ -25,7 +25,7 @@ GitHub Pages on a free account needs the repository to be **public**.
 | Visitor map, search, routing, typed destinations, "I want a coffee" word matching | Editor Publish, drafts, uploads (`/editor` can open but not save) |
 | Camera view, marker scan, step counting, AR arrows (HTTPS is provided by Pages) | Local Whisper / Piper (the phone's own voice and the browser's recogniser are used instead) |
 | Phone's own voice for directions | Live dashboard from other phones (`/ws`), ads, owner page |
-| Venues: `airport`, `phoenix-citadel`, `majestic-bus-stand`, `office-hq` (demo) | Place recognition by sight (needs a survey index from the server) |
+| Venues: `airport`, `phoenix-citadel`, `majestic-bus-stand`, `my-office` (from your sketch; `office-hq` stays as the built-in demo) | Place recognition by sight (needs a survey index from the server) |
 
 Open a venue directly: `…/Mobility-Application/nav?venue=airport` (then tap the blue pin). Use `?auto=0` if the location prompt gets in the way.
 
@@ -63,3 +63,6 @@ It keeps what a passenger looks for and leaves out the rest:
 | 24 gates, 6 check-in islands + ticketing + bag drop, security / emigration / immigration / customs zones, baggage reclaim halls, 5 lounges, 12 eateries, 16 shops, 30 toilets (named by where they are), lifts and escalators (linked between floors), 29 points of interest and 14 entrances | 84 check-in counters, 16 security lanes, 24 immigration / emigration counters, baggage belts (their numbers are search words of the reclaim hall), staff-only areas, the separation wall |
 
 The drawing's own connection list is used to join corridors (check-in hall to security to the airside plaza; the departure entries join the forecourt to the hall). Security zones and reclaim halls can be walked through; every other place is a destination only.
+
+## My Office (1st floor)
+`public/venues/my-office/venue.json` is built from the hand sketch by `npm run make:office` (`scripts/make-office.ts`): Pantry (H), Meeting Rooms 1-3 (F, G, I), the Server Rooms, two unlabelled workspaces, desks, the main corridor A-B (70 steps, about 49 m) and the dashed route from the Pantry door down to the corridor at C. All sizes are rough estimates from the drawing: change the numbers in the script (or edit in `/editor`) and run it again, then `npm run convert:venues` to refresh the list.

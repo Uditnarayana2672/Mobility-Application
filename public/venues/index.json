@@ -21,10 +21,10 @@
     "icon": "🚌"
   },
   {
-    "id": "office-hq",
-    "name": "Demo Office · Tower A",
-    "type": "Office / Tech park",
-    "floors": 2,
+    "id": "my-office",
+    "name": "My Office · 1st Floor",
+    "type": "Office",
+    "floors": 1,
     "icon": "🏢"
   }
 ]

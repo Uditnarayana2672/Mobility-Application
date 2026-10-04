@@ -75,8 +75,8 @@ for (const job of JOBS) {
   const { floors } = convert(job);
   index.push({ id: job.id, name: job.name, type: job.type, floors, icon: job.icon });
 }
-// the built-in demo office stays available
-const office = JSON.parse(fs.readFileSync(path.join(root, "public", "venues", "office-hq", "venue.json"), "utf8")) as { name: string; type?: string; floors: unknown[] };
-index.push({ id: "office-hq", name: office.name, type: office.type || "Office", floors: office.floors.length, icon: "🏢" });
+// the office drawn from the sketch (npm run make:office)
+const office = JSON.parse(fs.readFileSync(path.join(root, "public", "venues", "my-office", "venue.json"), "utf8")) as { name: string; type?: string; floors: unknown[] };
+index.push({ id: "my-office", name: office.name, type: office.type || "Office", floors: office.floors.length, icon: "🏢" });
 fs.writeFileSync(path.join(root, "public", "venues", "index.json"), JSON.stringify(index, null, 2) + "\n");
 console.log("written public/venues/index.json:", index.map((i) => i.id).join(", "));

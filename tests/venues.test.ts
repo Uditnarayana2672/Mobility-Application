@@ -22,7 +22,7 @@ const ask = (v: Venue, text: string) => {
 
 describe("the list of places on the first screen", () => {
   it("offers the airport, the mall, the bus stand and the demo office, each with a venue file that exists and matches", () => {
-    expect(index.map((i) => i.id)).toEqual(["airport", "phoenix-citadel", "majestic-bus-stand", "office-hq"]);
+    expect(index.map((i) => i.id)).toEqual(["airport", "phoenix-citadel", "majestic-bus-stand", "my-office"]);
     for (const i of index) {
       const v = load(i.id);
       expect(v.name, i.id).toBe(i.name);
@@ -35,7 +35,7 @@ describe("the list of places on the first screen", () => {
     const files: Record<string, unknown> = { "/venues/index.json": index, "/api/registry": { venues: [{ id: "my-pg", name: "My PG" }, { id: "airport", name: "dup" }] } };
     const f = (async (u: string) => (u in files ? new Response(JSON.stringify(files[u])) : new Response("no", { status: 503 }))) as unknown as typeof fetch;
     const list = await fetchVenueList(f);
-    expect(list.map((x) => x.id)).toEqual(["airport", "phoenix-citadel", "majestic-bus-stand", "office-hq", "my-pg"]);
+    expect(list.map((x) => x.id)).toEqual(["airport", "phoenix-citadel", "majestic-bus-stand", "my-office", "my-pg"]);
     expect(list[0]!.name).toBe("Kempegowda Airport");
     expect(subtitleOf(list[1]!)).toBe("Shopping mall · 3 floors mapped");
     const down = (async () => {
@@ -47,6 +47,7 @@ describe("the list of places on the first screen", () => {
 
 describe.each([
   { id: "phoenix-citadel", floors: 3, places: ["Marks & Spencer", "H&M", "Food Court", "INOX Multiplex", "TimeZone", "Punjab Grill"] },
+  { id: "my-office", floors: 1, places: ["Pantry", "Meeting Room 1", "Meeting Room 2", "Meeting Room 3", "Server Rooms", "Workspace 1"] },
   { id: "majestic-bus-stand", floors: 2, places: ["Platform 1", "Platform 24", "KSRTC Advance Reservation", "General Waiting Hall", "Cloak Room (Luggage Storage)"] },
 ])("$id", ({ id, floors, places }) => {
   const V = load(id);
@@ -64,7 +65,7 @@ describe.each([
     expect(bad.map((r) => r.name)).toEqual([]);
   });
 
-  it("routes to a place on another floor use a lift or stairs", () => {
+  it.skipIf(floors < 2)("routes to a place on another floor use a lift or stairs", () => {
     const from = startOf(V);
     const other = V.rooms.find((r) => r.floor !== from.floor && !["vertical"].includes(r.cat))!;
     const rt = route(V, from, { room: other.id });

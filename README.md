@@ -1,6 +1,6 @@
 # Dora.AI: indoor maps and camera-guided wayfinding
 
-> ## 👉 Use the app here: **https://uditnarayana2672.github.io/Mobility-Application/**
+> ## 👉 Use the prototype here: **https://uditnarayana2672.github.io/Mobility-Application/**
 >
 > Open the link (on an Android phone in Chrome for the best experience). No installation, no account.
 > Quick start: tap **Indore Maps**, pick a place (airport, mall, bus stand, office), then search for where you want to go.

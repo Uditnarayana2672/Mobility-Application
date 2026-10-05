@@ -1,6 +1,10 @@
 # Dora.AI
 
-Indoor maps and camera-guided wayfinding: say where you want to go and follow the arrows. Run it with `npm run dev:lan`; deploy notes are in `docs/06-github-pages.md`, the feature guide in `docs/05-using-architecture-v2.md`.
+> ## 👉 Use the app here: **https://uditnarayana2672.github.io/Mobility-Application/**
+>
+> Open this link (on your phone for the best experience) to try Dora.AI. No installation needed.
+
+Indoor maps and camera-guided wayfinding: say where you want to go and follow the arrows. Run it locally with `npm run dev:lan`; deploy notes are in `docs/06-github-pages.md`, the feature guide in `docs/05-using-architecture-v2.md`.
 
 ## Project info
 

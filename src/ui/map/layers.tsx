@@ -6,6 +6,7 @@ import { doorOutward, roomDoors } from "@/core/doors";
 import { roomPolygon } from "@/core/geom";
 import { CORRIDOR_W } from "@/core/geo";
 import type { Floor, Room, Venue } from "@/core/schema";
+import { BpCorridorStrip, BpDoors, BpObject, BpPaper, BpRoom, BpDefs, type MapTheme } from "./blueprintSkin";
 import type { MapItem, MapLayers } from "./types";
 
 const NS = { vectorEffect: "non-scaling-stroke" } as const;
@@ -41,13 +42,16 @@ interface StaticProps {
   floorId: string;
   layers: MapLayers;
   selected: MapItem | null;
+  theme?: MapTheme;
 }
 
 /** Geometry that only changes when the venue, floor, layers or selection change (not on pan/zoom). */
-export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers, selected }: StaticProps) {
+export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers, selected, theme = "classic" }: StaticProps) {
   const floor = venue.floors.find((f) => f.id === floorId) ?? venue.floors[0];
   if (!floor) return null;
   const nodes = new Map(venue.nodes.map((n) => [n.id, n]));
+  const bp = theme === "blueprint";
+  const dim = layers.underlay && !!floor.background;
   const gridX: number[] = [];
   const gridY: number[] = [];
   if (layers.grid) {
@@ -63,7 +67,8 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
           {gridY.map((y) => <line key={`gy${y}`} x1={0} y1={y} x2={floor.w} y2={y} stroke="#cdd5e0" strokeWidth={1} opacity={0.7} {...NS} />)}
         </g>
       )}
-      <rect x={-0.4} y={-0.4} width={floor.w + 0.8} height={floor.h + 0.8} rx={1} fill="#f5f6f8" fillOpacity={layers.underlay && floor.background ? 0.35 : 1} stroke="#b8c1ce" strokeWidth={2} {...NS} />
+      {bp && <BpPaper w={floor.w} h={floor.h} dim={dim} />}
+      {!bp && <rect x={-0.4} y={-0.4} width={floor.w + 0.8} height={floor.h + 0.8} rx={1} fill="#f5f6f8" fillOpacity={layers.underlay && floor.background ? 0.35 : 1} stroke="#b8c1ce" strokeWidth={2} {...NS} />}
       {venue.corridors
         .filter((c) => c.floor === floor.id)
         .map((c, i) => (
@@ -78,6 +83,7 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
           const a = nodes.get(e.a);
           const b = nodes.get(e.b);
           if (!a || !b || e.type !== "walk" || a.floor !== floor.id || b.floor !== floor.id || a.kind !== "corridor" || b.kind !== "corridor") return null;
+          if (bp) return <BpCorridorStrip key={`cw${i}`} a={a} b={b} width={e.width ?? CORRIDOR_W} dim={dim} />;
           return <line key={`cw${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#fff" strokeOpacity={layers.underlay && floor.background ? 0.5 : 1} strokeWidth={e.width ?? CORRIDOR_W} strokeLinecap="round" />;
         })}
       </g>
@@ -87,6 +93,7 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
           .map((r) => {
             const cat = catOf(r.cat) ?? catOf("workspace")!;
             const sel = selected?.type === "room" && selected.id === r.id;
+            if (bp) return <BpRoom key={r.id} room={r} cat={cat} selected={sel} dim={dim} />;
             return (
               <g key={r.id}>
                 {r.polygon && r.polygon.length >= 3 ? (
@@ -136,6 +143,7 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
             .map((o) => {
               const k = OBJECT_KINDS[o.kind] ?? OBJECT_KINDS.custom;
               const sel = selected?.type === "object" && selected.id === o.id;
+              if (bp) return <BpObject key={o.id} o={o} selected={sel} />;
               return (
                 <g key={o.id} transform={`translate(${o.x},${o.y}) rotate(${o.rotation})`} data-type="object" data-id={o.id} style={{ cursor: "pointer" }}>
                   <title>{o.label || k.label}</title>
@@ -148,7 +156,7 @@ export const StaticLayers = memo(function StaticLayers({ venue, floorId, layers,
             })}
         </g>
       )}
-      {layers.doors && <g>{venue.rooms.filter((r) => r.floor === floor.id).map((r) => <Doors key={r.id} room={r} />)}</g>}
+      {layers.doors && <g>{venue.rooms.filter((r) => r.floor === floor.id).map((r) => (bp ? <BpDoors key={r.id} room={r} /> : <Doors key={r.id} room={r} />))}</g>}
       {layers.walknet && (
         <g>
           {venue.edges.map((e, i) => {
@@ -213,9 +221,10 @@ export const RouteLines = memo(function RouteLines({ route, progress, floorId, a
   );
 });
 
-export function Defs() {
+export function Defs({ theme = "classic" }: { theme?: MapTheme }) {
   return (
     <defs>
+      {theme === "blueprint" && <BpDefs />}
       <pattern id="hatch" width={1.2} height={1.2} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
         <rect width={1.2} height={1.2} fill="none" />
         <line x1={0} y1={0} x2={0} y2={1.2} stroke="#d9707a" strokeWidth={0.35} opacity={0.6} />

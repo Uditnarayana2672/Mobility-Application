@@ -1,31 +1,78 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { roomPolygon } from "@/core/geom";
 import type { Venue } from "@/core/schema";
 import { XrPoseSource } from "@/positioning/xrPoseSource";
+import { suggestPlaces } from "@/positioning/locator";
+import { loadLastFix } from "@/shared/lastFix";
+import { placeOf } from "./places";
 import type { NavController, NavState } from "./controller";
 import type { PoseDebug } from "./poseSource";
 import type { NavRuntime } from "./useNav";
 
 type Props = { rt: NavRuntime; ctl: NavController; s: NavState };
 
+/** What the venue detection already knows about the visitor (e.g. which entrance GPS says they came through). */
+export interface LocateHints {
+  entranceMarker?: number | null;
+}
+
+/** Seconds the camera must look without finding a marker before the app asks "are you near…?". */
+export const ASK_AFTER_SEC = 5;
+
 /** What the first screen shows when the phone positions itself (instead of the demo marker chips). */
-export function LiveLocate({ rt }: Props) {
+export function LiveLocate({ rt, ctl, s, hints }: Props & { hints?: LocateHints }) {
   const video = useRef<HTMLVideoElement>(null);
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [supported, setSupported] = useState<boolean | null>(rt.kind === "xr" ? null : true);
+  const [aiBusy, setAiBusy] = useState(false);
+  const lookNow = async () => {
+    if (!rt.pdr || aiBusy) return;
+    setAiBusy(true);
+    try {
+      const jpeg = await rt.pdr.snapshotJpeg();
+      if (jpeg) await ctl.lookAround(jpeg);
+      else ctl.toast("The camera is not ready yet");
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (rt.kind !== "xr") return;
     let live = true;
-    void XrPoseSource.supported().then((ok) => live && setSupported(ok));
+    void XrPoseSource.supported().then((ok) => {
+      if (!live) return;
+      setSupported(ok);
+      // The browser has WebXR but the phone cannot do AR (no ARCore): go straight to the plain camera + step counting,
+      // unless ?pose=xr was asked for on purpose.
+      if (!ok && !new URLSearchParams(window.location.search).has("pose")) rt.switchKind("pdr");
+    });
     return () => {
       live = false;
     };
-  }, [rt.kind]);
+  }, [rt]);
 
   useEffect(() => () => rt.pdr?.stopCamera(), [rt]);
+
+  // Phones without ARCore: open the camera by itself (no button) so a marker in view locks on at once.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (rt.kind !== "pdr" || autoStarted.current || !video.current) return;
+    autoStarted.current = true;
+    void rt.pdr?.startCamera(video.current).then(() => setActive(true)).catch((e: unknown) => setErr(e instanceof Error ? e.message : String(e)));
+  }, [rt]);
+
+  // Nothing found yet after a few seconds: offer the likely places for one tap, and "continue where you left off".
+  const [waited, setWaited] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setWaited((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  const last = useMemo(() => loadLastFix(s.venue.id), [s.venue.id]);
+  const guesses = useMemo(() => suggestPlaces(s.venue, { last, entranceMarker: hints?.entranceMarker }), [s.venue, last, hints?.entranceMarker]);
+  const askNow = waited >= ASK_AFTER_SEC || !!err;
 
   const startXr = async () => {
     if (!rt.xr) return;
@@ -75,7 +122,33 @@ export function LiveLocate({ rt }: Props) {
           </button>
         )}
         {rt.kind === "pdr" && active && <div className="live-hint" data-testid="live-hint">Point the camera at a marker sticker, about 1–2 m away.</div>}
+        {rt.kind === "pdr" && active && (
+          <button className="pbtn block" data-testid="locate-look" disabled={aiBusy} style={{ marginTop: 8 }} onClick={() => void lookNow()}>
+            {aiBusy ? "Looking…" : "👁 Look around (AI reads signs and doors)"}
+          </button>
+        )}
         {err && <div className="live-err" data-testid="live-err">{err}</div>}
+        {(last || askNow) && (
+          <div className="live-suggest" data-testid="live-suggest">
+            {last && (
+              <button className="pbtn block" data-testid="resume-fix" onClick={() => ctl.resumeFrom(last)}>
+                ↩ Continue where I left off{guesses.find((g) => g.reason === "resume") ? ` (near ${guesses.find((g) => g.reason === "resume")!.name})` : ""}
+              </button>
+            )}
+            {askNow && guesses.length > 0 && (
+              <>
+                <div className="small" style={{ margin: "8px 0 4px" }}>No marker in sight. Are you near…</div>
+                <div className="row" style={{ gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                  {guesses.map((g) => (
+                    <button key={g.roomId} className="pbtn sm" data-testid="guess" data-room={g.roomId} onClick={() => { const pl = placeOf(s.venue, { room: g.roomId }); if (pl) ctl.setLocationManually(pl); }}>
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
         {rt.kind === "xr" && (supported === false || err) && (
           <button className="pbtn block" style={{ marginTop: 8, background: "rgba(255,255,255,.14)", color: "#fff" }} onClick={() => rt.switchKind("pdr")}>
             Use step counting instead
@@ -86,7 +159,7 @@ export function LiveLocate({ rt }: Props) {
   );
 }
 
-const SOURCE_LABEL: Record<string, string> = { sim: "SIM", marker: "MARKER", manual: "MANUAL", ar: "AR", steps: "STEPS" };
+const SOURCE_LABEL: Record<string, string> = { sim: "SIM", marker: "MARKER", manual: "MANUAL", ar: "AR", steps: "STEPS", vision: "SIGHT" };
 
 /** Small chip on the map: where the dot comes from and how sure it is; re-scan / restart buttons for the live sources. */
 export function LiveHud({ rt, ctl, s }: Props) {
@@ -183,6 +256,7 @@ export function DebugOverlay({ rt, ctl, s }: Props) {
       <div>tracking: {d?.tracking ?? s.sim.mode}</div>
       <div>reproj: {n(d?.reprojPx)} px · oblique: {n(d?.obliqueDeg, 0)}° · det: {d?.detections ?? 0}</div>
       <div>reject: {d?.reject ?? "–"}</div>
+      {d?.vision && <div>vision: {d.vision}</div>}
       <div>last anchor: {d?.anchorAgeSec === null || d === null ? "–" : `${n(d?.anchorAgeSec, 0)} s ago`} · marker {s.user?.markerId ?? "–"}</div>
       <div>
         pose: {s.user ? `${s.user.floor} ${s.user.x.toFixed(1)}, ${s.user.y.toFixed(1)} · ${Math.round(s.user.heading)}° · ±${s.user.acc.toFixed(1)}` : "–"}

@@ -56,6 +56,6 @@ hub = attachWs(server, { root });
 server.listen(port, "0.0.0.0", () => {
   const ip = lanIps()[0] ?? "localhost";
   const url = `https://${ip}:${port}`;
-  console.log(`\n  Indore Spaces (production build)\n  ${url}\n`);
+  console.log(`\n  Dora.AI (production build)\n  ${url}\n`);
   qrcode.generate(url, { small: true });
 });

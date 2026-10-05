@@ -1,0 +1,1007 @@
+{
+  "schemaVersion": 2,
+  "id": "my-office",
+  "name": "My Office · 1st Floor",
+  "type": "Office",
+  "city": "Indore",
+  "address": "",
+  "version": 1,
+  "status": "published",
+  "scale": {
+    "metersPerUnit": 1,
+    "calibrated": true,
+    "reference": "From a hand sketch: corridor A-B = 70 steps (about 49 m). Rough estimates, check with a tape measure."
+  },
+  "floors": [
+    {
+      "id": "F1",
+      "name": "1st Floor",
+      "short": "1",
+      "elevation": 0,
+      "height": 3,
+      "w": 70,
+      "h": 66
+    }
+  ],
+  "corridors": [],
+  "rooms": [
+    {
+      "id": "F1-r1",
+      "floor": "F1",
+      "name": "Pantry",
+      "cat": "food",
+      "x": 0,
+      "y": 4,
+      "w": 13.3,
+      "h": 7.1,
+      "door": {
+        "x": 6.2,
+        "y": 11.1,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "pantry",
+        "kitchen",
+        "tea",
+        "coffee",
+        "h"
+      ],
+      "tags": [
+        "food",
+        "coffee",
+        "water"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r2",
+      "floor": "F1",
+      "name": "Meeting Room 2",
+      "cat": "meeting",
+      "x": 0.8,
+      "y": 31.8,
+      "w": 7.8,
+      "h": 6.3,
+      "door": {
+        "x": 6.2,
+        "y": 38.1,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "meeting room 2",
+        "meeting room g",
+        "g"
+      ],
+      "tags": [
+        "meeting"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r3",
+      "floor": "F1",
+      "name": "Meeting Room 1",
+      "cat": "meeting",
+      "x": 2.4,
+      "y": 43.5,
+      "w": 7.3,
+      "h": 5.5,
+      "door": {
+        "x": 6,
+        "y": 49,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "meeting room 1",
+        "meeting room f",
+        "f"
+      ],
+      "tags": [
+        "meeting"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r4",
+      "floor": "F1",
+      "name": "Meeting Room 3",
+      "cat": "meeting",
+      "x": 22.4,
+      "y": 9.4,
+      "w": 10,
+      "h": 7,
+      "door": {
+        "x": 22.4,
+        "y": 13.4,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "meeting room 3",
+        "meeting room i",
+        "i"
+      ],
+      "tags": [
+        "meeting"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r5",
+      "floor": "F1",
+      "name": "Server Rooms",
+      "cat": "workspace",
+      "x": 15.8,
+      "y": 37.6,
+      "w": 22.2,
+      "h": 7.7,
+      "door": {
+        "x": 26.3,
+        "y": 45.3,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "server rooms",
+        "server room",
+        "server",
+        "d"
+      ],
+      "tags": [
+        "it"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r6",
+      "floor": "F1",
+      "name": "Workspace 1",
+      "cat": "workspace",
+      "x": 33,
+      "y": 3.1,
+      "w": 14.4,
+      "h": 18.9,
+      "door": {
+        "x": 33,
+        "y": 20,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "workspace 1",
+        "open workspace"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r7",
+      "floor": "F1",
+      "name": "Workspace 2",
+      "cat": "workspace",
+      "x": 35,
+      "y": 22,
+      "w": 12.4,
+      "h": 7.8,
+      "door": {
+        "x": 41.2,
+        "y": 29.8,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "workspace 2"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r8",
+      "floor": "F1",
+      "name": "Lift Lobby",
+      "cat": "vertical",
+      "x": 19.4,
+      "y": 53.5,
+      "w": 17,
+      "h": 10,
+      "door": {
+        "x": 24,
+        "y": 53.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "lift lobby",
+        "lift lobby",
+        "lift",
+        "lifts",
+        "elevator",
+        "lobby",
+        "j"
+      ],
+      "tags": [
+        "stairs"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "F1-r1",
+      "floor": "F1",
+      "x": 6.65,
+      "y": 7.55,
+      "kind": "room",
+      "room": "F1-r1"
+    },
+    {
+      "id": "F1-r1:door",
+      "floor": "F1",
+      "x": 6.2,
+      "y": 11.1,
+      "kind": "door",
+      "room": "F1-r1"
+    },
+    {
+      "id": "F1-r2",
+      "floor": "F1",
+      "x": 4.7,
+      "y": 34.95,
+      "kind": "room",
+      "room": "F1-r2"
+    },
+    {
+      "id": "F1-r2:door",
+      "floor": "F1",
+      "x": 6.2,
+      "y": 38.1,
+      "kind": "door",
+      "room": "F1-r2"
+    },
+    {
+      "id": "F1-r3",
+      "floor": "F1",
+      "x": 6.05,
+      "y": 46.25,
+      "kind": "room",
+      "room": "F1-r3"
+    },
+    {
+      "id": "F1-r3:door",
+      "floor": "F1",
+      "x": 6,
+      "y": 49,
+      "kind": "door",
+      "room": "F1-r3"
+    },
+    {
+      "id": "F1-r4",
+      "floor": "F1",
+      "x": 27.4,
+      "y": 12.9,
+      "kind": "room",
+      "room": "F1-r4"
+    },
+    {
+      "id": "F1-r4:door",
+      "floor": "F1",
+      "x": 22.4,
+      "y": 13.4,
+      "kind": "door",
+      "room": "F1-r4"
+    },
+    {
+      "id": "F1-r5",
+      "floor": "F1",
+      "x": 26.9,
+      "y": 41.45,
+      "kind": "room",
+      "room": "F1-r5"
+    },
+    {
+      "id": "F1-r5:door",
+      "floor": "F1",
+      "x": 26.3,
+      "y": 45.3,
+      "kind": "door",
+      "room": "F1-r5"
+    },
+    {
+      "id": "F1-r6",
+      "floor": "F1",
+      "x": 40.2,
+      "y": 12.55,
+      "kind": "room",
+      "room": "F1-r6"
+    },
+    {
+      "id": "F1-r6:door",
+      "floor": "F1",
+      "x": 33,
+      "y": 20,
+      "kind": "door",
+      "room": "F1-r6"
+    },
+    {
+      "id": "F1-r7",
+      "floor": "F1",
+      "x": 41.2,
+      "y": 25.9,
+      "kind": "room",
+      "room": "F1-r7"
+    },
+    {
+      "id": "F1-r7:door",
+      "floor": "F1",
+      "x": 41.2,
+      "y": 29.8,
+      "kind": "door",
+      "room": "F1-r7"
+    },
+    {
+      "id": "F1-r8",
+      "floor": "F1",
+      "x": 27.9,
+      "y": 58.5,
+      "kind": "room",
+      "room": "F1-r8"
+    },
+    {
+      "id": "F1-r8:door",
+      "floor": "F1",
+      "x": 24,
+      "y": 53.5,
+      "kind": "door",
+      "room": "F1-r8"
+    },
+    {
+      "id": "F1:n1",
+      "floor": "F1",
+      "x": 2.4,
+      "y": 51.3,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n2",
+      "floor": "F1",
+      "x": 51,
+      "y": 51.3,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n3",
+      "floor": "F1",
+      "x": 6.2,
+      "y": 12.8,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n4",
+      "floor": "F1",
+      "x": 12,
+      "y": 12.8,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n5",
+      "floor": "F1",
+      "x": 12,
+      "y": 51.3,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n6",
+      "floor": "F1",
+      "x": 12,
+      "y": 13.4,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n7",
+      "floor": "F1",
+      "x": 12,
+      "y": 33.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n8",
+      "floor": "F1",
+      "x": 56,
+      "y": 33.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n9",
+      "floor": "F1",
+      "x": 12,
+      "y": 38.6,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n10",
+      "floor": "F1",
+      "x": 6.2,
+      "y": 38.6,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n11",
+      "floor": "F1",
+      "x": 26.3,
+      "y": 46,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n12",
+      "floor": "F1",
+      "x": 26.3,
+      "y": 51.3,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n13",
+      "floor": "F1",
+      "x": 41.2,
+      "y": 33.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n14",
+      "floor": "F1",
+      "x": 24,
+      "y": 51.3,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n15",
+      "floor": "F1",
+      "x": 24,
+      "y": 54,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n16",
+      "floor": "F1",
+      "x": 29.5,
+      "y": 33.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n17",
+      "floor": "F1",
+      "x": 29.5,
+      "y": 20,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n18",
+      "floor": "F1",
+      "x": 6,
+      "y": 51.3,
+      "kind": "corridor"
+    }
+  ],
+  "edges": [
+    {
+      "a": "F1-r1:door",
+      "b": "F1-r1",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r2:door",
+      "b": "F1-r2",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r3:door",
+      "b": "F1-r3",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r4:door",
+      "b": "F1-r4",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r5:door",
+      "b": "F1-r5",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r6:door",
+      "b": "F1-r6",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r7:door",
+      "b": "F1-r7",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r8:door",
+      "b": "F1-r8",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n3",
+      "b": "F1:n4",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n4",
+      "b": "F1:n6",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n6",
+      "b": "F1-r4:door",
+      "type": "walk",
+      "width": 2.4
+    },
+    {
+      "a": "F1:n6",
+      "b": "F1:n7",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n7",
+      "b": "F1:n9",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n9",
+      "b": "F1:n5",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n9",
+      "b": "F1:n10",
+      "type": "walk",
+      "width": 2.4
+    },
+    {
+      "a": "F1-r2:door",
+      "b": "F1:n10",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r5:door",
+      "b": "F1:n11",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n12",
+      "b": "F1:n2",
+      "type": "walk",
+      "width": 4.4
+    },
+    {
+      "a": "F1:n11",
+      "b": "F1:n12",
+      "type": "walk",
+      "width": 2.4
+    },
+    {
+      "a": "F1:n13",
+      "b": "F1:n8",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n13",
+      "b": "F1-r7:door",
+      "type": "walk",
+      "width": 2.4
+    },
+    {
+      "a": "F1:n5",
+      "b": "F1:n14",
+      "type": "walk",
+      "width": 4.4
+    },
+    {
+      "a": "F1:n14",
+      "b": "F1:n12",
+      "type": "walk",
+      "width": 4.4
+    },
+    {
+      "a": "F1:n14",
+      "b": "F1:n15",
+      "type": "walk",
+      "width": 2.4
+    },
+    {
+      "a": "F1-r8:door",
+      "b": "F1:n15",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n7",
+      "b": "F1:n16",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n16",
+      "b": "F1:n13",
+      "type": "walk",
+      "width": 2.6
+    },
+    {
+      "a": "F1:n16",
+      "b": "F1:n17",
+      "type": "walk",
+      "width": 2.4
+    },
+    {
+      "a": "F1:n17",
+      "b": "F1-r6:door",
+      "type": "walk",
+      "width": 2.4
+    },
+    {
+      "a": "F1-r1:door",
+      "b": "F1:n3",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n1",
+      "b": "F1:n18",
+      "type": "walk",
+      "width": 4.4
+    },
+    {
+      "a": "F1:n18",
+      "b": "F1:n5",
+      "type": "walk",
+      "width": 4.4
+    },
+    {
+      "a": "F1-r3:door",
+      "b": "F1:n18",
+      "type": "walk"
+    }
+  ],
+  "markers": [
+    {
+      "id": 0,
+      "floor": "F1",
+      "name": "Marker 0",
+      "x": 3.5,
+      "y": 49,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 1,
+      "floor": "F1",
+      "name": "Marker 1",
+      "x": 9.7,
+      "y": 49,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 2,
+      "floor": "F1",
+      "name": "Marker 2",
+      "x": 26.3,
+      "y": 49.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 3,
+      "floor": "F1",
+      "name": "Marker 3",
+      "x": 49.5,
+      "y": 49.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 4,
+      "floor": "F1",
+      "name": "Marker 4",
+      "x": 6.2,
+      "y": 11.1,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 5,
+      "floor": "F1",
+      "name": "Marker 5",
+      "x": 22.4,
+      "y": 13.4,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 6,
+      "floor": "F1",
+      "name": "Marker 6",
+      "x": 6.2,
+      "y": 38.1,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 7,
+      "floor": "F1",
+      "name": "Marker 7",
+      "x": 41.2,
+      "y": 29.8,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 8,
+      "floor": "F1",
+      "name": "Marker 8",
+      "x": 24,
+      "y": 53.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    }
+  ],
+  "walls": [],
+  "pois": [
+    {
+      "id": "P01",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Point A (west end of the corridor)",
+      "x": 2.4,
+      "y": 51.3
+    },
+    {
+      "id": "P02",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Entrance C (west aisle)",
+      "x": 12,
+      "y": 49.6
+    },
+    {
+      "id": "P03",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Entrance D (Server Rooms)",
+      "x": 26.3,
+      "y": 47.2
+    },
+    {
+      "id": "P04",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Entrance E (east end, point B)",
+      "x": 50.8,
+      "y": 49.4
+    },
+    {
+      "id": "P05",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "Entrance K (Lift Lobby)",
+      "x": 24,
+      "y": 52.4
+    },
+    {
+      "id": "P06",
+      "floor": "F1",
+      "kind": "water",
+      "name": "Drinking water (Pantry)",
+      "x": 6.2,
+      "y": 12.8
+    }
+  ],
+  "objects": [
+    {
+      "id": "O01",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 3,
+      "y": 18.3,
+      "w": 5,
+      "h": 2.4,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O02",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 3,
+      "y": 21.4,
+      "w": 5,
+      "h": 2.4,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O03",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 3,
+      "y": 24.4,
+      "w": 5,
+      "h": 2.4,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O04",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 3,
+      "y": 27.5,
+      "w": 5,
+      "h": 2.4,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O05",
+      "floor": "F1",
+      "kind": "table",
+      "x": 3,
+      "y": 40,
+      "w": 1.6,
+      "h": 4,
+      "rotation": 0,
+      "label": ""
+    },
+    {
+      "id": "O06",
+      "floor": "F1",
+      "kind": "table",
+      "x": 5.3,
+      "y": 40,
+      "w": 1.6,
+      "h": 4,
+      "rotation": 0,
+      "label": ""
+    },
+    {
+      "id": "O07",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 21.3,
+      "y": 3.4,
+      "w": 1.8,
+      "h": 3,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O08",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 25.8,
+      "y": 5.9,
+      "w": 2,
+      "h": 3.2,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O09",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 25,
+      "y": 17,
+      "w": 1.9,
+      "h": 4,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O10",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 25.8,
+      "y": 24.4,
+      "w": 1.8,
+      "h": 3.4,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O11",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 31,
+      "y": 16,
+      "w": 2,
+      "h": 4.2,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O12",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 32.2,
+      "y": 23.1,
+      "w": 1.8,
+      "h": 4.5,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O13",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 47.4,
+      "y": 4.6,
+      "w": 5.5,
+      "h": 2.2,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O14",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 48,
+      "y": 10.3,
+      "w": 5,
+      "h": 3.6,
+      "rotation": 0,
+      "label": "Desk"
+    },
+    {
+      "id": "O15",
+      "floor": "F1",
+      "kind": "desk",
+      "x": 49,
+      "y": 18.3,
+      "w": 3.8,
+      "h": 2.6,
+      "rotation": 0,
+      "label": "Desk"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import type { Floor, Room, ValidationResult, Venue } from "@/core/schema";
 import { DICT_SIZE } from "@/core/aruco/dict";
 import { roomDoors } from "@/core/doors";
 import { polygonArea, roomPolygon } from "@/core/geom";
+import { parseLatLngLines } from "@/core/geofence";
 import { CORRIDOR_W } from "@/core/geo";
 import { unreachableRooms, validate } from "@/core/validate";
 import * as ops from "../ops";
@@ -85,6 +86,7 @@ function VenueSummary(p: PanelProps) {
       <Field label="Address">
         <CommitInput value={v.address} onCommit={(x) => commit(ops.updateVenueMeta(v, { address: String(x) }))} />
       </Field>
+      <LocationSettings {...p} />
       <FloorSettings {...p} floor={floor} />
       <h4 className="mt-4 text-sm font-bold">How to map your office</h4>
       <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-xs text-slate-600">
@@ -95,6 +97,63 @@ function VenueSummary(p: PanelProps) {
         <li>Markers (lift lobbies and stair doors first), ad walls, POIs</li>
         <li>Check the Checklist tab, then Publish</li>
       </ol>
+    </div>
+  );
+}
+
+/** Where the building is on Earth, so the phone's GPS can open the right venue by itself; and how the map is turned against true north. */
+function LocationSettings({ venue: v, commit, notify }: PanelProps) {
+  const g = v.geo;
+  const [corners, setCorners] = useState((g?.footprint ?? []).map((c) => c.join(", ")).join("\n"));
+  const here = () => {
+    if (!navigator.geolocation) return notify("This browser cannot give a location", "error");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        commit(ops.setGeo(v, { anchor: [Math.round(pos.coords.latitude * 1e6) / 1e6, Math.round(pos.coords.longitude * 1e6) / 1e6] }));
+        notify(`Location set (accuracy about ${Math.round(pos.coords.accuracy)} m). Stand inside the building when you do this.`);
+      },
+      () => notify("Could not get the location: allow it in the browser", "error"),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+  const saveCorners = () => {
+    const { points, bad } = parseLatLngLines(corners);
+    if (bad.length) return notify(`These lines are not “latitude, longitude”: ${bad.slice(0, 2).join(" | ")}`, "error");
+    if (points.length === 0) return commit(ops.setGeo(v, g ? { footprint: [] } : null));
+    if (points.length < 3) return notify("A building outline needs at least 3 corners", "error");
+    commit(ops.setGeo(v, { footprint: points, anchor: g?.anchor ?? points[0]! }));
+    notify(`Building outline saved (${points.length} corners)`);
+  };
+  return (
+    <div className="mt-4" data-testid="location-settings">
+      <h4 className="text-sm font-bold">Where is it? (lets the phone find this place by itself)</h4>
+      <p className="text-xs text-slate-500">
+        {g ? (g.footprint ? `Fence: the building outline (${g.footprint.length} corners).` : `Fence: a circle of ${g.radiusM} m around the point below.`) : "Not set: visitors choose the place by hand."}
+      </p>
+      <div className="mt-1">
+        <Btn onClick={here}>📍 Use my location (stand inside)</Btn>
+      </div>
+      {g && (
+        <>
+          <Grid2>
+            <Field label="Latitude">
+              <CommitInput type="number" step={0.00001} value={g.anchor[0]} onCommit={(x) => commit(ops.setGeo(v, { anchor: [Number(x), g.anchor[1]] }))} />
+            </Field>
+            <Field label="Longitude">
+              <CommitInput type="number" step={0.00001} value={g.anchor[1]} onCommit={(x) => commit(ops.setGeo(v, { anchor: [g.anchor[0], Number(x)] }))} />
+            </Field>
+          </Grid2>
+          <Field label="Fence radius (m), used when there is no outline">
+            <CommitInput type="number" step={5} min={10} value={g.radiusM} onCommit={(x) => commit(ops.setGeo(v, { radiusM: Math.max(10, Number(x) || 60) }))} />
+          </Field>
+        </>
+      )}
+      <Field label="Building outline: one “latitude, longitude” per line (right-click a corner in Google Maps to copy it)">
+        <textarea className="h-20 w-full rounded border border-slate-300 p-1.5 font-mono text-xs" value={corners} onChange={(e) => setCorners(e.target.value)} onBlur={saveCorners} data-testid="geo-corners" />
+      </Field>
+      <Field label="Map north is turned this many degrees clockwise from true north (0 if the top of the map points north)">
+        <CommitInput type="number" step={1} value={v.northOffsetDeg ?? 0} onCommit={(x) => commit(ops.setNorth(v, Number(x) || 0))} />
+      </Field>
     </div>
   );
 }
@@ -319,6 +378,9 @@ function RoomProps({ venue: v, id, commit, select }: PanelProps & { id: string }
       </Grid2>
       <Field label="Search aliases (comma-separated; Hinglish / Telugu welcome)">
         <CommitInput value={r.aliases.join(", ")} onCommit={(x) => set({ aliases: String(x).split(",").map((a) => a.trim()).filter(Boolean) })} />
+      </Field>
+      <Field label="Good for (needs, comma-separated: coffee, food, water, washroom, rest, meeting, work, print, balcony, exit)">
+        <CommitInput value={(r.tags ?? []).join(", ")} onCommit={(x) => set({ tags: String(x).split(",").map((a) => a.trim().toLowerCase()).filter(Boolean) })} />
       </Field>
       <h4 className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-500">Position and size (m)</h4>
       <div className="grid grid-cols-4 gap-1">

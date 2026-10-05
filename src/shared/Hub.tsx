@@ -8,15 +8,17 @@ const ROUTES: [string, string][] = [
   ["/dashboard", "Laptop live view of the phone (mirrors /nav)"],
   ["/markers", "Printable ArUco markers"],
   ["/ads", "Advertiser portal: wall slots, creatives and live KPIs"],
+  ["/survey", "Survey walk: record pictures to recognise places by sight"],
   ["/preflight", "Stage checklist: certificate, sensors, WebXR, voices, server and live marker"],
-  ["/legacy-editor", "Old Blueprint editor (frozen)"],
+  ["/designer", "Original Indore space designer (empty sheet)"],
 ];
 
 export default function Hub() {
   return (
     <div className="min-h-screen bg-neutral-950 p-6 text-neutral-100">
       <div className="mx-auto max-w-xl space-y-3">
-        <h1 className="text-2xl font-bold">Indore Spaces</h1>
+        <Link to="/" className="text-sm text-sky-300 underline">← Designer or Indore Maps</Link>
+        <h1 className="text-2xl font-bold">Dora.AI · Indore Maps</h1>
         <ul className="space-y-2">
           {ROUTES.map(([to, label]) => (
             <li key={to}>

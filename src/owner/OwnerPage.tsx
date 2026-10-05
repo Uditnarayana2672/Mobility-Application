@@ -47,8 +47,8 @@ export default function OwnerPage() {
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="mx-auto max-w-5xl space-y-4 p-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Link to="/" className="font-bold text-blue-700">
-            Indore Spaces
+          <Link to="/maps" className="font-bold text-blue-700">
+            Dora.AI
           </Link>
           <h1 className="text-2xl font-extrabold">Owner portal</h1>
           <div className="ml-auto flex gap-2">

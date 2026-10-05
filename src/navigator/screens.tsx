@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { arrivedText } from "@/core/instructions";
 import type { NavController, NavState } from "./controller";
-import { LiveLocate } from "./LiveUi";
+import { LiveLocate, type LocateHints } from "./LiveUi";
+import { subtitleOf, useVenueList, venueHref } from "@/shared/venueList";
 import { floorName } from "./places";
 import type { NavRuntime } from "./useNav";
 
@@ -10,14 +11,11 @@ type P = { ctl: NavController; s: NavState };
 /* ------------------------------------------------------------------ city */
 export function CityScreen({ ctl, s }: P) {
   const v = s.venue;
-  const items = [
-    { icon: "🏢", name: v.name, sub: `${v.type || "Venue"} · ${v.floors.length} floors mapped · v${v.version}`, live: true },
-    { icon: "🛍️", name: "Shopping mall (to be mapped)", sub: "Shops, food court, parking", live: false },
-    { icon: "✈️", name: "Indore Airport", sub: "Check-in, security, gates", live: false },
-    { icon: "🚆", name: "Indore Junction Railway Station", sub: "Platforms, foot-over-bridges", live: false },
-    { icon: "🚌", name: "Sarwate Bus Stand", sub: "Bays, ticket counters", live: false },
-  ];
+  const list = useVenueList(v);
   const open = () => ctl.openLocate();
+  // another place: the visitor app reloads with that venue (everything else in the address stays)
+  const choose = (id: string) => (id === v.id ? open() : window.location.assign(venueHref(id)));
+  const SLOTS: [number, number][] = [[300, 222], [240, 340], [62, 488], [150, 450], [168, 400]];
   return (
     <section className={`scr ${s.screen === "city" ? "on" : ""}`} id="s-city" data-testid="screen-city">
       <svg viewBox="0 0 380 780" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style={{ position: "absolute", inset: 0 }}>
@@ -47,40 +45,36 @@ export function CityScreen({ ctl, s }: P) {
         <text x="190" y="760" textAnchor="middle" fontSize="10" fill="#8a94a6" fontFamily="Segoe UI,sans-serif">
           Illustrative city map — not to scale
         </text>
-        <g id="pinOffice" data-testid="pin-office" style={{ cursor: "pointer" }} onClick={open}>
-          <circle cx="300" cy="222" r="22" fill="rgba(47,91,234,.2)">
-            <animate attributeName="r" values="14;28;14" dur="2s" repeatCount="indefinite" />
-          </circle>
-          <path d="M300,238 C288,222 288,206 300,206 C312,206 312,222 300,238Z" fill="#2f5bea" stroke="#fff" strokeWidth="2" />
-          <circle cx="300" cy="219" r="4" fill="#fff" />
-        </g>
-        <g opacity=".8">
-          <circle cx="240" cy="340" r="8" fill="#9aa3b2" stroke="#fff" strokeWidth="2" />
-          <circle cx="62" cy="488" r="8" fill="#9aa3b2" stroke="#fff" strokeWidth="2" />
-          <circle cx="150" cy="450" r="8" fill="#9aa3b2" stroke="#fff" strokeWidth="2" />
-          <circle cx="168" cy="400" r="8" fill="#9aa3b2" stroke="#fff" strokeWidth="2" />
-        </g>
+        {list.slice(0, SLOTS.length).map((it, i) => {
+          const [px, py] = SLOTS[i]!;
+          return (
+            <g key={it.id} data-testid={it.id === v.id ? "pin-office" : `pin-${it.id}`} transform={`translate(${px - 300} ${py - 222})`} style={{ cursor: "pointer" }} onClick={() => choose(it.id)}>
+              <circle cx="300" cy="222" r="22" fill="rgba(47,91,234,.2)">
+                <animate attributeName="r" values="14;28;14" dur="2s" repeatCount="indefinite" />
+              </circle>
+              <path d="M300,238 C288,222 288,206 300,206 C312,206 312,222 300,238Z" fill="#2f5bea" stroke="#fff" strokeWidth="2" />
+              <circle cx="300" cy="219" r="4" fill="#fff" />
+            </g>
+          );
+        })}
       </svg>
       <div className="top">
-        <div className="searchpill" onClick={() => ctl.toast("Demo: only the office is mapped. Tap the blue pin.")}>
-          <span>🔍</span>
-          <b>Search places in Indore</b>
+        <div className="searchpill" onClick={() => ctl.toast("Choose a place from the list below, or tap a pin.")}>
+          <b>Search places</b>
           <button className="mic" aria-label="voice">🎤</button>
         </div>
       </div>
       <div className="sheet" id="citySheet">
         <div className="handle" />
-        <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 2 }}>Indoor maps in Indore</div>
-        <div className="muted small" style={{ marginBottom: 6 }}>Malls, airports, stations, bus stands and offices — navigate inside them.</div>
         <div>
-          {items.map((it, i) => (
-            <div key={it.name} className={`vcard ${it.live ? "" : "off"}`} data-testid={i === 0 ? "venue-card" : undefined} onClick={() => (i === 0 ? open() : ctl.toast("Not mapped yet — venue owners can add it from the Owner portal"))}>
+          {list.map((it) => (
+            <div key={it.id} className="vcard" data-testid={it.id === v.id ? "venue-card" : `venue-${it.id}`} onClick={() => choose(it.id)}>
               <div className="vi">{it.icon}</div>
               <div style={{ flex: 1 }}>
                 <b>{it.name}</b>
-                <small>{it.sub}</small>
+                <small>{subtitleOf(it)}</small>
               </div>
-              <span className={`pill ${it.live ? "live" : "soon"}`}>{it.live ? "LIVE" : "SOON"}</span>
+              <span className="pill live">LIVE</span>
             </div>
           ))}
         </div>
@@ -120,12 +114,12 @@ function ScanQR() {
   );
 }
 
-export function LocateScreen({ ctl, s, rt }: P & { rt: NavRuntime }) {
+export function LocateScreen({ ctl, s, rt, hints }: P & { rt: NavRuntime; hints?: LocateHints }) {
   const v = s.venue;
   const live = rt.kind !== "sim";
   return (
     <section className={`scr ${s.screen === "locate" ? "on" : ""} ${live ? `live ${rt.kind}` : ""}`} id="s-locate" data-testid="screen-locate">
-      {live && s.screen === "locate" && <LiveLocate rt={rt} ctl={ctl} s={s} />}
+      {live && s.screen === "locate" && <LiveLocate rt={rt} ctl={ctl} s={s} hints={hints} />}
       <div className="viewfinder">
         <svg className="vf-corridor" viewBox="0 0 340 340" fill="none" stroke="rgba(255,255,255,.14)" strokeWidth="2">
           <path d="M20,330 L120,120 L220,120 L320,330" />
@@ -155,6 +149,11 @@ export function LocateScreen({ ctl, s, rt }: P & { rt: NavRuntime }) {
               </small>
             </button>
           ))}
+        </div>
+        <div className="row" style={{ marginTop: 10, gap: 10 }}>
+          <button className="pbtn block primary" data-testid="locate-say" onClick={() => ctl.openVoice()}>
+            🎤 Say it: “I’m near … and I want to go to …”
+          </button>
         </div>
         <div className="row" style={{ marginTop: 10, gap: 10 }}>
           <button className="pbtn block" style={{ background: "rgba(255,255,255,.14)", color: "#fff" }} onClick={() => ctl.openSearch("", true)}>

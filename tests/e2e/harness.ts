@@ -42,7 +42,7 @@ export interface E2E {
   close(): Promise<void>;
 }
 
-export async function startE2E(): Promise<E2E> {
+export async function startE2E(opts: { fakeCamera?: boolean } = {}): Promise<E2E> {
   const exe = findBrowser();
   if (!exe) throw new Error("No Chromium-family browser found; set E2E_BROWSER");
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "indore-e2e-"));
@@ -51,8 +51,9 @@ export async function startE2E(): Promise<E2E> {
   const port = await freePort();
   const server: ViteDevServer = await createServer({ root: process.cwd(), logLevel: "error", server: { port, strictPort: true, host: "127.0.0.1" } });
   await server.listen();
-  const browser = await chromium.launch({ executablePath: exe, headless: true });
-  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1500, height: 900 } });
+  const args = opts.fakeCamera ? ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] : [];
+  const browser = await chromium.launch({ executablePath: exe, headless: true, args });
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1500, height: 900 }, permissions: opts.fakeCamera ? ["camera", "microphone"] : [] });
   return {
     url: `https://127.0.0.1:${port}`,
     root,

@@ -1,4 +1,6 @@
 import { isRouteError, route, type RouteFrom, type RoutePrefs } from "./route";
+import { resolveNeed } from "./needs";
+import { parseHere, parseJourney } from "./journey";
 import { search, type SearchHit } from "./search";
 import type { Venue } from "./schema";
 
@@ -27,7 +29,11 @@ export type Intent =
   | { type: "switch"; view: "ar" | "map" }
   | { type: "howlong" }
   | { type: "goto"; nearest?: true; target: Target; name: string }
-  | { type: "show"; target: Target; name: string };
+  | { type: "show"; target: Target; name: string }
+  /** "I am near X and I want to go to Y": where the visitor is, and where to. */
+  | { type: "journey"; from: Target; fromName: string; target: Target; name: string }
+  /** "I am near X": where the visitor says they are. */
+  | { type: "locate"; target: Target; name: string };
 
 export interface IntentContext {
   from?: RouteFrom;
@@ -63,15 +69,30 @@ export function matchIntent(v: Venue, text: string, ctx?: IntentContext): Intent
   if (!t) return { intent: { type: "unknown" }, confidence: 0 };
   if (RE.stop.test(t)) return { intent: { type: "stop" }, confidence: 1 };
   if (RE.repeat.test(t)) return { intent: { type: "repeat" }, confidence: 1 };
+  const journey = parseJourney(v, t);
+  if (journey) return { intent: { type: "journey", from: journey.from, fromName: journey.fromName, target: journey.to, name: journey.toName }, confidence: 0.92 };
+  const here = parseHere(v, t);
+  if (here) return { intent: { type: "locate", target: here.at, name: here.name }, confidence: 0.85 };
   if (RE.where.test(t)) return { intent: { type: "whereami" }, confidence: 1 };
   if (RE.avoidStairs.test(t)) return { intent: { type: "pref", avoidStairs: true }, confidence: 1 };
   if (RE.ar.test(t)) return { intent: { type: "switch", view: "ar" }, confidence: 1 };
   if (RE.map.test(t)) return { intent: { type: "switch", view: "map" }, confidence: 1 };
   if (RE.howLong.test(t)) return { intent: { type: "howlong" }, confidence: 1 };
 
-  const query = t.replace(RE.nearest, " ").replace(RE.go, " ").replace(RE.whereIs, " ").replace(/\b(the|a|an|mujhe|please|kripya|dayachesi|ka|ko|hai|undi)\b/gi, " ").replace(/(?:కు|కి)/g, " ").replace(/\s+/g, " ").trim();
+  const query = t.replace(RE.nearest, " ").replace(RE.go, " ").replace(RE.whereIs, " ").replace(/\b(the|a|an|mujhe|please|kripya|dayachesi|ka|ko|hai|undi)\b/gi, " ").replace(/(?:కు|కి)/g, " ").replace(/\s+/g, " ").trim().replace(/^to\s+/i, "");
   const results = search(v, query);
   const best = results.find((r) => r.score >= 55) ?? results[0];
+  // No clear place name in the sentence: maybe a need ("I want a coffee", "I'm hungry", "I need to sleep").
+  // (A sentence that already says "where is …" / "take me to …" about a weakly matched place keeps its old meaning.)
+  const asksPlace = RE.go.test(t) || RE.whereIs.test(t) || RE.nearest.test(t);
+  if (!best || best.score < 35 || (best.score < 70 && !asksPlace)) {
+    const need = resolveNeed(v, t, ctx);
+    if (need) {
+      const it = need.intent;
+      const asWhere = RE.whereIs.test(t) && !RE.go.test(t) && it.type === "goto";
+      return { intent: asWhere ? { type: "show", target: it.target, name: it.name } : it, confidence: need.confidence };
+    }
+  }
   if (!best || best.score < 35) return { intent: { type: "unknown" }, confidence: Math.min(0.34, (best?.score ?? 0) / 100) };
 
   if (RE.nearest.test(t) && ctx?.from) {

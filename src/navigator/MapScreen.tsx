@@ -5,6 +5,7 @@ import { isRouteError, route as computeRoute } from "@/core/route";
 import type { Step } from "@/core/route";
 import type { NavController, NavState } from "./controller";
 import { LANG_SHORT, NEXT_LANG } from "./messages";
+import { quickChips } from "./chips";
 import NavMap from "./NavMap";
 import { confOf, floorName, nearName, placeOf } from "./places";
 
@@ -84,6 +85,11 @@ function ExploreSheet({ ctl, s }: P) {
       <div className="muted small" style={{ marginBottom: 6 }}>
         Near {nearName(s.venue, u)} · {u.markerId !== null ? `anchored by ${u.markerId}` : "approximate position"}
       </div>
+      {s.poseKind !== "sim" && (
+        <button className="pbtn primary block" style={{ margin: "2px 0 8px" }} data-testid="btn-camera-guide" onClick={() => ctl.showAr()}>
+          📷 Camera guide — say where to go
+        </button>
+      )}
       <div className="qlist">
         {quick.map((q, i) => {
           const p = placeOf(s.venue, q.target)!;
@@ -147,6 +153,12 @@ function PreviewSheet({ ctl, s }: P) {
         <div style={{ flex: 1 }}>
           <div className="muted small">Route to</div>
           <div style={{ fontWeight: 800, fontSize: 17 }}>{s.place?.name}</div>
+          {s.user && (
+            <div className="muted small" data-testid="route-from">
+              From <b>{nearName(s.venue, s.user)}</b> ·{" "}
+              <button data-testid="change-start" onClick={() => ctl.openSearch("", true)} style={{ border: 0, background: "none", color: "#2f5bea", fontWeight: 700, padding: 0, cursor: "pointer" }}>Change start</button>
+            </div>
+          )}
         </div>
         <button className="pbtn sm" onClick={() => ctl.closePreview()}>✕</button>
       </div>
@@ -254,14 +266,13 @@ export default function MapScreen({ ctl, s }: P) {
       {showTop && (
         <div className="map-top">
           <div className="searchpill" data-testid="search-pill" onClick={(e) => { if (!(e.target as HTMLElement).closest(".mic")) ctl.openSearch(""); }}>
-            <span>🔍</span>
             <b>Search rooms, food, washrooms…</b>
             <button className="mic" aria-label="voice" data-testid="btn-mic" onClick={(e) => { e.stopPropagation(); ctl.openVoice(); }}>🎤</button>
           </div>
           {s.mode !== "preview" && (
             <div className="chips">
-              {[["🍽️", "Food", "Food"], ["🚻", "Washrooms", "washroom"], ["👥", "Meeting rooms", "Meeting"], ["🛗", "Lifts", "Lifts"], ["🪜", "Stairs", "Stairs"], ["🏃", "Exits", "exit"]].map(([ic, label, q]) => (
-                <button key={label} className="qchip" onClick={() => ctl.openSearch(q as string)}>{ic} {label}</button>
+              {quickChips(s.venue).map(([ic, label, q]) => (
+                <button key={label} className="qchip" onClick={() => ctl.openSearch(q)}>{ic} {label}</button>
               ))}
             </div>
           )}

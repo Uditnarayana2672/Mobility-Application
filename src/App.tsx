@@ -3,10 +3,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Hub from "./shared/Hub";
+import Landing from "./shared/Landing";
 
 const OwnerPage = lazy(() => import("./owner/OwnerPage"));
 const MarkersPage = lazy(() => import("./markers/MarkersPage"));
@@ -15,6 +16,7 @@ const NavPage = lazy(() => import("./navigator/NavPage"));
 const DashboardPage = lazy(() => import("./dashboard/DashboardPage"));
 const AdsPage = lazy(() => import("./ads/AdsPage"));
 const PreflightPage = lazy(() => import("./preflight/PreflightPage"));
+const SurveyPage = lazy(() => import("./survey/SurveyPage"));
 const SpikesIndex = lazy(() => import("./spikes/SpikesIndex"));
 const S1 = lazy(() => import("./spikes/S1Page"));
 const S2 = lazy(() => import("./spikes/S2Page"));
@@ -30,11 +32,13 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "") || undefined}>
         <Suspense fallback={<div className="p-6 text-neutral-400">Loading…</div>}>
           <Routes>
-            <Route path="/" element={<Hub />} />
-            <Route path="/legacy-editor" element={<Index />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="/maps" element={<Hub />} />
+            <Route path="/designer" element={<Index />} />
+            <Route path="/legacy-editor" element={<Navigate to="/designer" replace />} />
             <Route path="/editor" element={<EditorPage />} />
             <Route path="/nav" element={<NavPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -42,6 +46,7 @@ const App = () => (
             <Route path="/owner" element={<OwnerPage />} />
             <Route path="/ads" element={<AdsPage />} />
             <Route path="/preflight" element={<PreflightPage />} />
+            <Route path="/survey" element={<SurveyPage />} />
             <Route path="/spikes" element={<SpikesIndex />} />
             <Route path="/spikes/s1" element={<S1 />} />
             <Route path="/spikes/s2" element={<S2 />} />

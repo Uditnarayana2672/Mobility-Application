@@ -64,6 +64,7 @@ export default function NavMap({ ctl, s }: { ctl: NavController; s: NavState }) 
   return (
     <div id="mapbox" ref={box} data-testid="navmap" data-floor={s.viewFloor} data-mode={s.mode}>
       <MapCanvas
+        decor={false}
         ref={handle}
         venue={s.venue}
         floorId={s.viewFloor}

@@ -17,6 +17,17 @@ export const CATS = {
   training: { label: "Training", fill: "#fff0c4", stroke: "#e3bd4c", icon: "🎓" },
   admin: { label: "Admin", fill: "#e0e4f7", stroke: "#8d98d8", icon: "🗂️" },
   wellness: { label: "Wellness", fill: "#d9f0e0", stroke: "#69b98a", icon: "🧘" },
+  // Airports and other transport buildings
+  checkin: { label: "Check-in", fill: "#dbe7fd", stroke: "#7aa2f0", icon: "🧳" },
+  security: { label: "Security & immigration", fill: "#fbe3d3", stroke: "#e08a55", icon: "🛂" },
+  gate: { label: "Boarding gate", fill: "#d5eedd", stroke: "#6fbf8b", icon: "🛫" },
+  retail: { label: "Shop", fill: "#f6e3f3", stroke: "#c779bb", icon: "🛍️" },
+  lounge: { label: "Lounge", fill: "#e8e0f7", stroke: "#9b82d6", icon: "🛋️" },
+  baggage: { label: "Baggage reclaim", fill: "#e6e9ee", stroke: "#8c98a8", icon: "🛄" },
+  // Malls and bus stations
+  entertainment: { label: "Entertainment", fill: "#fde2e8", stroke: "#e07a93", icon: "🎬" },
+  platform: { label: "Bus platform", fill: "#d9ecf9", stroke: "#5fa6d6", icon: "🚌" },
+  ticket: { label: "Tickets & passes", fill: "#fff0c4", stroke: "#e3bd4c", icon: "🎟️" },
 } as const satisfies Record<string, CatInfo>;
 
 export type CatId = keyof typeof CATS;
@@ -30,6 +41,13 @@ export const POI_KINDS = {
   coffee: { icon: "☕", label: "Coffee counter" },
   firstaid: { icon: "🩺", label: "First aid" },
   atm: { icon: "🏧", label: "ATM" },
+  info: { icon: "ℹ️", label: "Information desk" },
+  currency: { icon: "💱", label: "Currency exchange" },
+  trolley: { icon: "🛒", label: "Trolley bay" },
+  babycare: { icon: "🍼", label: "Baby care room" },
+  charging: { icon: "🔌", label: "Charging station" },
+  prayer: { icon: "🙏", label: "Prayer room" },
+  taxi: { icon: "🚕", label: "Taxi / cab desk" },
 } as const satisfies Record<string, { icon: string; label: string }>;
 
 export type PoiKind = keyof typeof POI_KINDS;

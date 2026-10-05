@@ -1,0 +1,4174 @@
+{
+  "schemaVersion": 2,
+  "id": "phoenix-citadel",
+  "name": "Phoenix Citadel Mall",
+  "type": "Shopping mall",
+  "city": "Indore",
+  "address": "Phoenix Citadel, Indore",
+  "version": 1,
+  "status": "published",
+  "scale": {
+    "metersPerUnit": 1,
+    "calibrated": true,
+    "reference": "Imported from a Blueprint file at 2 px per metre (check this against a tape measure)"
+  },
+  "floors": [
+    {
+      "id": "F1",
+      "name": "Ground Floor",
+      "short": "1",
+      "elevation": 0,
+      "height": 3,
+      "w": 201,
+      "h": 151
+    },
+    {
+      "id": "F2",
+      "name": "First Floor",
+      "short": "2",
+      "elevation": 3,
+      "height": 3,
+      "w": 201,
+      "h": 151
+    },
+    {
+      "id": "F3",
+      "name": "Second Floor",
+      "short": "3",
+      "elevation": 6,
+      "height": 3,
+      "w": 201,
+      "h": 151
+    }
+  ],
+  "corridors": [],
+  "rooms": [
+    {
+      "id": "F1-r1",
+      "floor": "F1",
+      "name": "Toilet (male)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 23,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 29,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (male)",
+        "gents",
+        "men's toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r2",
+      "floor": "F1",
+      "name": "Toilet (female)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 36,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 42,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (female)",
+        "ladies",
+        "women's toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r3",
+      "floor": "F1",
+      "name": "Toilet (accessible)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 49,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 55,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (accessible)",
+        "accessible toilet",
+        "wheelchair toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r4",
+      "floor": "F1",
+      "name": "Elevator EL-1 (North Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 23,
+      "w": 10,
+      "h": 11,
+      "door": {
+        "x": 106.5,
+        "y": 28.5,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "elevator el-1 (north atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "lift"
+    },
+    {
+      "id": "F1-r5",
+      "floor": "F1",
+      "name": "Escalator ESC-1 (North Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 36.5,
+      "w": 10,
+      "h": 15,
+      "door": {
+        "x": 106.5,
+        "y": 44,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "escalator esc-1 (north atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "stairs"
+    },
+    {
+      "id": "F1-r6",
+      "floor": "F1",
+      "name": "Elevator EL-2 (South Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 90.5,
+      "w": 10,
+      "h": 11,
+      "door": {
+        "x": 106.5,
+        "y": 96,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "elevator el-2 (south atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "lift"
+    },
+    {
+      "id": "F1-r7",
+      "floor": "F1",
+      "name": "Escalator ESC-2 (South Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 104,
+      "w": 10,
+      "h": 15,
+      "door": {
+        "x": 106.5,
+        "y": 111.5,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "escalator esc-2 (south atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "stairs"
+    },
+    {
+      "id": "F1-r8",
+      "floor": "F1",
+      "name": "Marks & Spencer",
+      "cat": "retail",
+      "x": 10.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 22.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "marks & spencer"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r9",
+      "floor": "F1",
+      "name": "H&M",
+      "cat": "retail",
+      "x": 35.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 47.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "h&m"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r10",
+      "floor": "F1",
+      "name": "Westside",
+      "cat": "retail",
+      "x": 60.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 72.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "westside"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r11",
+      "floor": "F1",
+      "name": "Shoppers Stop",
+      "cat": "retail",
+      "x": 117.5,
+      "y": 30.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 129,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "shoppers stop"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r12",
+      "floor": "F1",
+      "name": "Lifestyle",
+      "cat": "retail",
+      "x": 142.5,
+      "y": 30.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 154,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "lifestyle"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r13",
+      "floor": "F1",
+      "name": "Customer Care & Lost and Found",
+      "cat": "reception",
+      "x": 167.5,
+      "y": 30.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 179,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "customer care & lost and found"
+      ],
+      "tags": [
+        "info",
+        "reception"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r14",
+      "floor": "F1",
+      "name": "Mango",
+      "cat": "retail",
+      "x": 10.5,
+      "y": 85.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 22.5,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "mango"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r15",
+      "floor": "F1",
+      "name": "Vero Moda",
+      "cat": "retail",
+      "x": 35.5,
+      "y": 85.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 47.5,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "vero moda"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r16",
+      "floor": "F1",
+      "name": "Forever New",
+      "cat": "retail",
+      "x": 60.5,
+      "y": 85.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 72.5,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "forever new"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r17",
+      "floor": "F1",
+      "name": "Nykaa Luxe",
+      "cat": "retail",
+      "x": 117.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 129,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "nykaa luxe"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r18",
+      "floor": "F1",
+      "name": "Adidas",
+      "cat": "retail",
+      "x": 142.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 154,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "adidas"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F1-r19",
+      "floor": "F1",
+      "name": "Max",
+      "cat": "retail",
+      "x": 167.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 179,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "max"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r1",
+      "floor": "F2",
+      "name": "Toilet (male)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 23,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 29,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (male)",
+        "gents",
+        "men's toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r2",
+      "floor": "F2",
+      "name": "Toilet (female)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 36,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 42,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (female)",
+        "ladies",
+        "women's toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r3",
+      "floor": "F2",
+      "name": "Toilet (accessible)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 49,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 55,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (accessible)",
+        "accessible toilet",
+        "wheelchair toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r4",
+      "floor": "F2",
+      "name": "Elevator EL-1 (North Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 23,
+      "w": 10,
+      "h": 11,
+      "door": {
+        "x": 106.5,
+        "y": 28.5,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "elevator el-1 (north atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "lift"
+    },
+    {
+      "id": "F2-r5",
+      "floor": "F2",
+      "name": "Escalator ESC-1 (North Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 36.5,
+      "w": 10,
+      "h": 15,
+      "door": {
+        "x": 106.5,
+        "y": 44,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "escalator esc-1 (north atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "stairs"
+    },
+    {
+      "id": "F2-r6",
+      "floor": "F2",
+      "name": "Elevator EL-2 (South Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 90.5,
+      "w": 10,
+      "h": 11,
+      "door": {
+        "x": 106.5,
+        "y": 96,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "elevator el-2 (south atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "lift"
+    },
+    {
+      "id": "F2-r7",
+      "floor": "F2",
+      "name": "Escalator ESC-2 (South Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 104,
+      "w": 10,
+      "h": 15,
+      "door": {
+        "x": 106.5,
+        "y": 111.5,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "escalator esc-2 (south atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "stairs"
+    },
+    {
+      "id": "F2-r8",
+      "floor": "F2",
+      "name": "Rado",
+      "cat": "retail",
+      "x": 10.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 22.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "rado"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r9",
+      "floor": "F2",
+      "name": "Senco Gold & Diamonds",
+      "cat": "retail",
+      "x": 35.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 47.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "senco gold & diamonds"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r10",
+      "floor": "F2",
+      "name": "Footwear Store",
+      "cat": "retail",
+      "x": 60.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 72.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "footwear store"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r11",
+      "floor": "F2",
+      "name": "Electronics Store",
+      "cat": "retail",
+      "x": 117.5,
+      "y": 30.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 129,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "electronics store"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r12",
+      "floor": "F2",
+      "name": "Kids' Wear",
+      "cat": "retail",
+      "x": 142.5,
+      "y": 30.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 154,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "kids' wear"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r13",
+      "floor": "F2",
+      "name": "Books & Stationery",
+      "cat": "retail",
+      "x": 167.5,
+      "y": 30.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 179,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "books & stationery"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r14",
+      "floor": "F2",
+      "name": "TimeZone",
+      "cat": "entertainment",
+      "x": 10.5,
+      "y": 85.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 22.5,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "timezone"
+      ],
+      "tags": [
+        "entertainment"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r15",
+      "floor": "F2",
+      "name": "FunCity",
+      "cat": "entertainment",
+      "x": 35.5,
+      "y": 85.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 47.5,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "funcity"
+      ],
+      "tags": [
+        "entertainment"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r16",
+      "floor": "F2",
+      "name": "Gaming Zone",
+      "cat": "entertainment",
+      "x": 60.5,
+      "y": 85.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 72.5,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "gaming zone"
+      ],
+      "tags": [
+        "entertainment"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r17",
+      "floor": "F2",
+      "name": "Eyewear Store",
+      "cat": "retail",
+      "x": 117.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 129,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "eyewear store"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r18",
+      "floor": "F2",
+      "name": "Perfumes & Beauty",
+      "cat": "retail",
+      "x": 142.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 154,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "perfumes & beauty"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F2-r19",
+      "floor": "F2",
+      "name": "Sportswear Store",
+      "cat": "retail",
+      "x": 167.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 179,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "sportswear store"
+      ],
+      "tags": [
+        "shopping"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r1",
+      "floor": "F3",
+      "name": "Toilet (male)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 23,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 29,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (male)",
+        "gents",
+        "men's toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r2",
+      "floor": "F3",
+      "name": "Toilet (female)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 36,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 42,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (female)",
+        "ladies",
+        "women's toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r3",
+      "floor": "F3",
+      "name": "Toilet (accessible)",
+      "cat": "washroom",
+      "x": 85.5,
+      "y": 49,
+      "w": 9,
+      "h": 12,
+      "door": {
+        "x": 94.5,
+        "y": 55,
+        "side": "E"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "toilet (accessible)",
+        "accessible toilet",
+        "wheelchair toilet"
+      ],
+      "tags": [
+        "washroom"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r4",
+      "floor": "F3",
+      "name": "Elevator EL-1 (North Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 23,
+      "w": 10,
+      "h": 11,
+      "door": {
+        "x": 106.5,
+        "y": 28.5,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "elevator el-1 (north atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "lift"
+    },
+    {
+      "id": "F3-r5",
+      "floor": "F3",
+      "name": "Escalator ESC-1 (North Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 36.5,
+      "w": 10,
+      "h": 15,
+      "door": {
+        "x": 106.5,
+        "y": 44,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "escalator esc-1 (north atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "stairs"
+    },
+    {
+      "id": "F3-r6",
+      "floor": "F3",
+      "name": "Elevator EL-2 (South Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 90.5,
+      "w": 10,
+      "h": 11,
+      "door": {
+        "x": 106.5,
+        "y": 96,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "elevator el-2 (south atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "lift"
+    },
+    {
+      "id": "F3-r7",
+      "floor": "F3",
+      "name": "Escalator ESC-2 (South Atrium)",
+      "cat": "vertical",
+      "x": 106.5,
+      "y": 104,
+      "w": 10,
+      "h": 15,
+      "door": {
+        "x": 106.5,
+        "y": 111.5,
+        "side": "W"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "escalator esc-2 (south atrium)"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null,
+      "kind": "stairs"
+    },
+    {
+      "id": "F3-r8",
+      "floor": "F3",
+      "name": "Punjab Grill",
+      "cat": "food",
+      "x": 10.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 22.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "punjab grill"
+      ],
+      "tags": [
+        "food"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r9",
+      "floor": "F3",
+      "name": "Molecule",
+      "cat": "food",
+      "x": 35.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 47.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "molecule"
+      ],
+      "tags": [
+        "food"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r10",
+      "floor": "F3",
+      "name": "GT Road",
+      "cat": "food",
+      "x": 60.5,
+      "y": 30.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 72.5,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "gt road"
+      ],
+      "tags": [
+        "food"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r11",
+      "floor": "F3",
+      "name": "INOX Multiplex",
+      "cat": "entertainment",
+      "x": 117.5,
+      "y": 30.5,
+      "w": 73,
+      "h": 35,
+      "door": {
+        "x": 154,
+        "y": 65.5,
+        "side": "S"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "inox multiplex"
+      ],
+      "tags": [
+        "entertainment",
+        "movie"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r12",
+      "floor": "F3",
+      "name": "Food Court",
+      "cat": "food",
+      "x": 10.5,
+      "y": 85.5,
+      "w": 49,
+      "h": 35,
+      "door": {
+        "x": 35,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "food court"
+      ],
+      "tags": [
+        "food"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r13",
+      "floor": "F3",
+      "name": "AM PM",
+      "cat": "food",
+      "x": 60.5,
+      "y": 85.5,
+      "w": 24,
+      "h": 35,
+      "door": {
+        "x": 72.5,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "am pm"
+      ],
+      "tags": [
+        "food"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r14",
+      "floor": "F3",
+      "name": "Insignia (INOX Premium)",
+      "cat": "entertainment",
+      "x": 117.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 129,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "insignia (inox premium)"
+      ],
+      "tags": [
+        "entertainment",
+        "movie"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r15",
+      "floor": "F3",
+      "name": "INOX Box Office",
+      "cat": "ticket",
+      "x": 142.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 154,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "inox box office"
+      ],
+      "tags": [
+        "ticket"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    },
+    {
+      "id": "F3-r16",
+      "floor": "F3",
+      "name": "Coffee House",
+      "cat": "food",
+      "x": 167.5,
+      "y": 85.5,
+      "w": 23,
+      "h": 35,
+      "door": {
+        "x": 179,
+        "y": 85.5,
+        "side": "N"
+      },
+      "extraDoors": [],
+      "aliases": [
+        "coffee house"
+      ],
+      "tags": [
+        "food",
+        "coffee"
+      ],
+      "hours": "9:00 – 19:00",
+      "access": "public",
+      "short": null
+    }
+  ],
+  "nodes": [
+    {
+      "id": "F1:n1",
+      "floor": "F1",
+      "x": 10.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n2",
+      "floor": "F1",
+      "x": 190.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n3",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 15.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n4",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 71.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n5",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 79.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n6",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 135.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1-r1",
+      "floor": "F1",
+      "x": 90,
+      "y": 29,
+      "kind": "room",
+      "room": "F1-r1"
+    },
+    {
+      "id": "F1-r1:door",
+      "floor": "F1",
+      "x": 94.5,
+      "y": 29,
+      "kind": "door",
+      "room": "F1-r1"
+    },
+    {
+      "id": "F1-r2",
+      "floor": "F1",
+      "x": 90,
+      "y": 42,
+      "kind": "room",
+      "room": "F1-r2"
+    },
+    {
+      "id": "F1-r2:door",
+      "floor": "F1",
+      "x": 94.5,
+      "y": 42,
+      "kind": "door",
+      "room": "F1-r2"
+    },
+    {
+      "id": "F1-r3",
+      "floor": "F1",
+      "x": 90,
+      "y": 55,
+      "kind": "room",
+      "room": "F1-r3"
+    },
+    {
+      "id": "F1-r3:door",
+      "floor": "F1",
+      "x": 94.5,
+      "y": 55,
+      "kind": "door",
+      "room": "F1-r3"
+    },
+    {
+      "id": "F1-r4",
+      "floor": "F1",
+      "x": 111.5,
+      "y": 28.5,
+      "kind": "room",
+      "room": "F1-r4"
+    },
+    {
+      "id": "F1-r4:door",
+      "floor": "F1",
+      "x": 106.5,
+      "y": 28.5,
+      "kind": "door",
+      "room": "F1-r4"
+    },
+    {
+      "id": "F1-r5",
+      "floor": "F1",
+      "x": 111.5,
+      "y": 44,
+      "kind": "room",
+      "room": "F1-r5"
+    },
+    {
+      "id": "F1-r5:door",
+      "floor": "F1",
+      "x": 106.5,
+      "y": 44,
+      "kind": "door",
+      "room": "F1-r5"
+    },
+    {
+      "id": "F1-r6",
+      "floor": "F1",
+      "x": 111.5,
+      "y": 96,
+      "kind": "room",
+      "room": "F1-r6"
+    },
+    {
+      "id": "F1-r6:door",
+      "floor": "F1",
+      "x": 106.5,
+      "y": 96,
+      "kind": "door",
+      "room": "F1-r6"
+    },
+    {
+      "id": "F1-r7",
+      "floor": "F1",
+      "x": 111.5,
+      "y": 111.5,
+      "kind": "room",
+      "room": "F1-r7"
+    },
+    {
+      "id": "F1-r7:door",
+      "floor": "F1",
+      "x": 106.5,
+      "y": 111.5,
+      "kind": "door",
+      "room": "F1-r7"
+    },
+    {
+      "id": "F1-r8",
+      "floor": "F1",
+      "x": 22.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F1-r8"
+    },
+    {
+      "id": "F1-r8:door",
+      "floor": "F1",
+      "x": 22.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F1-r8"
+    },
+    {
+      "id": "F1-r9",
+      "floor": "F1",
+      "x": 47.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F1-r9"
+    },
+    {
+      "id": "F1-r9:door",
+      "floor": "F1",
+      "x": 47.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F1-r9"
+    },
+    {
+      "id": "F1-r10",
+      "floor": "F1",
+      "x": 72.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F1-r10"
+    },
+    {
+      "id": "F1-r10:door",
+      "floor": "F1",
+      "x": 72.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F1-r10"
+    },
+    {
+      "id": "F1-r11",
+      "floor": "F1",
+      "x": 129,
+      "y": 48,
+      "kind": "room",
+      "room": "F1-r11"
+    },
+    {
+      "id": "F1-r11:door",
+      "floor": "F1",
+      "x": 129,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F1-r11"
+    },
+    {
+      "id": "F1-r12",
+      "floor": "F1",
+      "x": 154,
+      "y": 48,
+      "kind": "room",
+      "room": "F1-r12"
+    },
+    {
+      "id": "F1-r12:door",
+      "floor": "F1",
+      "x": 154,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F1-r12"
+    },
+    {
+      "id": "F1-r13",
+      "floor": "F1",
+      "x": 179,
+      "y": 48,
+      "kind": "room",
+      "room": "F1-r13"
+    },
+    {
+      "id": "F1-r13:door",
+      "floor": "F1",
+      "x": 179,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F1-r13"
+    },
+    {
+      "id": "F1-r14",
+      "floor": "F1",
+      "x": 22.5,
+      "y": 103,
+      "kind": "room",
+      "room": "F1-r14"
+    },
+    {
+      "id": "F1-r14:door",
+      "floor": "F1",
+      "x": 22.5,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F1-r14"
+    },
+    {
+      "id": "F1-r15",
+      "floor": "F1",
+      "x": 47.5,
+      "y": 103,
+      "kind": "room",
+      "room": "F1-r15"
+    },
+    {
+      "id": "F1-r15:door",
+      "floor": "F1",
+      "x": 47.5,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F1-r15"
+    },
+    {
+      "id": "F1-r16",
+      "floor": "F1",
+      "x": 72.5,
+      "y": 103,
+      "kind": "room",
+      "room": "F1-r16"
+    },
+    {
+      "id": "F1-r16:door",
+      "floor": "F1",
+      "x": 72.5,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F1-r16"
+    },
+    {
+      "id": "F1-r17",
+      "floor": "F1",
+      "x": 129,
+      "y": 103,
+      "kind": "room",
+      "room": "F1-r17"
+    },
+    {
+      "id": "F1-r17:door",
+      "floor": "F1",
+      "x": 129,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F1-r17"
+    },
+    {
+      "id": "F1-r18",
+      "floor": "F1",
+      "x": 154,
+      "y": 103,
+      "kind": "room",
+      "room": "F1-r18"
+    },
+    {
+      "id": "F1-r18:door",
+      "floor": "F1",
+      "x": 154,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F1-r18"
+    },
+    {
+      "id": "F1-r19",
+      "floor": "F1",
+      "x": 179,
+      "y": 103,
+      "kind": "room",
+      "room": "F1-r19"
+    },
+    {
+      "id": "F1-r19:door",
+      "floor": "F1",
+      "x": 179,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F1-r19"
+    },
+    {
+      "id": "F1:n7",
+      "floor": "F1",
+      "x": 179,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n8",
+      "floor": "F1",
+      "x": 154,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n9",
+      "floor": "F1",
+      "x": 129,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n10",
+      "floor": "F1",
+      "x": 72.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n11",
+      "floor": "F1",
+      "x": 47.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n12",
+      "floor": "F1",
+      "x": 22.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n13",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n14",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 44,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n15",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 28.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n16",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 55,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n17",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 42,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n18",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 29,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n19",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 111.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F1:n20",
+      "floor": "F1",
+      "x": 100.5,
+      "y": 96,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n1",
+      "floor": "F2",
+      "x": 10.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n2",
+      "floor": "F2",
+      "x": 190.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n3",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 15.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n4",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 71.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n5",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 79.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n6",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 135.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2-r1",
+      "floor": "F2",
+      "x": 90,
+      "y": 29,
+      "kind": "room",
+      "room": "F2-r1"
+    },
+    {
+      "id": "F2-r1:door",
+      "floor": "F2",
+      "x": 94.5,
+      "y": 29,
+      "kind": "door",
+      "room": "F2-r1"
+    },
+    {
+      "id": "F2-r2",
+      "floor": "F2",
+      "x": 90,
+      "y": 42,
+      "kind": "room",
+      "room": "F2-r2"
+    },
+    {
+      "id": "F2-r2:door",
+      "floor": "F2",
+      "x": 94.5,
+      "y": 42,
+      "kind": "door",
+      "room": "F2-r2"
+    },
+    {
+      "id": "F2-r3",
+      "floor": "F2",
+      "x": 90,
+      "y": 55,
+      "kind": "room",
+      "room": "F2-r3"
+    },
+    {
+      "id": "F2-r3:door",
+      "floor": "F2",
+      "x": 94.5,
+      "y": 55,
+      "kind": "door",
+      "room": "F2-r3"
+    },
+    {
+      "id": "F2-r4",
+      "floor": "F2",
+      "x": 111.5,
+      "y": 28.5,
+      "kind": "room",
+      "room": "F2-r4"
+    },
+    {
+      "id": "F2-r4:door",
+      "floor": "F2",
+      "x": 106.5,
+      "y": 28.5,
+      "kind": "door",
+      "room": "F2-r4"
+    },
+    {
+      "id": "F2-r5",
+      "floor": "F2",
+      "x": 111.5,
+      "y": 44,
+      "kind": "room",
+      "room": "F2-r5"
+    },
+    {
+      "id": "F2-r5:door",
+      "floor": "F2",
+      "x": 106.5,
+      "y": 44,
+      "kind": "door",
+      "room": "F2-r5"
+    },
+    {
+      "id": "F2-r6",
+      "floor": "F2",
+      "x": 111.5,
+      "y": 96,
+      "kind": "room",
+      "room": "F2-r6"
+    },
+    {
+      "id": "F2-r6:door",
+      "floor": "F2",
+      "x": 106.5,
+      "y": 96,
+      "kind": "door",
+      "room": "F2-r6"
+    },
+    {
+      "id": "F2-r7",
+      "floor": "F2",
+      "x": 111.5,
+      "y": 111.5,
+      "kind": "room",
+      "room": "F2-r7"
+    },
+    {
+      "id": "F2-r7:door",
+      "floor": "F2",
+      "x": 106.5,
+      "y": 111.5,
+      "kind": "door",
+      "room": "F2-r7"
+    },
+    {
+      "id": "F2-r8",
+      "floor": "F2",
+      "x": 22.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F2-r8"
+    },
+    {
+      "id": "F2-r8:door",
+      "floor": "F2",
+      "x": 22.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F2-r8"
+    },
+    {
+      "id": "F2-r9",
+      "floor": "F2",
+      "x": 47.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F2-r9"
+    },
+    {
+      "id": "F2-r9:door",
+      "floor": "F2",
+      "x": 47.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F2-r9"
+    },
+    {
+      "id": "F2-r10",
+      "floor": "F2",
+      "x": 72.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F2-r10"
+    },
+    {
+      "id": "F2-r10:door",
+      "floor": "F2",
+      "x": 72.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F2-r10"
+    },
+    {
+      "id": "F2-r11",
+      "floor": "F2",
+      "x": 129,
+      "y": 48,
+      "kind": "room",
+      "room": "F2-r11"
+    },
+    {
+      "id": "F2-r11:door",
+      "floor": "F2",
+      "x": 129,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F2-r11"
+    },
+    {
+      "id": "F2-r12",
+      "floor": "F2",
+      "x": 154,
+      "y": 48,
+      "kind": "room",
+      "room": "F2-r12"
+    },
+    {
+      "id": "F2-r12:door",
+      "floor": "F2",
+      "x": 154,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F2-r12"
+    },
+    {
+      "id": "F2-r13",
+      "floor": "F2",
+      "x": 179,
+      "y": 48,
+      "kind": "room",
+      "room": "F2-r13"
+    },
+    {
+      "id": "F2-r13:door",
+      "floor": "F2",
+      "x": 179,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F2-r13"
+    },
+    {
+      "id": "F2-r14",
+      "floor": "F2",
+      "x": 22.5,
+      "y": 103,
+      "kind": "room",
+      "room": "F2-r14"
+    },
+    {
+      "id": "F2-r14:door",
+      "floor": "F2",
+      "x": 22.5,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F2-r14"
+    },
+    {
+      "id": "F2-r15",
+      "floor": "F2",
+      "x": 47.5,
+      "y": 103,
+      "kind": "room",
+      "room": "F2-r15"
+    },
+    {
+      "id": "F2-r15:door",
+      "floor": "F2",
+      "x": 47.5,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F2-r15"
+    },
+    {
+      "id": "F2-r16",
+      "floor": "F2",
+      "x": 72.5,
+      "y": 103,
+      "kind": "room",
+      "room": "F2-r16"
+    },
+    {
+      "id": "F2-r16:door",
+      "floor": "F2",
+      "x": 72.5,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F2-r16"
+    },
+    {
+      "id": "F2-r17",
+      "floor": "F2",
+      "x": 129,
+      "y": 103,
+      "kind": "room",
+      "room": "F2-r17"
+    },
+    {
+      "id": "F2-r17:door",
+      "floor": "F2",
+      "x": 129,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F2-r17"
+    },
+    {
+      "id": "F2-r18",
+      "floor": "F2",
+      "x": 154,
+      "y": 103,
+      "kind": "room",
+      "room": "F2-r18"
+    },
+    {
+      "id": "F2-r18:door",
+      "floor": "F2",
+      "x": 154,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F2-r18"
+    },
+    {
+      "id": "F2-r19",
+      "floor": "F2",
+      "x": 179,
+      "y": 103,
+      "kind": "room",
+      "room": "F2-r19"
+    },
+    {
+      "id": "F2-r19:door",
+      "floor": "F2",
+      "x": 179,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F2-r19"
+    },
+    {
+      "id": "F2:n7",
+      "floor": "F2",
+      "x": 179,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n8",
+      "floor": "F2",
+      "x": 154,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n9",
+      "floor": "F2",
+      "x": 129,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n10",
+      "floor": "F2",
+      "x": 72.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n11",
+      "floor": "F2",
+      "x": 47.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n12",
+      "floor": "F2",
+      "x": 22.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n13",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n14",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 44,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n15",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 28.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n16",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 55,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n17",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 42,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n18",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 29,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n19",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 111.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F2:n20",
+      "floor": "F2",
+      "x": 100.5,
+      "y": 96,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n1",
+      "floor": "F3",
+      "x": 10.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n2",
+      "floor": "F3",
+      "x": 190.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n3",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 15.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n4",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 71.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n5",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 79.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n6",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 135.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3-r1",
+      "floor": "F3",
+      "x": 90,
+      "y": 29,
+      "kind": "room",
+      "room": "F3-r1"
+    },
+    {
+      "id": "F3-r1:door",
+      "floor": "F3",
+      "x": 94.5,
+      "y": 29,
+      "kind": "door",
+      "room": "F3-r1"
+    },
+    {
+      "id": "F3-r2",
+      "floor": "F3",
+      "x": 90,
+      "y": 42,
+      "kind": "room",
+      "room": "F3-r2"
+    },
+    {
+      "id": "F3-r2:door",
+      "floor": "F3",
+      "x": 94.5,
+      "y": 42,
+      "kind": "door",
+      "room": "F3-r2"
+    },
+    {
+      "id": "F3-r3",
+      "floor": "F3",
+      "x": 90,
+      "y": 55,
+      "kind": "room",
+      "room": "F3-r3"
+    },
+    {
+      "id": "F3-r3:door",
+      "floor": "F3",
+      "x": 94.5,
+      "y": 55,
+      "kind": "door",
+      "room": "F3-r3"
+    },
+    {
+      "id": "F3-r4",
+      "floor": "F3",
+      "x": 111.5,
+      "y": 28.5,
+      "kind": "room",
+      "room": "F3-r4"
+    },
+    {
+      "id": "F3-r4:door",
+      "floor": "F3",
+      "x": 106.5,
+      "y": 28.5,
+      "kind": "door",
+      "room": "F3-r4"
+    },
+    {
+      "id": "F3-r5",
+      "floor": "F3",
+      "x": 111.5,
+      "y": 44,
+      "kind": "room",
+      "room": "F3-r5"
+    },
+    {
+      "id": "F3-r5:door",
+      "floor": "F3",
+      "x": 106.5,
+      "y": 44,
+      "kind": "door",
+      "room": "F3-r5"
+    },
+    {
+      "id": "F3-r6",
+      "floor": "F3",
+      "x": 111.5,
+      "y": 96,
+      "kind": "room",
+      "room": "F3-r6"
+    },
+    {
+      "id": "F3-r6:door",
+      "floor": "F3",
+      "x": 106.5,
+      "y": 96,
+      "kind": "door",
+      "room": "F3-r6"
+    },
+    {
+      "id": "F3-r7",
+      "floor": "F3",
+      "x": 111.5,
+      "y": 111.5,
+      "kind": "room",
+      "room": "F3-r7"
+    },
+    {
+      "id": "F3-r7:door",
+      "floor": "F3",
+      "x": 106.5,
+      "y": 111.5,
+      "kind": "door",
+      "room": "F3-r7"
+    },
+    {
+      "id": "F3-r8",
+      "floor": "F3",
+      "x": 22.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F3-r8"
+    },
+    {
+      "id": "F3-r8:door",
+      "floor": "F3",
+      "x": 22.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F3-r8"
+    },
+    {
+      "id": "F3-r9",
+      "floor": "F3",
+      "x": 47.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F3-r9"
+    },
+    {
+      "id": "F3-r9:door",
+      "floor": "F3",
+      "x": 47.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F3-r9"
+    },
+    {
+      "id": "F3-r10",
+      "floor": "F3",
+      "x": 72.5,
+      "y": 48,
+      "kind": "room",
+      "room": "F3-r10"
+    },
+    {
+      "id": "F3-r10:door",
+      "floor": "F3",
+      "x": 72.5,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F3-r10"
+    },
+    {
+      "id": "F3-r11",
+      "floor": "F3",
+      "x": 154,
+      "y": 48,
+      "kind": "room",
+      "room": "F3-r11"
+    },
+    {
+      "id": "F3-r11:door",
+      "floor": "F3",
+      "x": 154,
+      "y": 65.5,
+      "kind": "door",
+      "room": "F3-r11"
+    },
+    {
+      "id": "F3-r12",
+      "floor": "F3",
+      "x": 35,
+      "y": 103,
+      "kind": "room",
+      "room": "F3-r12"
+    },
+    {
+      "id": "F3-r12:door",
+      "floor": "F3",
+      "x": 35,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F3-r12"
+    },
+    {
+      "id": "F3-r13",
+      "floor": "F3",
+      "x": 72.5,
+      "y": 103,
+      "kind": "room",
+      "room": "F3-r13"
+    },
+    {
+      "id": "F3-r13:door",
+      "floor": "F3",
+      "x": 72.5,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F3-r13"
+    },
+    {
+      "id": "F3-r14",
+      "floor": "F3",
+      "x": 129,
+      "y": 103,
+      "kind": "room",
+      "room": "F3-r14"
+    },
+    {
+      "id": "F3-r14:door",
+      "floor": "F3",
+      "x": 129,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F3-r14"
+    },
+    {
+      "id": "F3-r15",
+      "floor": "F3",
+      "x": 154,
+      "y": 103,
+      "kind": "room",
+      "room": "F3-r15"
+    },
+    {
+      "id": "F3-r15:door",
+      "floor": "F3",
+      "x": 154,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F3-r15"
+    },
+    {
+      "id": "F3-r16",
+      "floor": "F3",
+      "x": 179,
+      "y": 103,
+      "kind": "room",
+      "room": "F3-r16"
+    },
+    {
+      "id": "F3-r16:door",
+      "floor": "F3",
+      "x": 179,
+      "y": 85.5,
+      "kind": "door",
+      "room": "F3-r16"
+    },
+    {
+      "id": "F3:n7",
+      "floor": "F3",
+      "x": 179,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n8",
+      "floor": "F3",
+      "x": 154,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n9",
+      "floor": "F3",
+      "x": 129,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n10",
+      "floor": "F3",
+      "x": 72.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n11",
+      "floor": "F3",
+      "x": 35,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n12",
+      "floor": "F3",
+      "x": 47.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n13",
+      "floor": "F3",
+      "x": 22.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n14",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 75.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n15",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 44,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n16",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 28.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n17",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 55,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n18",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 42,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n19",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 29,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n20",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 111.5,
+      "kind": "corridor"
+    },
+    {
+      "id": "F3:n21",
+      "floor": "F3",
+      "x": 100.5,
+      "y": 96,
+      "kind": "corridor"
+    }
+  ],
+  "edges": [
+    {
+      "a": "F1-r1:door",
+      "b": "F1-r1",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r2:door",
+      "b": "F1-r2",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r3:door",
+      "b": "F1-r3",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r4:door",
+      "b": "F1-r4",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r5:door",
+      "b": "F1-r5",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r6:door",
+      "b": "F1-r6",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r7:door",
+      "b": "F1-r7",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r8:door",
+      "b": "F1-r8",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r9:door",
+      "b": "F1-r9",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r10:door",
+      "b": "F1-r10",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r11:door",
+      "b": "F1-r11",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r12:door",
+      "b": "F1-r12",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r13:door",
+      "b": "F1-r13",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r14:door",
+      "b": "F1-r14",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r15:door",
+      "b": "F1-r15",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r16:door",
+      "b": "F1-r16",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r17:door",
+      "b": "F1-r17",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r18:door",
+      "b": "F1-r18",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r19:door",
+      "b": "F1-r19",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n7",
+      "b": "F1:n2",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r19:door",
+      "b": "F1:n7",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n8",
+      "b": "F1:n7",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r18:door",
+      "b": "F1:n8",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n9",
+      "b": "F1:n8",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r17:door",
+      "b": "F1:n9",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r16:door",
+      "b": "F1:n10",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n11",
+      "b": "F1:n10",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r15:door",
+      "b": "F1:n11",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n1",
+      "b": "F1:n12",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1:n12",
+      "b": "F1:n11",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r14:door",
+      "b": "F1:n12",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r13:door",
+      "b": "F1:n7",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r12:door",
+      "b": "F1:n8",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r11:door",
+      "b": "F1:n9",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r10:door",
+      "b": "F1:n10",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r9:door",
+      "b": "F1:n11",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r8:door",
+      "b": "F1:n12",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n10",
+      "b": "F1:n13",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1:n13",
+      "b": "F1:n9",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1:n13",
+      "b": "F1:n5",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n13",
+      "b": "F1:n4",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r5:door",
+      "b": "F1:n14",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n3",
+      "b": "F1:n15",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r4:door",
+      "b": "F1:n15",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n14",
+      "b": "F1:n16",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1:n16",
+      "b": "F1:n4",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r3:door",
+      "b": "F1:n16",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n17",
+      "b": "F1:n14",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r2:door",
+      "b": "F1:n17",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n15",
+      "b": "F1:n18",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1:n18",
+      "b": "F1:n17",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r1:door",
+      "b": "F1:n18",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n19",
+      "b": "F1:n6",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r7:door",
+      "b": "F1:n19",
+      "type": "walk"
+    },
+    {
+      "a": "F1:n5",
+      "b": "F1:n20",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1:n20",
+      "b": "F1:n19",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F1-r6:door",
+      "b": "F1:n20",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r1:door",
+      "b": "F2-r1",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r2:door",
+      "b": "F2-r2",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r3:door",
+      "b": "F2-r3",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r4:door",
+      "b": "F2-r4",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r5:door",
+      "b": "F2-r5",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r6:door",
+      "b": "F2-r6",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r7:door",
+      "b": "F2-r7",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r8:door",
+      "b": "F2-r8",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r9:door",
+      "b": "F2-r9",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r10:door",
+      "b": "F2-r10",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r11:door",
+      "b": "F2-r11",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r12:door",
+      "b": "F2-r12",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r13:door",
+      "b": "F2-r13",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r14:door",
+      "b": "F2-r14",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r15:door",
+      "b": "F2-r15",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r16:door",
+      "b": "F2-r16",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r17:door",
+      "b": "F2-r17",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r18:door",
+      "b": "F2-r18",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r19:door",
+      "b": "F2-r19",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n7",
+      "b": "F2:n2",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r19:door",
+      "b": "F2:n7",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n8",
+      "b": "F2:n7",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r18:door",
+      "b": "F2:n8",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n9",
+      "b": "F2:n8",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r17:door",
+      "b": "F2:n9",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r16:door",
+      "b": "F2:n10",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n11",
+      "b": "F2:n10",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r15:door",
+      "b": "F2:n11",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n1",
+      "b": "F2:n12",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2:n12",
+      "b": "F2:n11",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r14:door",
+      "b": "F2:n12",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r13:door",
+      "b": "F2:n7",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r12:door",
+      "b": "F2:n8",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r11:door",
+      "b": "F2:n9",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r10:door",
+      "b": "F2:n10",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r9:door",
+      "b": "F2:n11",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r8:door",
+      "b": "F2:n12",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n10",
+      "b": "F2:n13",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2:n13",
+      "b": "F2:n9",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2:n13",
+      "b": "F2:n5",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n13",
+      "b": "F2:n4",
+      "type": "walk"
+    },
+    {
+      "a": "F2-r5:door",
+      "b": "F2:n14",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n3",
+      "b": "F2:n15",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r4:door",
+      "b": "F2:n15",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n14",
+      "b": "F2:n16",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2:n16",
+      "b": "F2:n4",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r3:door",
+      "b": "F2:n16",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n17",
+      "b": "F2:n14",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r2:door",
+      "b": "F2:n17",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n15",
+      "b": "F2:n18",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2:n18",
+      "b": "F2:n17",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r1:door",
+      "b": "F2:n18",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n19",
+      "b": "F2:n6",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r7:door",
+      "b": "F2:n19",
+      "type": "walk"
+    },
+    {
+      "a": "F2:n5",
+      "b": "F2:n20",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2:n20",
+      "b": "F2:n19",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F2-r6:door",
+      "b": "F2:n20",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r1:door",
+      "b": "F3-r1",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r2:door",
+      "b": "F3-r2",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r3:door",
+      "b": "F3-r3",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r4:door",
+      "b": "F3-r4",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r5:door",
+      "b": "F3-r5",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r6:door",
+      "b": "F3-r6",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r7:door",
+      "b": "F3-r7",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r8:door",
+      "b": "F3-r8",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r9:door",
+      "b": "F3-r9",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r10:door",
+      "b": "F3-r10",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r11:door",
+      "b": "F3-r11",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r12:door",
+      "b": "F3-r12",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r13:door",
+      "b": "F3-r13",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r14:door",
+      "b": "F3-r14",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r15:door",
+      "b": "F3-r15",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r16:door",
+      "b": "F3-r16",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n7",
+      "b": "F3:n2",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r16:door",
+      "b": "F3:n7",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n8",
+      "b": "F3:n7",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r15:door",
+      "b": "F3:n8",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n9",
+      "b": "F3:n8",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r14:door",
+      "b": "F3:n9",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r13:door",
+      "b": "F3:n10",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r12:door",
+      "b": "F3:n11",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r11:door",
+      "b": "F3:n8",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r10:door",
+      "b": "F3:n10",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n11",
+      "b": "F3:n12",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3:n12",
+      "b": "F3:n10",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r9:door",
+      "b": "F3:n12",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n1",
+      "b": "F3:n13",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3:n13",
+      "b": "F3:n11",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r8:door",
+      "b": "F3:n13",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n10",
+      "b": "F3:n14",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3:n14",
+      "b": "F3:n9",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3:n14",
+      "b": "F3:n5",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n14",
+      "b": "F3:n4",
+      "type": "walk"
+    },
+    {
+      "a": "F3-r5:door",
+      "b": "F3:n15",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n3",
+      "b": "F3:n16",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r4:door",
+      "b": "F3:n16",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n15",
+      "b": "F3:n17",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3:n17",
+      "b": "F3:n4",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r3:door",
+      "b": "F3:n17",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n18",
+      "b": "F3:n15",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r2:door",
+      "b": "F3:n18",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n16",
+      "b": "F3:n19",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3:n19",
+      "b": "F3:n18",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r1:door",
+      "b": "F3:n19",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n20",
+      "b": "F3:n6",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r7:door",
+      "b": "F3:n20",
+      "type": "walk"
+    },
+    {
+      "a": "F3:n5",
+      "b": "F3:n21",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3:n21",
+      "b": "F3:n20",
+      "type": "walk",
+      "width": 4
+    },
+    {
+      "a": "F3-r6:door",
+      "b": "F3:n21",
+      "type": "walk"
+    },
+    {
+      "a": "F1-r4",
+      "b": "F2-r4",
+      "type": "lift",
+      "len": 6,
+      "upSec": 44,
+      "downSec": 44
+    },
+    {
+      "a": "F1-r6",
+      "b": "F2-r6",
+      "type": "lift",
+      "len": 6,
+      "upSec": 44,
+      "downSec": 44
+    },
+    {
+      "a": "F2-r4",
+      "b": "F3-r4",
+      "type": "lift",
+      "len": 6,
+      "upSec": 44,
+      "downSec": 44
+    },
+    {
+      "a": "F2-r6",
+      "b": "F3-r6",
+      "type": "lift",
+      "len": 6,
+      "upSec": 44,
+      "downSec": 44
+    },
+    {
+      "a": "F1-r5",
+      "b": "F2-r5",
+      "type": "stairs",
+      "len": 6,
+      "upSec": 18,
+      "downSec": 12
+    },
+    {
+      "a": "F1-r7",
+      "b": "F2-r7",
+      "type": "stairs",
+      "len": 6,
+      "upSec": 18,
+      "downSec": 12
+    },
+    {
+      "a": "F2-r5",
+      "b": "F3-r5",
+      "type": "stairs",
+      "len": 6,
+      "upSec": 18,
+      "downSec": 12
+    },
+    {
+      "a": "F2-r7",
+      "b": "F3-r7",
+      "type": "stairs",
+      "len": 6,
+      "upSec": 18,
+      "downSec": 12
+    }
+  ],
+  "markers": [
+    {
+      "id": 0,
+      "floor": "F1",
+      "name": "Marker 0",
+      "x": 106.5,
+      "y": 28.5,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 1,
+      "floor": "F1",
+      "name": "Marker 1",
+      "x": 106.5,
+      "y": 44,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 2,
+      "floor": "F1",
+      "name": "Marker 2",
+      "x": 106.5,
+      "y": 96,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 3,
+      "floor": "F1",
+      "name": "Marker 3",
+      "x": 106.5,
+      "y": 111.5,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 4,
+      "floor": "F1",
+      "name": "Marker 4",
+      "x": 22.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 5,
+      "floor": "F1",
+      "name": "Marker 5",
+      "x": 179,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 6,
+      "floor": "F1",
+      "name": "Marker 6",
+      "x": 72.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 7,
+      "floor": "F1",
+      "name": "Marker 7",
+      "x": 47.5,
+      "y": 85.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 8,
+      "floor": "F1",
+      "name": "Marker 8",
+      "x": 154,
+      "y": 85.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 9,
+      "floor": "F1",
+      "name": "Marker 9",
+      "x": 129,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 10,
+      "floor": "F1",
+      "name": "Marker 10",
+      "x": 47.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 11,
+      "floor": "F1",
+      "name": "Marker 11",
+      "x": 154,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 12,
+      "floor": "F2",
+      "name": "Marker 12",
+      "x": 106.5,
+      "y": 28.5,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 13,
+      "floor": "F2",
+      "name": "Marker 13",
+      "x": 106.5,
+      "y": 44,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 14,
+      "floor": "F2",
+      "name": "Marker 14",
+      "x": 106.5,
+      "y": 96,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 15,
+      "floor": "F2",
+      "name": "Marker 15",
+      "x": 106.5,
+      "y": 111.5,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 16,
+      "floor": "F2",
+      "name": "Marker 16",
+      "x": 22.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 17,
+      "floor": "F2",
+      "name": "Marker 17",
+      "x": 179,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 18,
+      "floor": "F2",
+      "name": "Marker 18",
+      "x": 72.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 19,
+      "floor": "F2",
+      "name": "Marker 19",
+      "x": 47.5,
+      "y": 85.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 20,
+      "floor": "F2",
+      "name": "Marker 20",
+      "x": 154,
+      "y": 85.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 21,
+      "floor": "F2",
+      "name": "Marker 21",
+      "x": 129,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 22,
+      "floor": "F2",
+      "name": "Marker 22",
+      "x": 47.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 23,
+      "floor": "F2",
+      "name": "Marker 23",
+      "x": 154,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 24,
+      "floor": "F3",
+      "name": "Marker 24",
+      "x": 106.5,
+      "y": 28.5,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 25,
+      "floor": "F3",
+      "name": "Marker 25",
+      "x": 106.5,
+      "y": 44,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 26,
+      "floor": "F3",
+      "name": "Marker 26",
+      "x": 106.5,
+      "y": 96,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 27,
+      "floor": "F3",
+      "name": "Marker 27",
+      "x": 106.5,
+      "y": 111.5,
+      "z": 1.4,
+      "normal": 270,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 28,
+      "floor": "F3",
+      "name": "Marker 28",
+      "x": 22.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 29,
+      "floor": "F3",
+      "name": "Marker 29",
+      "x": 179,
+      "y": 85.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 30,
+      "floor": "F3",
+      "name": "Marker 30",
+      "x": 72.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 31,
+      "floor": "F3",
+      "name": "Marker 31",
+      "x": 154,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 32,
+      "floor": "F3",
+      "name": "Marker 32",
+      "x": 47.5,
+      "y": 65.5,
+      "z": 1.4,
+      "normal": 180,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 33,
+      "floor": "F3",
+      "name": "Marker 33",
+      "x": 129,
+      "y": 85.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 34,
+      "floor": "F3",
+      "name": "Marker 34",
+      "x": 35,
+      "y": 85.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    },
+    {
+      "id": 35,
+      "floor": "F3",
+      "name": "Marker 35",
+      "x": 72.5,
+      "y": 85.5,
+      "z": 1.4,
+      "normal": 0,
+      "sizeM": 0.12,
+      "note": ""
+    }
+  ],
+  "walls": [],
+  "pois": [
+    {
+      "id": "P01",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "North Entrance",
+      "x": 100.5,
+      "y": 5
+    },
+    {
+      "id": "P02",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "South Entrance",
+      "x": 100.5,
+      "y": 146
+    },
+    {
+      "id": "P03",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "West Entrance",
+      "x": 5,
+      "y": 75.5
+    },
+    {
+      "id": "P04",
+      "floor": "F1",
+      "kind": "entrance",
+      "name": "East Entrance",
+      "x": 196,
+      "y": 75.5
+    },
+    {
+      "id": "P05",
+      "floor": "F1",
+      "kind": "info",
+      "name": "Information Desk",
+      "x": 80.5,
+      "y": 75.5
+    },
+    {
+      "id": "P06",
+      "floor": "F1",
+      "kind": "atm",
+      "name": "ATM",
+      "x": 30.5,
+      "y": 75.5
+    },
+    {
+      "id": "P07",
+      "floor": "F1",
+      "kind": "atm",
+      "name": "ATM",
+      "x": 170.5,
+      "y": 75.5
+    },
+    {
+      "id": "P08",
+      "floor": "F1",
+      "kind": "water",
+      "name": "Drinking Water",
+      "x": 55.5,
+      "y": 75.5
+    },
+    {
+      "id": "P09",
+      "floor": "F1",
+      "kind": "water",
+      "name": "Drinking Water",
+      "x": 145.5,
+      "y": 75.5
+    },
+    {
+      "id": "P10",
+      "floor": "F1",
+      "kind": "charging",
+      "name": "Charging Station",
+      "x": 125.5,
+      "y": 75.5
+    },
+    {
+      "id": "P11",
+      "floor": "F1",
+      "kind": "trolley",
+      "name": "Trolley Bay",
+      "x": 15.5,
+      "y": 75.5
+    },
+    {
+      "id": "P12",
+      "floor": "F2",
+      "kind": "entrance",
+      "name": "Multilevel Car Park Link",
+      "x": 196,
+      "y": 75.5
+    },
+    {
+      "id": "P13",
+      "floor": "F2",
+      "kind": "babycare",
+      "name": "Baby Care Room",
+      "x": 50.5,
+      "y": 75.5
+    },
+    {
+      "id": "P14",
+      "floor": "F2",
+      "kind": "water",
+      "name": "Drinking Water",
+      "x": 145.5,
+      "y": 75.5
+    },
+    {
+      "id": "P15",
+      "floor": "F2",
+      "kind": "charging",
+      "name": "Charging Station",
+      "x": 30.5,
+      "y": 75.5
+    },
+    {
+      "id": "P16",
+      "floor": "F3",
+      "kind": "water",
+      "name": "Drinking Water",
+      "x": 30.5,
+      "y": 75.5
+    },
+    {
+      "id": "P17",
+      "floor": "F3",
+      "kind": "charging",
+      "name": "Charging Station",
+      "x": 170.5,
+      "y": 75.5
+    }
+  ],
+  "objects": []
+}

@@ -1,5 +1,5 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "dora-ai",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,14 +11,20 @@
     "preview": "vite preview",
     "dev:lan": "node scripts/dev-lan.mjs",
     "certs": "node scripts/make-certs.mjs",
+    "setup:speech": "tsx scripts/setup-speech.mjs",
     "serve": "tsx server/index.ts",
     "typecheck": "tsc -b tsconfig.app.json",
     "test": "vitest run",
     "convert:mock": "tsx scripts/convert-mock-venue.ts",
-    "e2e": "vitest run -c vitest.e2e.config.ts"
+    "convert:venues": "tsx scripts/convert-venues.ts",
+    "make:blueprints": "tsx scripts/make-blueprints.ts",
+    "make:office": "tsx scripts/make-office.ts",
+    "e2e": "vitest run -c vitest.e2e.config.ts",
+    "export:venues": "node scripts/export-venues.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "@huggingface/transformers": "^4.3.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.0",

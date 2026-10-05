@@ -2,7 +2,7 @@ import { DICT_SIZE } from "@/core/aruco/dict";
 import { distToSegment } from "@/core/geo";
 import { doorNodeId, nearestDoor, roomDoors } from "@/core/doors";
 import { edgeOutwardNormal, nearestOnPolygon, polygonArea, polygonBounds, polygonEdges, rotatePoints, roomLabelPoint, roomPolygon } from "@/core/geom";
-import type { Background, Door, Edge, Floor, MapObject, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
+import type { Background, Door, Geo, Edge, Floor, MapObject, Marker, Poi, Room, Side, VNode, Venue, Wall } from "@/core/schema";
 import { OBJECT_KINDS, type ObjectKind, type PoiKind } from "@/core/cats";
 
 /**
@@ -136,6 +136,8 @@ interface EdgeProj {
   pt: Pt;
   t: number;
   dist: number;
+  /** Length of the edge, metres. */
+  len: number;
 }
 
 /** Nearest walk edge between corridor nodes on the floor. */
@@ -148,7 +150,7 @@ function nearestWalkEdge(v: Venue, floor: string, p: Pt, radius: number): EdgePr
     if (!a || !b || a.floor !== floor || b.floor !== floor || a.kind !== "corridor" || b.kind !== "corridor") return;
     const { pt, t } = projectOnSegment(p, a, b);
     const d = Math.hypot(p.x - pt.x, p.y - pt.y);
-    if (d <= radius && (!best || d < best.dist)) best = { edgeIndex: i, pt, t, dist: d };
+    if (d <= radius && (!best || d < best.dist)) best = { edgeIndex: i, pt, t, dist: d, len: Math.hypot(b.x - a.x, b.y - a.y) };
   });
   return best;
 }
@@ -159,7 +161,8 @@ function splitEdge(v: Venue, floor: string, edgeIndex: number, pt: Pt): VNode {
   const n: VNode = { id: nodeId(v, floor), floor, x: r2(pt.x), y: r2(pt.y), kind: "corridor" };
   v.nodes.push(n);
   v.edges.splice(edgeIndex, 1);
-  v.edges.push({ a: e.a, b: n.id, type: "walk" }, { a: n.id, b: e.b, type: "walk" });
+  // Both halves keep the width of the corridor they came from.
+  v.edges.push({ a: e.a, b: n.id, type: "walk", ...(e.width !== undefined ? { width: e.width } : {}) }, { a: n.id, b: e.b, type: "walk", ...(e.width !== undefined ? { width: e.width } : {}) });
   return n;
 }
 
@@ -203,7 +206,7 @@ function linkDoor(v: Venue, room: Room, radius: number, i = 0): boolean {
   const node = nearestNode(v, room.floor, dp, radius, ["corridor"]);
   const edge = nearestWalkEdge(v, room.floor, dp, radius);
   const nodeD = node ? Math.hypot(node.x - dp.x, node.y - dp.y) : Infinity;
-  if (edge && edge.t > 0.02 && edge.t < 0.98 && edge.dist < nodeD - 0.01) {
+  if (edge && edge.t * edge.len > 0.05 && (1 - edge.t) * edge.len > 0.05 && edge.dist < nodeD - 0.01) {
     const n = splitEdge(v, room.floor, edge.edgeIndex, edge.pt);
     linkWalk(v, doorId, n.id);
     return true;
@@ -423,7 +426,7 @@ export function walkClick(v0: Venue, floor: string, chain: string | null, p: Pt)
   let n: VNode | null = nearestNode(v, floor, p, joinRadius(), ["corridor", "door"]);
   if (!n) {
     const edge = nearestWalkEdge(v, floor, p, EDGE_SNAP);
-    if (edge && edge.t > 0.02 && edge.t < 0.98) n = splitEdge(v, floor, edge.edgeIndex, edge.pt);
+    if (edge && edge.t * edge.len > 0.05 && (1 - edge.t) * edge.len > 0.05) n = splitEdge(v, floor, edge.edgeIndex, edge.pt);
   }
   if (!n) {
     n = { id: nodeId(v, floor), floor, x: snap(p.x), y: snap(p.y), kind: "corridor" };
@@ -945,6 +948,29 @@ export function updateFloor(v0: Venue, id: string, patch: Partial<Omit<Floor, "i
 
 export function updateVenueMeta(v0: Venue, patch: Partial<Pick<Venue, "name" | "type" | "city" | "address">>): Venue {
   return { ...clone(v0), ...patch };
+}
+
+/** Where the venue is on Earth (the phone's GPS picks the building from this). `null` removes it. */
+export function setGeo(v0: Venue, patch: Partial<Geo> | null): Venue {
+  const v = clone(v0);
+  if (patch === null) {
+    delete v.geo;
+    return v;
+  }
+  const base: Geo = v.geo ?? { anchor: patch.anchor ?? [22.7196, 75.8577], radiusM: 60, entrances: [] };
+  const next: Geo = { ...base, ...patch };
+  if (patch.footprint !== undefined && patch.footprint.length === 0) delete next.footprint;
+  v.geo = next;
+  return v;
+}
+
+/** True-north offset of the map (degrees, -180..180). */
+export function setNorth(v0: Venue, deg: number): Venue {
+  const v = clone(v0);
+  const d = ((((deg + 180) % 360) + 360) % 360) - 180;
+  if (d === 0) delete v.northOffsetDeg;
+  else v.northOffsetDeg = Math.round(d * 10) / 10;
+  return v;
 }
 
 /** Recompute the venue-level calibrated flag: every floor with a photo must be calibrated. */

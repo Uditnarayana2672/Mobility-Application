@@ -65,6 +65,8 @@ export const RoomSchema = z.object({
   /** People may walk through this room between its doors (a passage). Default: no, so a second door does not create a shortcut. */
   passThrough: z.boolean().optional(),
   aliases: z.array(z.string()).default([]),
+  /** What this place is good for, as need ids (coffee, food, water, washroom, rest, meeting, …): "I want a coffee" finds a room tagged `coffee`. */
+  tags: z.array(z.string()).optional(),
   hours: z.string().default(""),
   access: z.enum(["public", "staff"]).default("public"),
   short: z.string().nullish(),
@@ -161,6 +163,21 @@ export const ScaleSchema = z.object({
   reference: z.string().optional(),
 });
 
+const latlng = z.tuple([z.number().min(-90).max(90), z.number().min(-180).max(180)]);
+
+/** Where the venue is on Earth: how the app knows, from the phone's GPS, which building it is in. Optional. */
+export const GeoSchema = z.object({
+  /** A point inside the building. */
+  anchor: latlng,
+  /** Fence radius around the anchor when there is no footprint (metres). */
+  radiusM: z.number().positive().default(60),
+  /** Corners of the building outline (from a map), in order. */
+  footprint: z.array(latlng).min(3).optional(),
+  /** Doors into the building from outside. `marker` = the marker id stuck near it, which gives an exact first position. */
+  entrances: z.array(z.object({ name: z.string(), latlng, marker: z.number().int().nonnegative().optional() })).default([]),
+});
+export type Geo = z.infer<typeof GeoSchema>;
+
 export const VenueSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   id: z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/i),
@@ -169,6 +186,9 @@ export const VenueSchema = z.object({
   city: z.string().default(""),
   address: z.string().default(""),
   latlng: z.tuple([finite, finite]).optional(),
+  /** True compass bearing of the map's up direction (map bearing 0), degrees. true bearing = map bearing + northOffsetDeg. */
+  northOffsetDeg: z.number().optional(),
+  geo: GeoSchema.optional(),
   version: z.number().int().positive(),
   status: z.enum(["draft", "published"]),
   publishedAt: z.string().optional(),

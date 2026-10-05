@@ -1,17 +1,55 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { stepAction } from "@/core/instructions";
-import type { Campaign, CampaignsFile } from "@/core/schema";
+import { pointAt } from "@/core/playback";
+import type { Route } from "@/core/route";
+import type { Campaign, CampaignsFile, Venue } from "@/core/schema";
 import type { NavController, NavState } from "@/navigator/controller";
+import type { Pose } from "@/navigator/poseSource";
 import type { NavRuntime } from "@/navigator/useNav";
-import { CanvasArRenderer } from "./CanvasArRenderer";
+import { CanvasArRenderer, relativeTurn, type GuideArrow } from "./CanvasArRenderer";
 import { loadCampaigns, recordAdMetric } from "./campaigns";
+import { direct } from "./director";
 import { buildSceneModel, type ArSceneModel } from "./sceneModel";
 import { WebXrSceneRenderer } from "./WebXrRenderer";
 
 interface Props { rt: NavRuntime; ctl: NavController; s: NavState }
 
+/** Map bearing from the visitor to the point ~3 m ahead on the route (null on stairs or lifts, or without a route). */
+export function aheadBearing(route: Route | null, user: Pose, progressM: number): number | null {
+  if (!route) return null;
+  const look = pointAt(route, Math.min(route.total, progressM + 3));
+  if (look.vertical || look.floor !== user.floor) return null;
+  const close = Math.hypot(look.x - user.x, look.y - user.y) < 0.4;
+  return close ? look.bearing : ((Math.atan2(look.x - user.x, -(look.y - user.y)) * 180) / Math.PI + 360) % 360;
+}
+
+/** The big compass arrow: which way to turn to face the point ~3 m ahead on the route. */
+export function guideFor(route: Route | null, user: Pose, progressM: number): GuideArrow | null {
+  if (!route) return null;
+  const remaining = Math.max(0, route.total - progressM);
+  const look = pointAt(route, Math.min(route.total, progressM + 3));
+  if (look.vertical || look.floor !== user.floor) return { relDeg: 0, title: "Use the stairs / lift", sub: `${route.destName} · ${Math.round(remaining)} m` };
+  const close = Math.hypot(look.x - user.x, look.y - user.y) < 0.4;
+  const bearing = close ? look.bearing : ((Math.atan2(look.x - user.x, -(look.y - user.y)) * 180) / Math.PI + 360) % 360;
+  const rel = relativeTurn(user.heading, bearing);
+  const abs = Math.abs(rel);
+  const title = abs < 20 ? "Straight ahead" : abs > 135 ? "Turn around" : rel > 0 ? "Turn right" : "Turn left";
+  return { relDeg: rel, title, sub: `${route.destName} · ${Math.round(remaining)} m` };
+}
+
+/** Places a visitor can ask to be guided to (staff-only rooms left out). */
+function destinations(v: Venue, floor: string | undefined): { id: string; name: string }[] {
+  return v.rooms
+    .filter((r) => r.access !== "staff")
+    .sort((a, b) => Number(b.floor === floor) - Number(a.floor === floor))
+    .map((r) => ({ id: r.id, name: r.name }));
+}
+
 export default function ArScreen({ rt, ctl, s }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const video = useRef<HTMLVideoElement>(null);
+  const [camErr, setCamErr] = useState<string | null>(null);
+  const seeThrough = rt.kind === "pdr";
   const canvasRenderer = useRef<CanvasArRenderer | null>(null);
   const webRenderer = useRef<WebXrSceneRenderer | null>(null);
   const latest = useRef<ArSceneModel | null>(null);
@@ -22,6 +60,33 @@ export default function ArScreen({ rt, ctl, s }: Props) {
   const [lookUp, setLookUp] = useState(false);
   const active = s.screen === "ar";
   const progress = s.snap?.s ?? 0;
+  // "Look (AI)": one camera picture to Claude on the server. "Align": you face along the route; the arrows and the compass take that as the way.
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiOn, setAiOn] = useState<boolean | null>(null);
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    void fetch("/api/ai/status").then((r) => r.json()).then((j: { available?: boolean }) => setAiOn(!!j.available)).catch(() => setAiOn(false));
+    const id = window.setInterval(() => tick((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [active]);
+  const lookNow = async () => {
+    if (!rt.pdr || aiBusy) return;
+    setAiBusy(true);
+    try {
+      const jpeg = await rt.pdr.snapshotJpeg();
+      if (jpeg) await ctl.lookAround(jpeg);
+      else ctl.toast("The camera is not ready yet");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+  const alignNow = () => {
+    const h = s.user ? aheadBearing(s.route, s.user, progress) : null;
+    if (h === null || !rt.pdr) return ctl.toast("Choose where to go first. Then stand facing the way you will walk and tap Align.");
+    rt.pdr.alignHeading(h);
+    ctl.toast("🧭 Aligned: the arrows now assume you face along the route.");
+  };
 
   useEffect(() => {
     const abort = new AbortController();
@@ -32,10 +97,19 @@ export default function ArScreen({ rt, ctl, s }: Props) {
     return () => { abort.abort(); off(); };
   }, [rt.bus, s.venue.id]);
 
-  const scene = useMemo(() => {
+  const built = useMemo(() => {
     if (!s.user) return null;
     return buildSceneModel(s.route, s.venue, { ...s.user, progressM: progress }, campaignFile.campaigns);
   }, [campaignFile.campaigns, progress, s.route, s.user, s.venue]);
+  // On a real phone the AR director decides what the position's accuracy and the camera angle allow; the laptop simulator shows everything.
+  const directed = useMemo(
+    () => (built && rt.kind !== "sim" && s.user ? direct(built, { acc: s.user.acc, stale: !!s.user.stale, pitchDownDeg: rt.pdr?.pitchDownDeg }) : built ? { model: built, compassOnly: false, hint: null } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [built, rt.kind, s.user],
+  );
+  const scene = directed?.model ?? null;
+  const compassOnly = directed?.compassOnly ?? false;
+  const hint = directed?.hint ?? null;
   latest.current = scene;
 
   useEffect(() => {
@@ -73,6 +147,19 @@ export default function ArScreen({ rt, ctl, s }: Props) {
     return () => window.clearTimeout(nudge);
   }, [active]);
 
+  // Step-counting phones: the real rear camera is the picture behind the arrows (WebXR phones get theirs from the XR session).
+  useEffect(() => {
+    if (!active || !seeThrough || !rt.pdr || !video.current) return;
+    setCamErr(null);
+    const pdr = rt.pdr;
+    let live = true;
+    pdr.startCamera(video.current).catch((e: unknown) => live && setCamErr(e instanceof Error ? e.message : String(e)));
+    return () => {
+      live = false;
+      pdr.stopCamera();
+    };
+  }, [active, seeThrough, rt.pdr]);
+
   useEffect(() => ctl.onArOpen(() => {
     webRenderer.current?.setActive(true);
     canvasRenderer.current?.activateMedia();
@@ -83,12 +170,21 @@ export default function ArScreen({ rt, ctl, s }: Props) {
     let raf = 0;
     const draw = (now: number) => {
       const model = latest.current;
-      if (model && s.user && canvasRenderer.current) canvasRenderer.current.draw({ model, venue: s.venue, pose: s.user, timeSec: now / 1000 });
+      if (model && s.user && canvasRenderer.current) {
+        canvasRenderer.current.draw({
+          model, venue: s.venue, pose: s.user, timeSec: now / 1000,
+          seeThrough,
+          pitchDownDeg: rt.pdr?.pitchDownDeg,
+          guide: seeThrough ? guideFor(s.route, s.user, progress) : null,
+          bigGuide: compassOnly,
+        });
+      }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
-  }, [active, rt.kind, s.user, s.venue]);
+  }, [active, rt.kind, rt.pdr, seeThrough, s.user, s.venue, s.route, progress, compassOnly]);
+
 
   useEffect(() => {
     if (!active) return;
@@ -124,22 +220,70 @@ export default function ArScreen({ rt, ctl, s }: Props) {
   const next = s.snap?.next;
   const tracking = !s.user ? "Waiting for location" : s.user.stale ? "Tracking lost" : `Tracking · ±${s.user.acc.toFixed(1)} m`;
   return (
-    <section className={`scr ${active ? "on" : ""} ${rt.kind === "xr" ? "xr" : ""}`} id="s-ar" data-testid="screen-ar">
+    <section className={`scr ${active ? "on" : ""} ${rt.kind === "xr" ? "xr" : ""} ${seeThrough ? "see-through" : ""}`} id="s-ar" data-testid="screen-ar">
+      {seeThrough && <video ref={video} className="ar-video" playsInline muted data-testid="ar-video" />}
       <canvas ref={canvas} id="arcv" data-testid="ar-canvas" data-visible-ads={scene?.adQuads.length ?? 0} data-campaign-version={campaignFile.version} onPointerUp={tapScene} style={{ pointerEvents: "auto", opacity: rt.kind === "xr" ? 0.001 : 1 }} />
       <div className="ar-top">
         {next && s.route ? (
-          <div className="ar-pill" data-testid="ar-instruction">
-            <span className="ico">{next.step.kind === "turn" ? (next.step.dir === "left" ? "↰" : "↱") : next.step.kind === "vertical" ? "↕" : "📍"}</span>
-            <span><span className="d">{Math.round(next.remaining)} m</span><br /><span className="a">{stepAction(next.step, s.lang)}</span></span>
+          <>
+            <div className="ar-pill" data-testid="ar-instruction">
+              <span className="ico">{next.step.kind === "turn" ? (next.step.dir === "left" ? "↰" : "↱") : next.step.kind === "vertical" ? "↕" : "📍"}</span>
+              <span><span className="d">{Math.round(next.remaining)} m</span><br /><span className="a">{stepAction(next.step, s.lang)}</span></span>
+            </div>
+            {rt.kind !== "sim" && (
+              <div className="ar-dest" data-testid="ar-dest">
+                <span>→ <b>{s.route.destName}</b></span>
+                <button className="pbtn sm" data-testid="ar-stop" onClick={() => { ctl.endNav(); ctl.showAr(); }}>Change</button>
+              </div>
+            )}
+          </>
+        ) : rt.kind === "sim" ? (
+          <div className="ar-pill"><span className="ico">⌖</span><span className="a">Move the phone slowly to look around</span></div>
+        ) : (
+          <div className="ar-where" data-testid="ar-where">
+            <div className="ar-where-head">
+              <b>Where do you want to go?</b>
+              <button className="pbtn sm primary" data-testid="ar-say" onClick={() => ctl.openVoice()}>🎤 Say it</button>
+            </div>
+            <div className="ar-chips">
+              {destinations(s.venue, s.user?.floor).map((d) => (
+                <button key={d.id} className="qchip" data-testid="ar-dest-chip" data-id={d.id} onClick={() => ctl.guideTo({ room: d.id })}>{d.name}</button>
+              ))}
+            </div>
           </div>
-        ) : <div className="ar-pill"><span className="ico">⌖</span><span className="a">Move the phone slowly to look around</span></div>}
-        <div className={`trk ${s.user?.stale ? "bad" : s.user && s.user.acc > 2 ? "mid" : ""}`}><i />{tracking}{rt.kind === "xr" ? " · same XR session" : " · simulated camera"}</div>
+        )}
+        <div className={`trk ${s.user?.stale ? "bad" : s.user && s.user.acc > 2 ? "mid" : ""}`}><i />{tracking}{rt.kind === "xr" ? " · same XR session" : seeThrough ? " · live camera" : " · simulated camera"}</div>
+        {rt.kind === "pdr" && (() => {
+          const h = rt.pdr?.health();
+          const secure = typeof window !== "undefined" && window.isSecureContext;
+          const rows: [boolean | null, string][] = [
+            [secure, secure ? "Secure page (https)" : "Page is not secure: the phone may block the camera and sensors. Install the certificate (docs/https-on-phone.md)."],
+            [camErr ? false : !!h?.camera, camErr ? `Camera: ${camErr}` : h?.camera ? "Camera is running" : "Camera is not running yet"],
+            [!!h?.sensors && (h?.fps ?? 0) > 5, h?.sensors ? `Motion sensors on (${Math.round(h.fps)} per second)` : "Motion sensors are off or blocked: allow motion sensors for this site"],
+            [!!h?.compass, h?.compass ? "Compass is reading" : "No compass reading yet: move the phone slowly in a figure of eight"],
+            [!!h?.northKnown, h?.northKnown ? "The map's north is known" : "The map's north is not known yet: tap Align, or Look (AI)"],
+            [s.user ? !s.user.stale : null, s.user ? `Position from ${s.user.source}, ±${s.user.acc.toFixed(1)} m` : "No position yet: say where you are, or choose your start"],
+            [aiOn, aiOn ? "AI (Claude) is on" : aiOn === false ? "AI is off: add ANTHROPIC_API_KEY on the laptop" : "AI: checking…"],
+          ];
+          return (
+            <details className="ar-check" data-testid="ar-check" style={{ margin: "6px 0", fontSize: 12, background: "rgba(0,0,0,.55)", color: "#fff", borderRadius: 10, padding: "6px 10px" }}>
+              <summary style={{ cursor: "pointer", fontWeight: 700 }}>AR check {rows.some(([ok]) => ok === false) ? "⚠" : "✓"}</summary>
+              {rows.map(([ok, text], i) => (
+                <div key={i} data-ok={String(ok)}>{ok === null ? "•" : ok ? "✓" : "✗"} {text}</div>
+              ))}
+            </details>
+          );
+        })()}
+        {hint && rt.kind !== "sim" && <div className="ar-hint" data-testid="ar-hint">{hint}</div>}
+        {camErr && <div className="live-err" data-testid="ar-cam-err">Camera: {camErr}. Allow camera access for this site in Chrome (🔒 next to the address), then reopen this view.</div>}
       </div>
       {lookUp && <button className="lookup show" data-testid="look-up" onClick={() => setLookUp(false)}>⚠ Look up and check your surroundings</button>}
       {rt.kind === "xr" && !rt.xr?.active && <div className="lookup show">AR tracking stopped. Return to the map and restart AR.</div>}
       <div className="ar-bottom">
         <div className="minimap ar-mini"><b>{s.user ? s.venue.floors.find((f) => f.id === s.user!.floor)?.short : "–"}</b><span>{s.route ? `${Math.round(Math.max(0, s.route.total - progress))} m left` : "Explore"}</span></div>
         <div className="ar-actions">
+          {seeThrough && <button className="fab wide" data-testid="ar-look" disabled={aiBusy} onClick={() => void lookNow()}>{aiBusy ? "…" : "👁 Look (AI)"}</button>}
+          {seeThrough && s.route && <button className="fab wide" data-testid="ar-align" onClick={alignNow}>🧭 Align</button>}
           <button className="fab" aria-label="voice" onClick={() => ctl.openVoice()}>🎤</button>
           <button className="fab wide" data-testid="ar-back" onClick={() => ctl.leaveAr()}>🗺 Map</button>
         </div>

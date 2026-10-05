@@ -27,6 +27,7 @@ export interface SubBarProps {
   onPublish(): void;
   onBlank(): void;
   onSample(): void;
+  onImport(): void;
 }
 
 export function SubBar(p: SubBarProps) {
@@ -36,8 +37,8 @@ export function SubBar(p: SubBarProps) {
     save.state === "saving" ? "Saving…" : save.state === "error" ? `Save failed: ${save.message}` : save.state === "saved" ? "All changes saved to draft" : p.hasDraft ? "Draft loaded" : "Published version";
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2">
-      <Link to="/" className="mr-1 text-sm font-bold text-blue-700">
-        Indore Spaces
+      <Link to="/maps" className="mr-1 text-sm font-bold text-blue-700">
+        Dora.AI
       </Link>
       <span className="text-base font-extrabold">{v.name}</span>
       <Badge kind={p.hasDraft ? "warn" : "ok"}>{p.hasDraft ? `v${v.version} + draft` : `v${v.version} published`}</Badge>
@@ -68,6 +69,17 @@ export function SubBar(p: SubBarProps) {
             <div role="menu" className="absolute right-0 z-20 mt-1 w-56 rounded border border-slate-200 bg-white p-1 shadow-lg">
               <button
                 role="menuitem"
+                data-testid="menu-import"
+                className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-100"
+                onClick={() => {
+                  setMenu(false);
+                  p.onImport();
+                }}
+              >
+                Import a Blueprint file…
+              </button>
+              <button
+                role="menuitem"
                 className="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-slate-100"
                 onClick={() => {
                   setMenu(false);
@@ -89,7 +101,10 @@ export function SubBar(p: SubBarProps) {
               <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to="/markers?draft=1" target="_blank" onClick={() => setMenu(false)}>
                 Open marker sheet
               </Link>
-              <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to="/legacy-editor" onClick={() => setMenu(false)}>
+              <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to={`/survey?venue=${encodeURIComponent(v.id)}`} target="_blank" onClick={() => setMenu(false)}>
+                Survey walk (recognise places by sight)
+              </Link>
+              <Link role="menuitem" className="block rounded px-2 py-1.5 text-sm hover:bg-slate-100" to="/designer" onClick={() => setMenu(false)}>
                 Legacy Blueprint editor
               </Link>
             </div>
@@ -130,6 +145,7 @@ const LAYERS: [keyof MapLayers, string][] = [
   ["underlay", "Floor photo"],
   ["grid", "Grid"],
   ["walknet", "Walk network"],
+  ["dims", "Sizes"],
   ["objects", "Furniture"],
   ["markers", "Markers"],
   ["walls", "Ad walls"],

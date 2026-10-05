@@ -66,7 +66,7 @@ function Portal({ venue }: { venue: Venue }) {
 
   return (
     <div className="is-ads">
-      <header><Link className="brand" to="/"><i />Indore Spaces</Link><nav><Link to="/editor">Map editor</Link><Link to="/dashboard">Dashboard</Link><Link className="on" to="/ads">Ads</Link></nav><span>{venue.name}</span></header>
+      <header><Link className="brand" to="/maps"><i />Dora.AI</Link><nav><Link to="/editor">Map editor</Link><Link to="/dashboard">Dashboard</Link><Link className="on" to="/ads">Ads</Link></nav><span>{venue.name}</span></header>
       <main>
         <div className="ads-title"><div><h1>AR campaigns</h1><p>Place image and video creative on approved, surveyed wall slots.</p></div><button className="primary" onClick={() => { const c = emptyCampaign(); setFile((f) => ({ ...f, campaigns: [...f.campaigns, c] })); setSelected(c.id); }}>+ New campaign</button></div>
         <section className="ads-kpis">

@@ -9,6 +9,7 @@ import { HybridIntentResolver } from "./intentResolver";
 import type { PoseKind } from "./poseSource";
 import { readRuntimeConfig, usesBroadcast, wsPublishes, type RuntimeConfig } from "./runtimeConfig";
 import { SimPoseSource } from "./simPose";
+import { LocalSpeechOut } from "@/speech/LocalSpeechOut";
 import { SpeechSynthesisOut } from "./speech";
 import { startTicker } from "./ticker";
 
@@ -38,7 +39,7 @@ const env = () => ({
  * refreshes the venue when the server says it was republished, and tears everything down on unmount.
  * `overlayRef` = the element WebXR uses as its DOM overlay (the whole app).
  */
-export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<HTMLElement>): { rt: NavRuntime; state: NavState } {
+export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<HTMLElement>, openLocate = false): { rt: NavRuntime; state: NavState } {
   const base = useMemo(() => readRuntimeConfig(env()), []);
   const [kind, setKind] = useState<PoseKind>(base.kind);
   // After a source switch (from the locate screen) the rebuilt controller opens on the locate screen again, not the city list.
@@ -52,7 +53,7 @@ export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<
     const bc = usesBroadcast(cfg) ? new BroadcastChannelBus() : null;
     const ws = new WebSocketBus({ room: venue.id, role: "device", sendTypes: wsPublishes(cfg) ? undefined : [] });
     const bus: Bus = bc ? new CompositeBus([bc, ws]) : ws;
-    const ctl = new NavController({ venue, venueSource: source, sim: xr ?? pdr ?? sim, speech: new SpeechSynthesisOut(), bus, resolver: new HybridIntentResolver() });
+    const ctl = new NavController({ venue, venueSource: source, sim: xr ?? pdr ?? sim, speech: new LocalSpeechOut(new SpeechSynthesisOut()), bus, resolver: new HybridIntentResolver() });
     // A live phone has no demo switch: the floor prompt waits for the visitor (tap) or a lobby marker.
     if (kind !== "sim") ctl.setAutoConfirm(false);
     return { ctl, sim, xr, pdr, kind, cfg, bus, bc, switchKind: (k) => {
@@ -64,7 +65,8 @@ export function useNav(venue: Venue, source: VenueSource, overlayRef: RefObject<
 
   useEffect(() => {
     rt.ctl.start();
-    if (switched.current) rt.ctl.openLocate();
+    // After a source switch, or when the building was found by itself: straight to "where are you", not the city list.
+    if (switched.current || (openLocate && rt.kind !== "sim")) rt.ctl.openLocate();
     const stop = startTicker((dt) => rt.ctl.tick(dt));
     if (rt.kind === "sim") rt.ctl.applyHash(window.location.hash);
     const onHash = () => {

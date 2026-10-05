@@ -55,9 +55,9 @@ describe("HybridIntentResolver", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
   it("calls the server for low-confidence free-form text and accepts a spoken answer", async () => {
-    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ reply: "Lunch is in the cafeteria.", suggestions: [], fallback: false }), { status: 200 }));
-    const got = await new HybridIntentResolver(fetchFn).resolve("Can I get lunch here today?", ctx);
+    const fetchFn = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ reply: "The office is open from 9 to 7.", suggestions: [], fallback: false }), { status: 200 }));
+    const got = await new HybridIntentResolver(fetchFn).resolve("What are the office timings today?", ctx);
     expect(fetchFn).toHaveBeenCalledOnce();
-    expect(got).toEqual({ type: "answer", text: "Lunch is in the cafeteria.", suggestions: [] });
+    expect(got).toEqual({ type: "answer", text: "The office is open from 9 to 7.", suggestions: [] });
   });
 });

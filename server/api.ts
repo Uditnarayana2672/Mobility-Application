@@ -1,13 +1,23 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
 import { createReadStream, promises as fs } from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { parseCampaigns, parseVenue, type CampaignsFile, type ValidationResult, type Venue } from "../src/core/schema";
 import { validate } from "../src/core/validate";
 import type { AssistantRequest } from "../src/core/assistant";
+import { AnthropicClient } from "./anthropic";
 import { AssistantService } from "./assistant";
+import { LocalSemanticRanker } from "./semantic";
+import { NodeEmbedder, type PictureEmbedder } from "./vision/embed";
+import { MAX_FRAME_BYTES, SurveyStore } from "./vision/survey";
+import { VPR_MODEL } from "../src/vision/vpr";
 import type { AssistantProvider } from "./assistant-provider";
 import { SessionStore } from "./sessions";
+import { createLocalSpeech, type SpeechService } from "./speech";
+import { MAX_TTS_CHARS } from "./speech/tts";
+import { STT_RATE } from "./speech/stt";
+import { decodeWav, resample } from "../src/speech/wav";
 import { DocStore, ID_RE, listVenueIds } from "./store";
 
 export interface ApiOptions {
@@ -17,12 +27,22 @@ export interface ApiOptions {
   onPublished?: (kind: "venue" | "campaigns", venueId: string, version: number) => void;
   onReset?: (venueId: string) => void;
   assistantProvider?: AssistantProvider;
+  /** Claude on the server (default: ANTHROPIC_API_KEY from the environment; without a key it is simply off). */
+  anthropic?: AnthropicClient;
+  /** Local speech engines (Whisper + Piper). Default: created lazily from <root>/data/models. */
+  speech?: SpeechService;
+  /** Local free-form place ranker (default: a MiniLM embedding model on this machine, loaded in the background). `null` turns it off. */
+  semantic?: Pick<LocalSemanticRanker, "rank" | "ready"> & { warm?(): void } | null;
+  /** Image-embedding model for the survey index (default: DINOv2-small on this machine). */
+  embedder?: PictureEmbedder;
 }
 
 export type Next = (err?: unknown) => void;
 
 const MAX_JSON = 5 * 1024 * 1024;
 const MAX_UPLOAD = 10 * 1024 * 1024;
+const MAX_AUDIO = 2 * 1024 * 1024;
+const MAX_LOOK = 2 * 1024 * 1024;
 const MAX_MEDIA = 30 * 1024 * 1024;
 const UPLOAD_TYPES: Record<string, string> = { "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp" };
 const UPLOAD_MIME: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
@@ -102,7 +122,26 @@ export function createApi(opts: ApiOptions) {
   const venues = new DocStore(root, "venue");
   const campaigns = new DocStore(root, "campaigns");
   const sessions = new SessionStore(root);
-  const assistant = new AssistantService(root, opts.assistantProvider);
+  // The local models load in the background when the server starts (not under tests, and not with LOCAL_AI_WARM=0).
+  const warm = !process.env.VITEST && process.env.LOCAL_AI_WARM !== "0";
+  const semantic = opts.semantic === undefined ? (process.env.VITEST ? null : new LocalSemanticRanker(root)) : opts.semantic;
+  if (opts.semantic === undefined && warm) (semantic as LocalSemanticRanker | null)?.warm();
+  const anthropic = opts.anthropic ?? new AnthropicClient();
+  const assistant = new AssistantService(root, opts.assistantProvider, semantic, anthropic);
+  const survey = new SurveyStore(root);
+  const embedder: PictureEmbedder = opts.embedder ?? new NodeEmbedder(root);
+  const building = new Map<string, Promise<unknown>>();
+  const modelsDir = path.join(root, "data", "models", "hf");
+  const ortDir = ((): string => {
+    try {
+      return path.dirname(createRequire(import.meta.url).resolve("onnxruntime-web")); // its dist/ folder
+    } catch {
+      return path.join(root, "node_modules", "onnxruntime-web", "dist");
+    }
+  })();
+  let speechService: SpeechService | null = opts.speech ?? null;
+  const speech = (): SpeechService => (speechService ??= createLocalSpeech(root, { warm }));
+  if (warm && !opts.speech) speech();
 
   const checkId = (id: string | undefined, what: string): string => {
     if (!id || !ID_RE.test(id)) throw new HttpError(400, `bad ${what}`);
@@ -133,6 +172,93 @@ export function createApi(opts: ApiOptions) {
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     res.setHeader("Accept-Ranges", "bytes");
     createReadStream(file).pipe(res);
+  }
+
+  /** The image model's files for the phone (so it works offline once downloaded). Only the one model, fetched from its hub on first use. */
+  async function serveModel(rel: string, res: ServerResponse): Promise<void> {
+    const clean = rel.replace(/^\/+/, "");
+    if (!clean.startsWith(`${VPR_MODEL}/`) || clean.includes("..") || !/^[\w./-]+$/.test(clean)) throw new HttpError(404, "not found");
+    const file = path.join(modelsDir, clean);
+    let data: Buffer | null = null;
+    try {
+      data = await fs.readFile(file);
+    } catch {
+      const [org, name, ...rest] = clean.split("/");
+      const r = await fetch(`https://huggingface.co/${org}/${name}/resolve/main/${rest.join("/")}`, { redirect: "follow" });
+      if (!r.ok) throw new HttpError(404, "not found");
+      data = Buffer.from(await r.arrayBuffer());
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, data);
+    }
+    res.statusCode = 200;
+    res.setHeader("Content-Type", clean.endsWith(".json") ? "application/json" : "application/octet-stream");
+    res.setHeader("Cache-Control", "public, max-age=604800");
+    res.end(data);
+  }
+
+  async function serveOrt(name: string, res: ServerResponse): Promise<void> {
+    if (!/^ort-wasm-simd-threaded(\.[a-z]+)?\.(mjs|wasm)$/.test(name)) throw new HttpError(404, "not found");
+    let data: Buffer;
+    try {
+      data = await fs.readFile(path.join(ortDir, name));
+    } catch {
+      throw new HttpError(404, "not found");
+    }
+    res.statusCode = 200;
+    res.setHeader("Content-Type", name.endsWith(".wasm") ? "application/wasm" : "text/javascript; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=604800");
+    res.end(data);
+  }
+
+  async function surveyRoutes(parts: string[], method: string, url: URL, req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const venue = checkId(parts[1], "venue id");
+    const sub = parts[2];
+    if (!sub && method === "GET") {
+      const frames = await survey.list(venue);
+      const idx = await survey.index(venue);
+      const floors: Record<string, number> = {};
+      for (const f of frames) floors[f.floor] = (floors[f.floor] ?? 0) + 1;
+      return send(res, 200, { count: frames.length, floors, index: idx ? { builtAt: idx.builtAt, items: idx.items.length, model: idx.model, eval: idx.eval } : null, building: building.has(venue) });
+    }
+    if (!sub && method === "DELETE") {
+      await survey.clear(venue);
+      return send(res, 200, { ok: true });
+    }
+    if (sub === "frames" && method === "POST") {
+      const type = (req.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase();
+      if (type !== "image/jpeg") throw new HttpError(415, "content-type must be image/jpeg");
+      const q = url.searchParams;
+      const meta = { floor: q.get("floor") ?? "", x: Number(q.get("x")), y: Number(q.get("y")), heading: Number(q.get("heading")), acc: Number(q.get("acc") ?? 1) };
+      if (!meta.floor || meta.floor.length > 32) throw new HttpError(400, "floor is required");
+      const body = await readBuffer(req, MAX_FRAME_BYTES + 1024);
+      try {
+        const f = await survey.add(venue, body, meta);
+        return send(res, 200, { ok: true, id: f.id });
+      } catch (e) {
+        throw new HttpError(400, e instanceof Error ? e.message : "bad picture");
+      }
+    }
+    if (sub === "build" && method === "POST") {
+      if (building.has(venue)) throw new HttpError(409, "an index is already being built for this venue");
+      const job = survey.build(venue, embedder).finally(() => building.delete(venue));
+      building.set(venue, job);
+      const file = await job;
+      return send(res, 200, { ok: true, items: file.items.length, eval: file.eval });
+    }
+    if (sub === "index" && method === "GET") {
+      const idx = await survey.index(venue);
+      return idx ? send(res, 200, idx) : send(res, 404, { error: "no index built for this venue" });
+    }
+    if (sub === "frame" && parts[3] && method === "GET") {
+      const jpg = await survey.picture(venue, parts[3]);
+      if (!jpg) throw new HttpError(404, "not found");
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.end(jpg);
+      return;
+    }
+    return send(res, 404, { error: "unknown survey route" });
   }
 
   async function venueRoutes(parts: string[], method: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -241,13 +367,20 @@ export function createApi(opts: ApiOptions) {
     const isApi = url.pathname.startsWith("/api/");
     const isUpload = url.pathname.startsWith("/uploads/");
     const isMedia = url.pathname.startsWith("/media/");
-    if (!isApi && !isUpload && !isMedia) return next();
+    const isModel = url.pathname.startsWith("/models/");
+    const isOrt = url.pathname.startsWith("/ort/");
+    if (!isApi && !isUpload && !isMedia && !isModel && !isOrt) return next();
     const method = req.method ?? "GET";
 
     try {
       if (isUpload) {
         if (method !== "GET" && method !== "HEAD") throw new HttpError(405, "method not allowed");
         return await serveUpload(decodeURIComponent(url.pathname.slice("/uploads/".length)), res);
+      }
+      if (isModel || isOrt) {
+        if (method !== "GET" && method !== "HEAD") throw new HttpError(405, "method not allowed");
+        const rest = decodeURIComponent(url.pathname.slice(isModel ? "/models/".length : "/ort/".length));
+        return await (isModel ? serveModel(rest, res) : serveOrt(rest, res));
       }
       if (isMedia) {
         if (method !== "GET" && method !== "HEAD") throw new HttpError(405, "method not allowed");
@@ -256,6 +389,66 @@ export function createApi(opts: ApiOptions) {
       const parts = url.pathname.slice("/api/".length).split("/").filter(Boolean);
 
       if (parts[0] === "health" && method === "GET") return send(res, 200, { ok: true, time: new Date().toISOString() });
+      if (parts[0] === "registry" && parts.length === 1 && method === "GET") {
+        // Every published venue with where it is on Earth: what the phone needs to find out which building it is in.
+        const out: { id: string; name: string; type: string; city: string; version: number; geo?: unknown }[] = [];
+        for (const id of await listVenueIds(root)) {
+          const parsed = parseVenue(await venues.getPublished<unknown>(id));
+          if (parsed.ok) out.push({ id, name: parsed.data.name, type: parsed.data.type, city: parsed.data.city, version: parsed.data.version, geo: parsed.data.geo });
+        }
+        return send(res, 200, { venues: out });
+      }
+      if (parts[0] === "speech" && parts[1] === "status" && method === "GET") return send(res, 200, speech().status());
+      if (parts[0] === "stt" && parts.length === 1 && method === "POST") {
+        const lang = url.searchParams.get("lang");
+        if (lang !== "en" && lang !== "hi" && lang !== "te") throw new HttpError(400, "lang must be en, hi or te");
+        if (Number(req.headers["content-length"] ?? 0) > MAX_AUDIO) throw new HttpError(413, `audio larger than ${MAX_AUDIO} bytes`);
+        const body = await readBuffer(req, MAX_AUDIO);
+        let pcm;
+        try {
+          pcm = decodeWav(body);
+        } catch (e) {
+          throw new HttpError(415, e instanceof Error ? e.message : "audio must be a WAV file");
+        }
+        const out = await speech().stt.transcribe(resample(pcm.samples, pcm.rate, STT_RATE), lang);
+        return send(res, 200, { text: out.text, ms: out.ms, lang });
+      }
+      if (parts[0] === "tts" && parts.length === 1 && method === "GET") {
+        const lang = url.searchParams.get("lang");
+        const text = url.searchParams.get("text") ?? "";
+        if (lang !== "en" && lang !== "hi" && lang !== "te") throw new HttpError(400, "lang must be en, hi or te");
+        if (!text.trim() || text.length > MAX_TTS_CHARS) throw new HttpError(400, `text must be 1..${MAX_TTS_CHARS} characters`);
+        if (!speech().tts.languages().includes(lang)) throw new HttpError(503, `no ${lang} voice installed (run: npm run setup:speech)`);
+        const wav = await speech().tts.synth(text, lang);
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "audio/wav");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        res.end(wav);
+        return;
+      }
+      if (parts[0] === "ai" && parts[1] === "status" && method === "GET") {
+        return send(res, 200, { available: anthropic.available(), models: anthropic.available() ? anthropic.models : null });
+      }
+      if (parts[0] === "ai" && parts[1] === "look" && method === "POST") {
+        const venueId = checkId(url.searchParams.get("venue") ?? undefined, "venue id");
+        if (!anthropic.available()) throw new HttpError(503, "no ANTHROPIC_API_KEY on the server");
+        const type = (req.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase();
+        if (type !== "image/jpeg") throw new HttpError(415, "content-type must be image/jpeg");
+        const jpeg = await readBuffer(req, MAX_LOOK);
+        if (!sniffImage(jpeg, "image/jpeg")) throw new HttpError(415, "file contents are not a valid image/jpeg");
+        const venue = await venues.getPublished<Venue>(venueId);
+        if (!venue) throw new HttpError(404, "no such venue");
+        const floor = url.searchParams.get("floor") ?? undefined;
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), 25_000);
+        try {
+          return send(res, 200, await anthropic.look(venue, jpeg, floor ? { floor } : undefined, ctl.signal));
+        } catch (e) {
+          throw new HttpError(502, ctl.signal.aborted ? "the AI took too long" : e instanceof Error ? e.message : "the AI could not read the picture");
+        } finally {
+          clearTimeout(timer);
+        }
+      }
       if (parts[0] === "assistant" && method === "POST") {
         const body = await readJsonBody(req) as Partial<AssistantRequest> | undefined;
         const venueId = checkId(body?.venueId, "venue id");
@@ -318,6 +511,7 @@ export function createApi(opts: ApiOptions) {
         return send(res, 200, { ok: true, url: `/media/${name}`, bytes: buf.length, contentType: type });
       }
 
+      if (parts[0] === "survey" && parts.length >= 2) return await surveyRoutes(parts, method, url, req, res);
       if (parts[0] === "venues") return await venueRoutes(parts, method, req, res);
       if (parts[0] === "campaigns" && parts.length >= 2) return await campaignRoutes(parts, method, req, res);
 

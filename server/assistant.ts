@@ -4,7 +4,9 @@ import type { AssistantRequest, AssistantResponse, AssistantSuggestion } from ".
 import type { Target } from "../src/core/intent";
 import { getRoute, placeInfo, searchPlaces, whereAmI } from "../src/core/assistantTools";
 import type { Venue } from "../src/core/schema";
+import { AnthropicClient } from "./anthropic";
 import { OpenAiResponsesProvider, type AssistantProvider, type AssistantTool } from "./assistant-provider";
+import { chooseTarget, type LocalSemanticRanker } from "./semantic";
 
 const LANG_NAME = { en: "English", hi: "romanised Hinglish", te: "Telugu" } as const;
 const FALLBACK = {
@@ -26,8 +28,63 @@ const shortReply = (text: string): string => {
   return words.length <= 24 ? words.join(" ") : `${words.slice(0, 24).join(" ")}…`;
 };
 
+const GOING = {
+  en: (n: string) => `Taking you to ${n}.`,
+  hi: (n: string) => `${n} le chalte hain.`,
+  te: (n: string) => `${n} కి తీసుకెళ్తున్నాను.`,
+};
+
+const HERE = {
+  en: (n: string) => `Okay, you are near ${n}.`,
+  hi: (n: string) => `Theek hai, aap ${n} ke paas hain.`,
+  te: (n: string) => `సరే, మీరు ${n} దగ్గర ఉన్నారు.`,
+};
+const JOURNEY = {
+  en: (from: string, to: string) => `Starting from ${from}. Taking you to ${to}.`,
+  hi: (from: string, to: string) => `${from} se shuru karte hain. ${to} le chalte hain.`,
+  te: (from: string, to: string) => `${from} నుండి మొదలుపెడదాం. ${to} కి తీసుకెళ్తున్నాను.`,
+};
+
 export class AssistantService {
-  constructor(private readonly root: string, private readonly provider: AssistantProvider = new OpenAiResponsesProvider()) {}
+  constructor(
+    private readonly root: string,
+    private readonly provider: AssistantProvider = new OpenAiResponsesProvider(),
+    /** Local sentence-embedding ranker: answers when no cloud model is configured (or it fails). */
+    private readonly semantic: Pick<LocalSemanticRanker, "rank" | "ready"> | null = null,
+    /** Claude: reads free-form sentences ("I am near the lift lobby and I want to go to the pantry"). Ids are checked against the venue. */
+    private readonly anthropic: AnthropicClient | null = null,
+  ) {}
+
+  /** Claude's reading of the sentence as start place and/or destination, or null (no key, nothing found, or it failed). */
+  private async claude(v: Venue, req: AssistantRequest, suggestions: AssistantSuggestion[]): Promise<AssistantResponse | null> {
+    if (!this.anthropic?.available()) return null;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 7000);
+    try {
+      const r = await this.anthropic.interpretJourney(v, req.text, ctl.signal);
+      if (r.from && r.to) return { reply: JOURNEY[req.lang](r.from.name, r.to.name), action: { type: "journey", from: r.from.target, fromName: r.from.name, target: r.to.target, name: r.to.name }, suggestions, fallback: false };
+      if (r.to) return { reply: GOING[req.lang](r.to.name), action: { type: "goto", target: r.to.target, name: r.to.name }, suggestions, fallback: false };
+      if (r.from) return { reply: HERE[req.lang](r.from.name), action: { type: "locate", target: r.from.target, name: r.from.name }, suggestions, fallback: false };
+    } catch {
+      /* the other engines answer instead */
+    } finally {
+      clearTimeout(timer);
+    }
+    return null;
+  }
+
+  /** A clear best match among this venue's places, from the local model. Never waits for the model to download. */
+  private async local(v: Venue, req: AssistantRequest, suggestions: AssistantSuggestion[]): Promise<AssistantResponse | null> {
+    if (!this.semantic?.ready()) return null;
+    try {
+      const ranked = await this.semantic.rank(v, req.text, 8);
+      const choice = chooseTarget(v, ranked, req.from, req.prefs);
+      const sugg = ranked.slice(0, 3).map((r) => ({ name: r.name, target: r.target }));
+      if ("pick" in choice) return { reply: GOING[req.lang](choice.pick.name), action: { type: "goto", target: choice.pick.target, name: choice.pick.name }, suggestions: sugg, fallback: false };
+      if (choice.ask.length) return { reply: FALLBACK[req.lang](choice.ask.join(" or ")), suggestions: sugg, fallback: true, reason: "disabled" };
+    } catch { /* the local model must never break wayfinding */ }
+    return null;
+  }
 
   private suggestions(v: Venue, q: string): AssistantSuggestion[] {
     return searchPlaces(v, q).map(({ name, target }) => ({ name, target }));
@@ -44,8 +101,13 @@ export class AssistantService {
   async ask(v: Venue, req: AssistantRequest): Promise<AssistantResponse> {
     const suggestions = this.suggestions(v, req.text);
     const fallback = (reason: AssistantResponse["reason"]): AssistantResponse => ({ reply: FALLBACK[req.lang](suggestions.map((s) => s.name).join(" or ")), suggestions, fallback: true, reason });
+    const understood = await this.claude(v, req, suggestions);
+    if (understood) {
+      await this.log({ at: new Date().toISOString(), provider: "anthropic", venue: v.id, lang: req.lang, text: req.text, ...understood });
+      return understood;
+    }
     if (!this.provider.available()) {
-      const out = fallback("disabled");
+      const out = (await this.local(v, req, suggestions)) ?? fallback("disabled");
       await this.log({ at: new Date().toISOString(), provider: this.provider.name, venue: v.id, lang: req.lang, text: req.text, ...out });
       return out;
     }
@@ -72,7 +134,7 @@ export class AssistantService {
       const reply = shortReply(await this.provider.answer({ text: req.text, language: LANG_NAME[req.lang], tools: TOOLS, execute, signal: ctl.signal }));
       out = { reply, action, suggestions, fallback: false };
     } catch (err) {
-      out = fallback(ctl.signal.aborted ? "timeout" : err instanceof TypeError ? "offline" : "error");
+      out = (await this.local(v, req, suggestions)) ?? fallback(ctl.signal.aborted ? "timeout" : err instanceof TypeError ? "offline" : "error");
     } finally {
       clearTimeout(timer);
     }

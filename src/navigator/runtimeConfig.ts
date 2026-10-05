@@ -20,7 +20,7 @@ export interface RuntimeConfig {
 
 /**
  * Which pose source and bus the visitor app starts with.
- *   ?pose=sim|xr|pdr  forces a source. Otherwise: ?demo=1 or a desktop = the simulator, a phone = WebXR when the browser has it, else step counting.
+ *   ?pose=sim|xr|pdr  forces a source. Otherwise: ?demo=1 or a desktop = the simulator, a phone = camera + step counting (WebXR only with ?pose=xr).
  *   ?bus=bc|ws|both   forces the bus. Otherwise: the simulator talks BroadcastChannel (same-browser dashboard) and only *listens* on the
  *                      WebSocket (server notices); a live phone publishes over the WebSocket.
  *   ?debug=1          phone debug overlay.
@@ -32,7 +32,7 @@ export function readRuntimeConfig(env: RuntimeEnv): RuntimeConfig {
   let kind: PoseKind;
   if (pose === "sim" || pose === "xr" || pose === "pdr") kind = pose;
   else if (demo || !env.coarsePointer) kind = "sim";
-  else kind = env.hasXr ? "xr" : "pdr";
+  else kind = "pdr"; // camera + step counting; WebXR only on request (?pose=xr): it needs ARCore and was not reliable on phones
   const b = q.get("bus");
   const bus: BusChoice = b === "bc" || b === "ws" || b === "both" ? b : "default";
   return { kind, bus, debug: q.get("debug") === "1", demo: demo && kind === "sim" };

@@ -1,5 +1,5 @@
-/** Where a pose came from: sim = laptop simulator, marker = a marker fix, ar = WebXR tracking, steps = step counting + particle filter. */
-export type PoseOrigin = "sim" | "marker" | "manual" | "ar" | "steps";
+/** Where a pose came from: sim = laptop simulator, marker = a marker fix, ar = WebXR tracking, steps = step counting + particle filter, vision = recognised by what the camera sees. */
+export type PoseOrigin = "sim" | "marker" | "manual" | "ar" | "steps" | "vision";
 
 /** One position estimate in the venue frame (metres; heading = bearing, 0 = north, clockwise). */
 export interface Pose {
@@ -43,6 +43,8 @@ export interface PoseDebug {
   detections: number;
   /** Frames per second of the positioning loop (XR frames / sensor batches). */
   fps: number;
+  /** Place recognition status (state and last similarity), when the source has it. */
+  vision?: string;
 }
 
 /** Status shown in the demo panel; live sources report a trivial one. */
@@ -75,6 +77,8 @@ export interface ControllerPoseSource extends PoseSource {
   loseTracking(sec?: number): void;
   /** Live sources only. The session reached a lift/stairs: continue on `toFloor` at (x, y). */
   onConnector?(toFloor: string, x: number, y: number): void;
+  /** Live (step counting) source only. The visitor faces this map heading: the gyro takes it and the compass learns the map's north. */
+  alignHeading?(mapHeadingDeg: number): void;
   /** Live sources only. The visitor confirmed they are on `floor`. */
   forceFloor?(floor: string): void;
   /** A newer published venue replaces the one the source was built with. */

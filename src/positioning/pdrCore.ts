@@ -3,6 +3,7 @@ import { HeadingIntegrator, type RotationRate } from "@/core/heading";
 import { StepDetector } from "@/core/steps";
 import type { Pose } from "@/navigator/poseSource";
 import { PoseSmoother, type PlanePose } from "./corrector";
+import { CompassFusion } from "./compass";
 import { ParticleFilter, seededRandom, walkableFromVenue, type Walkable } from "./particleFilter";
 
 export interface PdrOptions {
@@ -10,8 +11,12 @@ export interface PdrOptions {
   /** Particle count. */
   particles: number;
   rnd?: () => number;
+  /** Map north against true north, when known and the venue does not say. */
+  northOffsetDeg?: number | null;
 }
 export const DEFAULT_PDR = { strideM: 0.7, particles: 300 };
+/** After a recognition fix the pose is labelled "vision" for this long, then it is plain step counting again. */
+const VISION_BADGE_SEC = 6;
 
 export interface MarkerAnchor {
   floor: string;
@@ -41,6 +46,9 @@ export class PdrPoseCore {
   private raw: PlanePose | null = null;
   private lastTMs = 0;
   private stride: number;
+  private readonly fusion: CompassFusion;
+  private lastCompass: number | null = null;
+  private visionLeft = 0;
 
   constructor(
     venue: Venue,
@@ -49,11 +57,55 @@ export class PdrPoseCore {
     this.walk = walkableFromVenue(venue);
     this.pf = new ParticleFilter(this.walk, venue.floors[0]?.id ?? "", opts.rnd ?? Math.random, { count: opts.particles ?? DEFAULT_PDR.particles });
     this.stride = opts.strideM ?? DEFAULT_PDR.strideM;
+    this.fusion = new CompassFusion({ prior: venue.northOffsetDeg ?? opts.northOffsetDeg ?? null });
+  }
+
+  /** The map's north against true north (learned from marker fixes, or typed in the editor), or null. */
+  get northOffset(): number | null {
+    return this.fusion.offset;
+  }
+  /** Start from an offset learned in an earlier session. */
+  seedNorthOffset(offset: number): void {
+    if (this.fusion.offset === null) this.fusion.learn(offset, 0, 1);
+  }
+
+  /** A compass reading (degrees clockwise from true north, the way the camera faces). Gently pulls the gyro heading towards it. */
+  compass(deg: number): void {
+    this.lastCompass = deg;
+    this.fusion.push(deg);
+    if (!this.anchored || this.held) return;
+    const c = this.fusion.correction(this.heading.bearing);
+    if (c !== null) {
+      this.heading.nudge(c);
+      this.pf.setHeading(this.heading.bearing);
+      if (this.raw) this.raw = { ...this.raw, heading: this.pf.estimate().heading };
+    }
+  }
+
+  /** Whether the phone's compass has produced a reading at all. */
+  get hasCompass(): boolean {
+    return this.lastCompass !== null;
+  }
+  /**
+   * The visitor says which way they face (a map heading): the gyro heading takes it, and the compass learns the map's north from it
+   * (it counts as a strong lesson, like a marker). Used by the Align button and by "Look around".
+   */
+  align(mapHeading: number): void {
+    if (!this.raw) return;
+    if (this.lastCompass !== null) this.fusion.learn(this.lastCompass, mapHeading, 1);
+    this.heading.reset(mapHeading);
+    this.pf.setHeading(mapHeading);
+    this.raw = { ...this.raw, heading: mapHeading };
   }
 
   setVenue(v: Venue): void {
     this.walk = walkableFromVenue(v);
     this.pf.setWalkable(this.walk);
+  }
+
+  /** Heading the gyro currently believes (map bearing). */
+  get currentHeading(): number {
+    return this.heading.bearing;
   }
 
   get located(): boolean {
@@ -64,13 +116,16 @@ export class PdrPoseCore {
   }
 
   /** A marker fix (camera) or a manual position: re-seed the cloud and the gyro heading. */
-  anchor(a: MarkerAnchor, silent = false): void {
+  anchor(a: MarkerAnchor, silent = false, via?: "vision"): void {
     const before = this.raw;
+    // A precise fix says which way the camera faces on the map; the compass said which way on Earth: that difference is the map's north.
+    if (this.lastCompass !== null && this.fusion.steady()) this.fusion.learn(this.lastCompass, a.heading, a.markerId !== null && a.acc <= 1 ? 1 : 0.15);
     this.heading.reset(a.heading);
     this.pf.seed(a.floor, a.x, a.y, a.heading, Math.max(0.15, a.acc * 0.6));
     this.anchored = true;
     this.anchorAcc = a.acc;
     this.anchorMarker = a.markerId;
+    this.visionLeft = via === "vision" ? VISION_BADGE_SEC : 0;
     this.stepsSince = 0;
     this.held = false;
     const after = { floor: a.floor, x: a.x, y: a.y, heading: a.heading };
@@ -108,7 +163,8 @@ export class PdrPoseCore {
       const e = this.pf.estimate();
       this.raw = { floor: e.floor, x: e.x, y: e.y, heading: e.heading };
     } else if (this.raw) {
-      // Between steps the displayed heading follows the gyro.
+      // Between steps the displayed heading follows the gyro (turning on the spot turns the arrow).
+      this.pf.setHeading(this.heading.bearing);
       this.raw = { ...this.raw, heading: this.pf.estimate().heading };
     }
   }
@@ -117,10 +173,11 @@ export class PdrPoseCore {
   tick(dtSec: number): Pose | null {
     if (!this.anchored || !this.raw) return null;
     const d = this.smoother.update(this.raw, dtSec);
+    if (this.visionLeft > 0) this.visionLeft = Math.max(0, this.visionLeft - dtSec);
     const scan = this.pendingScan;
     this.pendingScan = null;
     const acc = this.stepsSince === 0 ? this.anchorAcc : Math.max(this.anchorAcc, this.pf.estimate().acc);
-    return { floor: d.floor, x: d.x, y: d.y, heading: d.heading, acc: scan !== null ? this.anchorAcc : acc, stale: false, markerId: scan !== null ? scan : this.anchorMarker, source: scan !== null ? "marker" : "steps" };
+    return { floor: d.floor, x: d.x, y: d.y, heading: d.heading, acc: scan !== null ? this.anchorAcc : acc, stale: false, markerId: scan !== null ? scan : this.anchorMarker, source: scan !== null ? "marker" : this.visionLeft > 0 ? "vision" : "steps" };
   }
 
   cloud(): { floor: string; x: number; y: number }[] {

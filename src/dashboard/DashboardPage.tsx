@@ -11,7 +11,7 @@ import { MapCanvas, type UserPose } from "@/ui/map";
 import "./dashboard.css";
 
 const LIVE_MS = 2500;
-const SOURCE_BADGE: Record<string, string> = { sim: "SIM", marker: "MARKER", manual: "MANUAL", ar: "XR", steps: "PDR" };
+const SOURCE_BADGE: Record<string, string> = { sim: "SIM", marker: "MARKER", manual: "MANUAL", ar: "XR", steps: "PDR", vision: "SIGHT" };
 const deviceName = (id: string) => (id === LOCAL_DEVICE ? "simulated phone" : id);
 const MAX_EVENTS = 60;
 const MAX_TRAIL = 400;
@@ -339,7 +339,7 @@ function Dash({ venue }: { venue: Venue }) {
   return (
     <div className="is-dash" data-testid="dash-root">
       <div className="topbar">
-        <Link className="brand" to="/"><i />Indore Spaces</Link>
+        <Link className="brand" to="/maps"><i />Dora.AI</Link>
         <Link className="nav" to="/nav">Visitor app</Link>
         <Link className="nav" to="/editor">Map editor</Link>
         <Link className="nav" to="/markers">Marker sheet</Link>
@@ -463,7 +463,7 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-6 text-center">
         <h1 className="text-xl font-bold">Venue “{v.id}” not found</h1>
-        <Link to="/" className="text-blue-600 underline">back to hub</Link>
+        <Link to="/maps" className="text-blue-600 underline">back to hub</Link>
       </div>
     );
   }

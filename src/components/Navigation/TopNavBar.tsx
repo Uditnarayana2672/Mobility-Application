@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { mapsHref } from '@/shared/mapsLink';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -30,7 +32,8 @@ import {
   FileJson,
   Undo,
   Redo,
-  Trash
+  Trash,
+  Map as MapIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
@@ -140,6 +143,9 @@ const TopNavBar = ({
     <div className="flex justify-between items-center px-4 py-2 bg-blueprint-secondary text-white">
       <div className="flex items-center space-x-2">
         <h1 className="text-lg font-semibold">Blueprint Designer</h1>
+        <Button asChild variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white hover:text-blueprint-secondary" data-testid="go-maps">
+          <Link to={mapsHref()}><MapIcon className="h-4 w-4 mr-1" />Indore Maps</Link>
+        </Button>
         <div className="flex items-center mx-4 space-x-2">
           <Button variant="outline" size="sm" className="bg-white/10 text-white hover:bg-white hover:text-blueprint-secondary" onClick={onSave}>
             <Save className="h-4 w-4 mr-1" />
